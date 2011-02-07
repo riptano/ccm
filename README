@@ -1,0 +1,100 @@
+CCM (for Cassandra Cluster Manager)
+===================================
+
+A script to create, launch and remove a Apache Cassandra cluster on localhost.
+
+The goal of ccm is to make is easy to create, manage and destroy a small
+cluster on a local box. It is meant for quick testing on a Cassandra cluster.
+
+
+Install
+-------
+
+As far as I know, this uses only standard python modules, so as long as you
+have python installed, you should be good to go. Simply clone this repository
+where you want.
+
+Once cloned, you'll probably want to create a symbolic link to the ccm
+executable script somewhere in your path (The following examples assume that much).
+
+ccm is only for cluster on localhost so if you want more than one node, you
+will likely need multiple loopback interface aliases. On mac os x for
+instance, you can create such aliases with
+  sudo ifconfig lo0 alias 127.0.0.2 up
+  sudo ifconfig lo0 alias 127.0.0.3 up
+  ...
+
+I'll assume you have at least 127.0.0.1, 127.0.0.2 and 127.0.0.3 set up in
+the next section.
+
+
+Usage
+-----
+
+ccm works from a Cassandra source tree. So in the following example, I assume
+that 'ccm' is in the path and that current directory is a Cassandra source
+directory (either 0.7 or trunk, this doesn't work with 0.6, though that could
+be added easily enough if there is some interest). It also assumes that
+Cassandra has been compiled (with 'ant build').
+
+ccm work with the notion of a current cluster. To create a cluster and
+'switch' to it:
+> ccm create test
+
+Then add some node:
+> ccm add node1 -i 127.0.0.1 -j 7100 -s
+> ccm add node2 -i 127.0.0.2 -j 7200 -s
+
+This add 2 nodes on 127.0.0.1 and 127.0.0.2 using default thrift and storage
+port using jmx port 7100 and 7200 (JMX binds itself to all interfaces by
+default, so you want 2 separate ports here).
+Moreover, those are set as seeds ('-s' flag; you need at least one seed node).
+
+You can then start the whole cluster:
+> ccm start
+
+You can check that everything is working ok:
+> ccm node1 ring
+
+which simply call nodetool ring on node1.
+
+You can now bootstrap a new node and start it with:
+> ccm add node3 -i 127.0.0.3 -j 7300 -b
+> ccm node3 start
+
+This will wait for node3 to be fully bootstrapped, so this will take around 90
+seconds. You can use --no-wait to avoid this.
+
+ccm then provide a few conveniences, like flushing a full cluster:
+> ccm flush
+or a single node:
+> ccm node2 flush
+
+You can watch the log file of a given node with:
+> ccm node1 showlog
+(this exec 'less' on the log file)
+
+And you can remove the whole cluster with:
+> ccm remove
+
+There is a bunch of other commands (some of nodetool command are provided, just so that
+you don't have to remember the IP addresses and port number). Just try 'ccm'
+to get a list of available command. Then each command options are documented:
+for instance 'ccm add -h' describe the option for 'ccm add'.
+
+
+Where are things stored
+-----------------------
+
+By default, ccm store all the node data and configuration file under ~/.ccm/cluster_name/.
+This can be overriden using the --config-dir option with each command.
+
+
+Notes
+-----
+
+I use this script almost daily for quick Cassandra test, but this is *not*
+heavily tested, so you have been warned. I do welcome suggestion however.
+
+
+Sylvain Lebresne <sylvain@datastax.com>
