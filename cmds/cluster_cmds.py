@@ -32,6 +32,8 @@ class ClusterCreateCmd(Cmd):
         parser = self._get_default_parser(usage, self.description())
         parser.add_option('--no-switch', action="store_true", dest="no_switch",
             help="Don't switch to the newly created cluster", default=False)
+        parser.add_option('-p', '--partitioner', type="string", dest="partitioner",
+            help="Set the cluster partitioner class")
         return parser
 
     def validate(self, parser, options, args):
@@ -39,10 +41,15 @@ class ClusterCreateCmd(Cmd):
 
     def run(self):
         try:
-            common.create_cluster(self.path, self.name)
+            cluster = common.create_cluster(self.path, self.name)
         except OSError:
             print 'Cannot create cluster, directory %s already exists.' % os.path.join(self.path, self.name)
             exit(1)
+
+        if self.options.partitioner:
+            cluster.partitioner = self.options.partitioner
+
+        cluster.save()
 
         if not self.options.no_switch:
             common.switch_cluster(self.path, self.name)

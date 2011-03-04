@@ -9,13 +9,14 @@ class Cluster():
         self.nodes = {}
         self.seeds = []
         self.path = path
+        self.partitioner = None
 
     def save(self):
         node_list = [ node.name for node in self.nodes.values() ]
         seed_list = [ node.name for node in self.seeds ]
         filename = os.path.join(self.path, self.name, 'cluster.conf')
         with open(filename, 'w') as f:
-            yaml.dump({ 'name' : self.name, 'nodes' : node_list, 'seeds' : seed_list }, f)
+            yaml.dump({ 'name' : self.name, 'nodes' : node_list, 'seeds' : seed_list, 'partitioner' : self.partitioner }, f)
 
     @staticmethod
     def load(path, name):
@@ -27,6 +28,8 @@ class Cluster():
             cluster = Cluster(path, data['name'])
             node_list = data['nodes']
             seed_list = data['seeds']
+            if 'partitioner' in data:
+                cluster.partitioner = data['partitioner']
         except KeyError as k:
             raise common.LoadError("Error Loading " + filename + ", missing property:" + k)
 

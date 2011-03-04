@@ -102,6 +102,9 @@ class Node():
         data['commitlog_directory'] = os.path.join(self.get_path(), 'commitlogs')
         data['saved_caches_directory'] = os.path.join(self.get_path(), 'saved_caches')
 
+        if self.cluster.partitioner:
+            data['partitioner'] = self.cluster.partitioner
+
         with open(conf_file, 'w') as f:
             yaml.dump(data, f, default_flow_style=False)
 

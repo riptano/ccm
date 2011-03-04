@@ -57,7 +57,6 @@ def create_cluster(path, name):
     dir_name = os.path.join(path, name)
     os.mkdir(dir_name)
     cluster = Cluster(path, name)
-    cluster.save()
     return cluster
 
 def switch_cluster(path, new_name):
