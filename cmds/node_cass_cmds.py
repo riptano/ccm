@@ -116,6 +116,14 @@ class NodeCleanupCmd(__NodeToolCmd):
         usage = "usage: ccm node_name cleanup [options]"
         super(NodeCleanupCmd, self).__init__(usage, 'cleanup')
 
+class NodeRepairCmd(__NodeToolCmd):
+    def description(self):
+        return "Run repair on node name"
+
+    def __init__(self):
+        usage = "usage: ccm node_name repair [options]"
+        super(NodeRepairCmd, self).__init__(usage, 'repair')
+
 class NodeDecommissionCmd(__NodeToolCmd):
     def description(self):
         return "Run decommission on node name"

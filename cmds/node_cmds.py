@@ -19,6 +19,7 @@ def node_cmds():
         "flush",
         "compact",
         "cleanup",
+        "repair",
         "decommission"
     ]
 
