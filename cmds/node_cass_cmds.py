@@ -190,3 +190,18 @@ class NodeJsonCmd(Cmd):
             self.node.run_sstable2json(self.options.cassandra_dir, self.keyspace, self.column_families)
         except ArgumentError as e:
             print e
+
+class NodeUpdateconfCmd(Cmd):
+    def description(self):
+        return "Update the cassandra config files for this node (useful when updating cassandra)"
+
+    def get_parser(self):
+        usage = "usage: ccm node_name updateconf [options]"
+        parser = self._get_default_parser(usage, self.description(), cassandra_dir=True)
+        return parser
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
+
+    def run(self):
+        self.node.update_configuration(self.options.cassandra_dir)

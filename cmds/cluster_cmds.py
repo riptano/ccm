@@ -104,12 +104,7 @@ class ClusterAddCmd(Cmd):
         node.save()
         self.cluster.save()
 
-        conf_dir = os.path.join(self.options.cassandra_dir, 'conf')
-        for name in os.listdir(conf_dir):
-            filename = os.path.join(conf_dir, name)
-            if os.path.isfile(filename):
-                shutil.copy(filename, node.get_conf_dir())
-        node.update_configuration()
+        node.update_configuration(self.options.cassandra_dir)
 
 class ClusterListCmd(Cmd):
     def description(self):

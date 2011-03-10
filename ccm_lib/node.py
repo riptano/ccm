@@ -53,10 +53,6 @@ class Node():
         with open(filename, 'w') as f:
             yaml.dump(values, f)
 
-    # TODO
-    def stop(self):
-        pass
-
     @staticmethod
     def load(path, name, cluster):
         node_path = os.path.join(path, name)
@@ -85,7 +81,13 @@ class Node():
     def get_conf_dir(self):
         return os.path.join(self.get_path(), 'conf')
 
-    def update_configuration(self):
+    def update_configuration(self, cassandra_dir):
+        conf_dir = os.path.join(cassandra_dir, 'conf')
+        for name in os.listdir(conf_dir):
+            filename = os.path.join(conf_dir, name)
+            if os.path.isfile(filename):
+                shutil.copy(filename, self.get_conf_dir())
+
         self.update_yaml()
         self.update_log4j()
         self.update_envfile()

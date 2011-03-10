@@ -23,6 +23,7 @@ def node_cmds():
         "scrub",
         "decommission",
         "json",
+        "updateconf",
     ]
 
 class NodeShowCmd(Cmd):
