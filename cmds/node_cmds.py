@@ -20,6 +20,7 @@ def node_cmds():
         "compact",
         "cleanup",
         "repair",
+        "scrub",
         "decommission",
         "json",
     ]

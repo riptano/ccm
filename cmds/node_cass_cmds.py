@@ -136,6 +136,17 @@ class NodeDecommissionCmd(__NodeToolCmd):
         super(NodeDecommissionCmd, self).run()
         self.node.decommission()
 
+class NodeScrubCmd(__NodeToolCmd):
+    def description(self):
+        return "Run scrub on node name"
+
+    def __init__(self):
+        usage = "usage: ccm node_name scrub [options]"
+        super(NodeScrubCmd, self).__init__(usage, 'scrub')
+
+    def run(self):
+        super(NodeScrubCmd, self).run()
+
 class NodeCliCmd(Cmd):
     def description(self):
         return "Launch a cassandra cli connected to this node"
