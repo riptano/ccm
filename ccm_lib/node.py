@@ -1,6 +1,6 @@
 # ccm node
 
-import common, yaml, os, errno, signal, time, subprocess, shutil, sys
+import common, yaml, os, errno, signal, time, subprocess, shutil, sys, glob
 
 class Status():
     UNINITIALIZED = "UNINITIALIZED"
@@ -12,6 +12,13 @@ class StartError(Exception):
     def __init__(self, msg, process):
         self.msg = msg
         self.process = process
+
+    def __repr__(self):
+        return self.msg
+
+class ArgumentError(Exception):
+    def __init__(self, msg):
+        self.msg = msg
 
     def __repr__(self):
         return self.msg
@@ -233,3 +240,39 @@ class Node():
     def decommission(self):
         self.status = Status.DECOMMISIONNED
         self.save()
+
+    def run_sstable2json(self, cassandra_dir, keyspace, column_families):
+        sstable2json = os.path.join(cassandra_dir, 'bin', 'sstable2json')
+        env = common.make_cassandra_env(cassandra_dir, self.get_path())
+        datafiles = []
+        if not keyspace:
+            for k in self.list_keyspaces():
+                datafiles = datafiles + self.get_sstables(k, "")
+        else:
+            if not column_families:
+                datafiles = datafiles + self.get_sstables(keyspace, "")
+            else:
+                for cf in column_families:
+                    datafiles = datafiles + self.get_sstables(keyspace, cf)
+        for file in datafiles:
+            print "-- {0} -----".format(os.path.basename(file))
+            args = [ sstable2json , file ]
+            subprocess.call(args, env=env)
+            print ""
+
+    def list_keyspaces(self):
+        keyspaces = os.listdir(os.path.join(self.get_path(), 'data'))
+        keyspaces.remove('system')
+        return keyspaces
+
+    def get_sstables(self, keyspace, column_family):
+        keyspace_dir = os.path.join(self.get_path(), 'data', keyspace)
+        if not os.path.exists(keyspace_dir):
+            raise ArgumentError("Unknown keyspace {0}".format(keyspace))
+
+        files = glob.glob(os.path.join(keyspace_dir, "{0}*-Data.db".format(column_family)))
+        for f in files:
+            if os.path.exists(f.replace('Data.db', 'Compacted')):
+                files.remove(f)
+        return files
+

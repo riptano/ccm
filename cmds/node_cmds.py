@@ -20,7 +20,8 @@ def node_cmds():
         "compact",
         "cleanup",
         "repair",
-        "decommission"
+        "decommission",
+        "json",
     ]
 
 class NodeShowCmd(Cmd):

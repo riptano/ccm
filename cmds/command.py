@@ -60,7 +60,7 @@ class Cmd(object):
         parser.add_option('--config-dir', type="string", dest="config_dir",
             help="Directory for the cluster files [default to ~/.ccm]")
         if cassandra_dir:
-            parser.add_option('-c', "--cassandra-dir", type="string", dest="cassandra_dir",
+            parser.add_option("--cassandra-dir", type="string", dest="cassandra_dir",
                     help="Path to the cassandra directory to use [default %default]", default="./")
             self.use_cassandra_dir = True
         return parser
