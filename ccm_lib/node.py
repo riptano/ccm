@@ -278,3 +278,11 @@ class Node():
                 files.remove(f)
         return files
 
+    def stress(self, cassandra_dir, stress_options):
+        stress = os.path.join(cassandra_dir, 'contrib', 'stress', 'bin', 'stress')
+        args = [ stress ] + stress_options
+        try:
+            subprocess.call(args)
+        except KeyboardInterrupt:
+            pass
+

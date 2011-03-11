@@ -63,7 +63,7 @@ else:
 
 cmd = get_command(kind, cmd)
 if not cmd:
-    print "Unknown command: {0}".format(cmd)
+    print "Unknown node or command: {0}".format(arg1)
     exit(1)
 
 parser = cmd.get_parser()

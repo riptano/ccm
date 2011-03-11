@@ -24,6 +24,7 @@ def node_cmds():
         "decommission",
         "json",
         "updateconf",
+        "stress",
     ]
 
 class NodeShowCmd(Cmd):

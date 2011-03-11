@@ -20,7 +20,8 @@ def cluster_cmds():
         "start",
         "stop",
         "flush",
-        "compact"
+        "compact",
+        "stress"
     ]
 
 class ClusterCreateCmd(Cmd):
@@ -208,6 +209,6 @@ class ClusterLivesetCmd(Cmd):
         Cmd.validate(self, parser, options, args, load_cluster=True)
 
     def run(self):
-        l = [ node.network_interfaces['storage'][0] for node in self.cluster.nodes.values() if node.is_live()]
+        l = [ node.network_interfaces['storage'][0] for node in self.cluster.nodes.values() if node.is_live() ]
         print ",".join(l)
 

@@ -205,3 +205,19 @@ class NodeUpdateconfCmd(Cmd):
 
     def run(self):
         self.node.update_configuration(self.options.cassandra_dir)
+
+class NodeStressCmd(Cmd):
+    def description(self):
+        return "Run stress on a node"
+
+    def get_parser(self):
+        usage = "usage: ccm node_name stress [options] [stress_options]"
+        parser = self._get_default_parser(usage, self.description(), cassandra_dir=True, ignore_unknown_options=True)
+        return parser
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
+        self.stress_options = parser.get_ignored() + args
+
+    def run(self):
+        self.node.stress(self.options.cassandra_dir, self.stress_options)

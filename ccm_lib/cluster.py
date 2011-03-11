@@ -1,6 +1,6 @@
 # ccm clusters
 
-import common, yaml, os
+import common, yaml, os, subprocess
 from node import Node
 
 class Cluster():
@@ -84,8 +84,19 @@ class Cluster():
                 not_running.append(node)
         return not_running
 
-
     def nodetool(self, cassandra_dir, nodetool_cmd):
         for node in self.nodes.values():
             if node.is_running():
                 node.nodetool(cassandra_dir, nodetool_cmd)
+
+    def stress(self, cassandra_dir, stress_options):
+        stress = os.path.join(cassandra_dir, 'contrib', 'stress', 'bin', 'stress')
+        livenodes = [ node.network_interfaces['storage'][0] for node in self.nodes.values() if node.is_live() ]
+        if len(livenodes) == 0:
+            print "No live node"
+            return
+        args = [ stress, '-d', ",".join(livenodes) ] + stress_options
+        try:
+            subprocess.call(args)
+        except KeyboardInterrupt:
+            pass

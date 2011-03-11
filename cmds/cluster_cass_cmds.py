@@ -97,3 +97,19 @@ class ClusterCompactCmd(__ClusterNodetoolCmd):
     def __init__(self):
         usage = "usage: ccm cluster compact [options] name"
         super(ClusterCompactCmd, self).__init__(usage, 'compact')
+
+class ClusterStressCmd(Cmd):
+    def description(self):
+        return "Run stress using all live nodes"
+
+    def get_parser(self):
+        usage = "usage: ccm stress [options] [stress_options]"
+        parser = self._get_default_parser(usage, self.description(), cassandra_dir=True, ignore_unknown_options=True)
+        return parser
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, load_cluster=True)
+        self.stress_options = parser.get_ignored() + args
+
+    def run(self):
+        self.cluster.stress(self.options.cassandra_dir, self.stress_options)
