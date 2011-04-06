@@ -24,13 +24,14 @@ class ArgumentError(Exception):
         return self.msg
 
 class Node():
-    def __init__(self, name, cluster, auto_bootstrap, thrift_interface, storage_interface, jmx_port):
+    def __init__(self, name, cluster, auto_bootstrap, thrift_interface, storage_interface, jmx_port, initial_token):
         self.name = name
         self.cluster = cluster
         self.status = Status.UNINITIALIZED
         self.auto_bootstrap = auto_bootstrap
         self.network_interfaces = { 'thrift' : thrift_interface, 'storage' : storage_interface }
         self.jmx_port = jmx_port
+        self.initial_token = initial_token
         self.pid = None
 
     def save(self):
@@ -46,7 +47,8 @@ class Node():
             'status' : self.status,
             'auto_bootstrap' : self.auto_bootstrap,
             'interfaces' : self.network_interfaces,
-            'jmx_port' : self.jmx_port
+            'jmx_port' : self.jmx_port,
+            'initial_token': self.initial_token,
         }
         if self.pid:
             values['pid'] = self.pid
@@ -61,7 +63,7 @@ class Node():
             data = yaml.load(f)
         try:
             itf = data['interfaces'];
-            node = Node(data['name'], cluster, data['auto_bootstrap'], itf['thrift'], itf['storage'], data['jmx_port'])
+            node = Node(data['name'], cluster, data['auto_bootstrap'], itf['thrift'], itf['storage'], data['jmx_port'], data['initial_token'])
             node.status = data['status']
             if 'pid' in data:
                 node.pid = int(data['pid'])
@@ -98,6 +100,7 @@ class Node():
             data = yaml.load(f)
 
         data['auto_bootstrap'] = self.auto_bootstrap
+        data['initial_token'] = self.initial_token
         if 'seeds' in data:
             # cassandra 0.7
             data['seeds'] = self.cluster.get_seeds()
@@ -145,6 +148,7 @@ class Node():
           print "%s%s=%s" % (indent, 'thrift', self.network_interfaces['thrift'])
           print "%s%s=%s" % (indent, 'storage', self.network_interfaces['storage'])
           print "%s%s=%s" % (indent, 'jmx_port', self.jmx_port)
+          print "%s%s=%s" % (indent, 'initial_token', self.initial_token)
           if self.pid:
               print "%s%s=%s" % (indent, 'pid', self.pid)
 
