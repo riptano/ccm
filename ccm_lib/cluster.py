@@ -90,7 +90,7 @@ class Cluster():
                 node.nodetool(cassandra_dir, nodetool_cmd)
 
     def stress(self, cassandra_dir, stress_options):
-        stress = os.path.join(cassandra_dir, 'contrib', 'stress', 'bin', 'stress')
+        stress = common.get_stress_bin(cassandra_dir)
         livenodes = [ node.network_interfaces['storage'][0] for node in self.nodes.values() if node.is_live() ]
         if len(livenodes) == 0:
             print "No live node"

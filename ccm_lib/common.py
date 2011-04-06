@@ -92,3 +92,15 @@ def make_cassandra_env(cassandra_dir, node_path):
     env = os.environ.copy()
     env['CASSANDRA_INCLUDE'] = os.path.join(dst)
     return env
+
+def get_stress_bin(cassandra_dir):
+    stress = os.path.join(cassandra_dir, 'contrib', 'stress', 'bin', 'stress')
+    if os.path.exists(stress):
+        return stress
+
+    stress = os.path.join(cassandra_dir, 'tools', 'stress', 'bin', 'stress')
+    if os.path.exists(stress):
+        return stress
+
+    raise Exception("Cannot find stress binary (maybe it isn't compiled)")
+

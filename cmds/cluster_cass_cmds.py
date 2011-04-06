@@ -112,4 +112,8 @@ class ClusterStressCmd(Cmd):
         self.stress_options = parser.get_ignored() + args
 
     def run(self):
-        self.cluster.stress(self.options.cassandra_dir, self.stress_options)
+        try:
+            self.cluster.stress(self.options.cassandra_dir, self.stress_options)
+        except Exception as e:
+            print e
+
