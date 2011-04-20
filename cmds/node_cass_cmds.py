@@ -18,6 +18,8 @@ class NodeStartCmd(Cmd):
             help="Print standard output of cassandra process", default=False)
         parser.add_option('--no-wait', action="store_true", dest="no_wait",
             help="Do not wait for cassandra node to be ready", default=False)
+        parser.add_option('-j', '--dont-join-ring', action="store_true", dest="no_join_ring",
+            help="Launch the instance without joining the ring", default=False)
         return parser
 
     def validate(self, parser, options, args):
@@ -29,7 +31,7 @@ class NodeStartCmd(Cmd):
             exit(1)
 
         try:
-            process = self.node.start(self.options.cassandra_dir)
+            process = self.node.start(self.options.cassandra_dir, not self.options.no_join_ring)
         except StartError as e:
             print str(e)
             print "Standard error output is:"
