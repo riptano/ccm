@@ -47,11 +47,12 @@ class Node():
             'status' : self.status,
             'auto_bootstrap' : self.auto_bootstrap,
             'interfaces' : self.network_interfaces,
-            'jmx_port' : self.jmx_port,
-            'initial_token': self.initial_token,
+            'jmx_port' : self.jmx_port
         }
         if self.pid:
             values['pid'] = self.pid
+        if self.initial_token:
+            values['initial_token'] = self.initial_token
         with open(filename, 'w') as f:
             yaml.dump(values, f)
 
@@ -63,7 +64,10 @@ class Node():
             data = yaml.load(f)
         try:
             itf = data['interfaces'];
-            node = Node(data['name'], cluster, data['auto_bootstrap'], itf['thrift'], itf['storage'], data['jmx_port'], data['initial_token'])
+            initial_token = None
+            if 'initial_token' in data:
+                initial_token = data['initial_token']
+            node = Node(data['name'], cluster, data['auto_bootstrap'], itf['thrift'], itf['storage'], data['jmx_port'], initial_token)
             node.status = data['status']
             if 'pid' in data:
                 node.pid = int(data['pid'])
@@ -187,11 +191,11 @@ class Node():
         if not old_status == self.status:
             self.save()
 
-    def start(self, cassandra_dir):
+    def start(self, cassandra_dir, join_ring=True):
         cass_bin = os.path.join(cassandra_dir, 'bin', 'cassandra')
         env = common.make_cassandra_env(cassandra_dir, self.get_path())
         pidfile = os.path.join(self.get_path(), 'cassandra.pid')
-        args = [ cass_bin, '-p', pidfile]
+        args = [ cass_bin, '-p', pidfile, '-Dcassandra.join_ring=%s' % str(join_ring) ]
         p = subprocess.Popen(args, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         return p
 
