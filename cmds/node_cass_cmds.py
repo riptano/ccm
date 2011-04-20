@@ -228,4 +228,7 @@ class NodeStressCmd(Cmd):
         self.stress_options = parser.get_ignored() + args
 
     def run(self):
-        self.node.stress(self.options.cassandra_dir, self.stress_options)
+        try:
+            self.node.stress(self.options.cassandra_dir, self.stress_options)
+        except OSError:
+            print "Could not find stress binary (you may need to build it)"
