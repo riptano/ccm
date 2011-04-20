@@ -167,19 +167,27 @@ class NodeJsonCmd(Cmd):
         return "Call sstable2json on the sstables of this node"
 
     def get_parser(self):
-        usage = "usage: ccm node_name json [options]"
+        usage = "usage: ccm node_name json [options] [file]"
         parser = self._get_default_parser(usage, self.description(), cassandra_dir=True)
         parser.add_option('-k', '--keyspace', type="string", dest="keyspace",
             help="The keyspace to use [use all keyspaces by default]")
         parser.add_option('-c', '--column-families', type="string", dest="cfs",
             help="Comma separated list of column families to use (requires -k to be set)")
+        parser.add_option('-e', '--enumerate-keys', action="store_true", dest="enumerate_keys",
+            help="Only enumerate keys (i.e, call sstable2keys)", default=False)
         return parser
 
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
         self.keyspace = options.keyspace
         self.column_families = None
-        if options.cfs:
+        if len(args) > 0:
+            self.datafile = args[0]
+            if not self.keyspace:
+                print "You need a keyspace specified (option -k) if you specify a file"
+                exit(1)
+        elif options.cfs:
+            self.datafile = None
             if not self.keyspace:
                 print "You need a keyspace specified (option -k) if you specify column families"
                 exit(1)
@@ -187,7 +195,7 @@ class NodeJsonCmd(Cmd):
 
     def run(self):
         try:
-            self.node.run_sstable2json(self.options.cassandra_dir, self.keyspace, self.column_families)
+            self.node.run_sstable2json(self.options.cassandra_dir, self.keyspace, self.datafile, self.column_families, self.options.enumerate_keys)
         except ArgumentError as e:
             print e
 

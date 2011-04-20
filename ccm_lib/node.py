@@ -243,22 +243,27 @@ class Node():
         self.status = Status.DECOMMISIONNED
         self.save()
 
-    def run_sstable2json(self, cassandra_dir, keyspace, column_families):
+    def run_sstable2json(self, cassandra_dir, keyspace, datafile, column_families, enumerate_keys=False):
         sstable2json = os.path.join(cassandra_dir, 'bin', 'sstable2json')
         env = common.make_cassandra_env(cassandra_dir, self.get_path())
         datafiles = []
         if not keyspace:
             for k in self.list_keyspaces():
                 datafiles = datafiles + self.get_sstables(k, "")
-        else:
+        elif not datafile:
             if not column_families:
                 datafiles = datafiles + self.get_sstables(keyspace, "")
             else:
                 for cf in column_families:
                     datafiles = datafiles + self.get_sstables(keyspace, cf)
+        else:
+            keyspace_dir = os.path.join(self.get_path(), 'data', keyspace)
+            datafiles = [ os.path.join(keyspace_dir, datafile) ]
         for file in datafiles:
             print "-- {0} -----".format(os.path.basename(file))
             args = [ sstable2json , file ]
+            if enumerate_keys:
+                args = args + ["-e"];
             subprocess.call(args, env=env)
             print ""
 
