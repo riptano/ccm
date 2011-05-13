@@ -233,14 +233,31 @@ class Node():
         p = subprocess.Popen(args, env=env)
         p.wait()
 
-    def run_cli(self, cassandra_dir):
+    def run_cli(self, cassandra_dir, cmds=None, show_output=False):
         cli = os.path.join(cassandra_dir, 'bin', 'cassandra-cli')
         env = common.make_cassandra_env(cassandra_dir, self.get_path())
         host = self.network_interfaces['thrift'][0]
         port = self.network_interfaces['thrift'][1]
-        args = [ 'cassandra-cli', '-h', host, '-p', str(port) , '--jmxport', str(self.jmx_port) ]
+        args = [ '-h', host, '-p', str(port) , '--jmxport', str(self.jmx_port) ]
         sys.stdout.flush()
-        os.execve(cli, args, env)
+        if cmds is None:
+            os.execve(cli, [ 'cassandra-cli' ] + args, env)
+        else:
+            p = subprocess.Popen([ cli ] + args, env=env, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+            for cmd in cmds.split(';'):
+                p.stdin.write(cmd + ';\n')
+            p.stdin.write("quit;\n")
+            p.wait()
+            for err in p.stderr:
+                print "(EE) " + err,
+            if show_output:
+                i = 0
+                for log in p.stdout:
+                    # first four lines are not intersting
+                    if i >= 4
+                        print log
+                    i = i + 1
+
 
     def set_log_level(self, new_level):
         append_pattern='log4j.rootLogger=';

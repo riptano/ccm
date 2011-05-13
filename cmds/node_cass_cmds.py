@@ -156,13 +156,17 @@ class NodeCliCmd(Cmd):
     def get_parser(self):
         usage = "usage: ccm node_name cli [options]"
         parser = self._get_default_parser(usage, self.description(), cassandra_dir=True)
+        parser.add_option('-x', '--exec', type="string", dest="cmds", default=None,
+            help="Execute the specified commands and exit")
+        parser.add_option('-v', '--verbose', action="store_true", dest="verbose",
+            help="With --exec, show cli output after completion", default=False)
         return parser
 
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
 
     def run(self):
-        self.node.run_cli(self.options.cassandra_dir)
+        self.node.run_cli(self.options.cassandra_dir, self.options.cmds, self.options.verbose)
 
 class NodeJsonCmd(Cmd):
     def description(self):
