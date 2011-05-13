@@ -45,7 +45,7 @@ class ClusterCreateCmd(Cmd):
         try:
             cluster = common.create_cluster(self.path, self.name)
         except OSError:
-            print 'Cannot create cluster, directory %s already exists.' % os.path.join(self.path, self.name)
+            print >> sys.stderr, 'Cannot create cluster, directory %s already exists.' % os.path.join(self.path, self.name)
             exit(1)
 
         if self.options.partitioner:
@@ -85,11 +85,11 @@ class ClusterAddCmd(Cmd):
         self.cluster = common.load_current_cluster(self.path)
 
         if self.name in self.cluster.nodes:
-            print 'Cannot create existing node %s' % self.name
+            print >> sys.stderr, 'Cannot create existing node %s' % self.name
             exit(1)
 
         if options.itfs is None and (options.thrift_itf is None or options.storage_itf is None):
-            print 'Missing thrift and/or storage interfaces or jmx port'
+            print >> sys.stderr, 'Missing thrift and/or storage interfaces or jmx port'
             parser.print_help()
             exit(1)
 
@@ -143,7 +143,7 @@ class ClusterSwitchCmd(Cmd):
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, cluster_name=True)
         if not os.path.exists(os.path.join(self.path, self.name, 'cluster.conf')):
-            print "%s does not appear to be a valid cluster (use ccm cluster list to view valid cluster)" % self.name
+            print >> sys.stderr, "%s does not appear to be a valid cluster (use ccm cluster list to view valid cluster)" % self.name
             exit(1)
 
     def run(self):

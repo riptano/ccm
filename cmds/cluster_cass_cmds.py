@@ -41,9 +41,9 @@ class ClusterStartCmd(Cmd):
 
         for node, p in started:
             if not node.is_running():
-                print "Error starting {0}.".format(node.name)
+                print >> sys.stderr, "Error starting {0}.".format(node.name)
                 for line in p.stderr:
-                    print line.rstrip('\n')
+                    print >> sys.stderr, line.rstrip('\n')
 
 class ClusterStopCmd(Cmd):
     def description(self):
@@ -115,7 +115,7 @@ class ClusterStressCmd(Cmd):
         try:
             self.cluster.stress(self.options.cassandra_dir, self.stress_options)
         except Exception as e:
-            print e
+            print >> sys.stderr, e
 
 class ClusterUpdateconfCmd(Cmd):
     def description(self):

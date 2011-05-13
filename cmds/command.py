@@ -50,13 +50,13 @@ class Cmd(object):
 
         if cluster_name:
           if len(args) == 0:
-              print 'Missing cluster name'
+              print >> sys.stderr, 'Missing cluster name'
               parser.print_help()
               exit(1)
           self.name = args[0]
         if node_name:
           if len(args) == 0:
-              print 'Missing node name'
+              print >> sys.stderr, 'Missing node name'
               parser.print_help()
               exit(1)
           self.name = args[0]
@@ -67,7 +67,7 @@ class Cmd(object):
                 try:
                     self.node = self.cluster.nodes[self.name]
                 except KeyError:
-                    print 'Unknown node %s in cluster %s' % (self.name, self.cluster.name)
+                    print >> sys.stderr, 'Unknown node %s in cluster %s' % (self.name, self.cluster.name)
                     exit(1)
 
         if hasattr(self, 'use_cassandra_dir'):
@@ -79,7 +79,7 @@ class Cmd(object):
             cnd = cnd and os.path.exists(os.path.join(conf_dir, common.CASSANDRA_CONF))
             cnd = cnd and os.path.exists(os.path.join(conf_dir, common.LOG4J_CONF))
             if not cnd:
-                print '%s does not appear to be a cassandra source directory' % d
+                print >> sys.stderr, '%s does not appear to be a cassandra source directory' % d
                 exit(1)
 
     def run(self):

@@ -27,16 +27,16 @@ class NodeStartCmd(Cmd):
 
     def run(self):
         if self.node.is_running():
-            print "%s is already running" % self.name
+            print >> sys.stderr, "%s is already running" % self.name
             exit(1)
 
         try:
             process = self.node.start(self.options.cassandra_dir, not self.options.no_join_ring)
         except StartError as e:
-            print str(e)
-            print "Standard error output is:"
+            print >> sys.stderr, str(e)
+            print >> sys.stderr, "Standard error output is:"
             for line in e.process.stderr:
-                print line.rstrip('\n')
+                print >> sys.stderr, line.rstrip('\n')
             exit(1)
 
         if self.options.no_wait:
@@ -50,9 +50,9 @@ class NodeStartCmd(Cmd):
         self.node.update_pid(process)
 
         if not self.node.is_running():
-            print "Error starting node."
+            print >> sys.stderr, "Error starting node."
             for line in process.stderr:
-                print line.rstrip('\n')
+                print >> sys.stderr, line.rstrip('\n')
 
 class NodeStopCmd(Cmd):
     def description(self):
@@ -68,7 +68,7 @@ class NodeStopCmd(Cmd):
 
     def run(self):
         if not self.node.stop():
-            print "%s is not running" % self.name
+            print >> sys.stderr, "%s is not running" % self.name
             exit(1)
 
 class __NodeToolCmd(Cmd):
@@ -190,12 +190,12 @@ class NodeJsonCmd(Cmd):
         if len(args) > 0:
             self.datafile = args[0]
             if not self.keyspace:
-                print "You need a keyspace specified (option -k) if you specify a file"
+                print >> sys.stderr, "You need a keyspace specified (option -k) if you specify a file"
                 exit(1)
         elif options.cfs:
             self.datafile = None
             if not self.keyspace:
-                print "You need a keyspace specified (option -k) if you specify column families"
+                print >> sys.stderr, "You need a keyspace specified (option -k) if you specify column families"
                 exit(1)
             self.column_families = options.cfs.split(',')
 
@@ -203,7 +203,7 @@ class NodeJsonCmd(Cmd):
         try:
             self.node.run_sstable2json(self.options.cassandra_dir, self.keyspace, self.datafile, self.column_families, self.options.enumerate_keys)
         except ArgumentError as e:
-            print e
+            print >> sys.stderr, e
 
 class NodeUpdateconfCmd(Cmd):
     def description(self):
@@ -240,4 +240,4 @@ class NodeStressCmd(Cmd):
         try:
             self.node.stress(self.options.cassandra_dir, self.stress_options)
         except OSError:
-            print "Could not find stress binary (you may need to build it)"
+            print >> sys.stderr, "Could not find stress binary (you may need to build it)"

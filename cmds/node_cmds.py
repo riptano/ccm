@@ -93,7 +93,7 @@ class NodeSetlogCmd(Cmd):
         self.level = args[1]
         known_level = [ 'TRACE', 'DEBUG', 'INFO', 'ERROR' ]
         if self.level not in known_level:
-            print "Unknown log level %s (use one of %s)" % (self.level, " ".join(known_level))
+            print >> sys.stderr, "Unknown log level %s (use one of %s)" % (self.level, " ".join(known_level))
             exit(1)
 
     def run(self):
