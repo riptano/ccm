@@ -117,3 +117,20 @@ class ClusterStressCmd(Cmd):
         except Exception as e:
             print e
 
+class ClusterUpdateconfCmd(Cmd):
+    def description(self):
+        return "Update the cassandra config files for all nodes"
+
+    def get_parser(self):
+        usage = "usage: ccm updateconf [options]"
+        parser = self._get_default_parser(usage, self.description(), cassandra_dir=True)
+        parser.add_option('--no-hh', '--no-hinted-handoff', action="store_false",
+            dest="hinted_handoff", default=True, help="Disable hinted handoff")
+        return parser
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, load_cluster=True)
+
+    def run(self):
+        self.cluster.set_configuration_option("hinted_handoff_enabled", self.options.hinted_handoff)
+        self.cluster.update_configuration(self.options.cassandra_dir)

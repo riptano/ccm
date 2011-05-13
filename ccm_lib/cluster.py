@@ -100,3 +100,11 @@ class Cluster():
             subprocess.call(args)
         except KeyboardInterrupt:
             pass
+
+    def update_configuration(self, cassandra_dir):
+        for node in self.nodes.values():
+            node.update_configuration(cassandra_dir)
+
+    def set_configuration_option(self, name, value):
+        for node in self.nodes.values():
+            node.set_configuration_option(name, value)

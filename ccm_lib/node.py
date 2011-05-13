@@ -33,6 +33,7 @@ class Node():
         self.jmx_port = jmx_port
         self.initial_token = initial_token
         self.pid = None
+        self.config_options = {}
 
     def save(self):
         dir_name = self.get_path()
@@ -121,8 +122,15 @@ class Node():
         if self.cluster.partitioner:
             data['partitioner'] = self.cluster.partitioner
 
+        for name in self.config_options:
+            data[name] = self.config_options[name]
+
         with open(conf_file, 'w') as f:
             yaml.dump(data, f, default_flow_style=False)
+
+    def set_configuration_option(self, name, value):
+        self.config_options[name] = value
+        self.update_yaml()
 
     def update_log4j(self):
         append_pattern='log4j.appender.R.File=';
