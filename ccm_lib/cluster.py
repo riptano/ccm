@@ -108,3 +108,7 @@ class Cluster():
     def set_configuration_option(self, name, value):
         for node in self.nodes.values():
             node.set_configuration_option(name, value)
+
+    def unset_configuration_option(self, name):
+        for node in self.nodes.values():
+            node.unset_configuration_option(name)

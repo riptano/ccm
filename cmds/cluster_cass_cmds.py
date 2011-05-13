@@ -126,6 +126,8 @@ class ClusterUpdateconfCmd(Cmd):
         parser = self._get_default_parser(usage, self.description(), cassandra_dir=True)
         parser.add_option('--no-hh', '--no-hinted-handoff', action="store_false",
             dest="hinted_handoff", default=True, help="Disable hinted handoff")
+        parser.add_option('--batch-cl', '--batch-commit-log', action="store_true",
+            dest="cl_batch", default=True, help="Set commit log to batch mode")
         return parser
 
     def validate(self, parser, options, args):
@@ -133,4 +135,8 @@ class ClusterUpdateconfCmd(Cmd):
 
     def run(self):
         self.cluster.set_configuration_option("hinted_handoff_enabled", self.options.hinted_handoff)
+        if self.options.cl_batch:
+            self.cluster.set_configuration_option("commitlog_sync", "batch")
+            self.cluster.set_configuration_option("commitlog_sync_batch_window_in_ms", 5)
+            self.cluster.unset_configuration_option("commitlog_sync_period_in_ms")
         self.cluster.update_configuration(self.options.cassandra_dir)

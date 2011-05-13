@@ -123,13 +123,21 @@ class Node():
             data['partitioner'] = self.cluster.partitioner
 
         for name in self.config_options:
-            data[name] = self.config_options[name]
+            value = self.config_options[name]
+            if value is None:
+                del data[name]
+            else:
+                data[name] = self.config_options[name]
 
         with open(conf_file, 'w') as f:
             yaml.dump(data, f, default_flow_style=False)
 
     def set_configuration_option(self, name, value):
         self.config_options[name] = value
+        self.update_yaml()
+
+    def unset_configuration_option(self, name):
+        self.config_options[name] = None
         self.update_yaml()
 
     def update_log4j(self):
@@ -254,8 +262,8 @@ class Node():
                 i = 0
                 for log in p.stdout:
                     # first four lines are not intersting
-                    if i >= 4
-                        print log
+                    if i >= 4:
+                        print log,
                     i = i + 1
 
 
