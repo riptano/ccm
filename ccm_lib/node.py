@@ -241,12 +241,12 @@ class Node():
         p = subprocess.Popen(args, env=env)
         p.wait()
 
-    def run_cli(self, cassandra_dir, cmds=None, show_output=False):
+    def run_cli(self, cassandra_dir, cmds=None, show_output=False, cli_options=[]):
         cli = os.path.join(cassandra_dir, 'bin', 'cassandra-cli')
         env = common.make_cassandra_env(cassandra_dir, self.get_path())
         host = self.network_interfaces['thrift'][0]
         port = self.network_interfaces['thrift'][1]
-        args = [ '-h', host, '-p', str(port) , '--jmxport', str(self.jmx_port) ]
+        args = [ '-h', host, '-p', str(port) , '--jmxport', str(self.jmx_port) ] + cli_options
         sys.stdout.flush()
         if cmds is None:
             os.execve(cli, [ 'cassandra-cli' ] + args, env)

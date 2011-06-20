@@ -215,4 +215,3 @@ class ClusterLivesetCmd(Cmd):
     def run(self):
         l = [ node.network_interfaces['storage'][0] for node in self.cluster.nodes.values() if node.is_live() ]
         print ",".join(l)
-
