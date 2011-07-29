@@ -138,7 +138,7 @@ class ClusterUpdateconfCmd(Cmd):
     def run(self):
         self.cluster.set_configuration_option("hinted_handoff_enabled", self.options.hinted_handoff)
         if self.options.short_rt:
-            self.cluster.set_configuration_option("rpc_timeout_in_ms", 2000)
+            self.cluster.set_configuration_option("rpc_timeout_in_ms", 4000)
         if self.options.cl_batch:
             self.cluster.set_configuration_option("commitlog_sync", "batch")
             self.cluster.set_configuration_option("commitlog_sync_batch_window_in_ms", 5)
