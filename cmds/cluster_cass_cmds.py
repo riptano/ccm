@@ -128,6 +128,8 @@ class ClusterUpdateconfCmd(Cmd):
             dest="hinted_handoff", default=True, help="Disable hinted handoff")
         parser.add_option('--batch-cl', '--batch-commit-log', action="store_true",
             dest="cl_batch", default=True, help="Set commit log to batch mode")
+        parser.add_option('--rt', '--rpc-timeout', action="store", type='int',
+            dest="rpc_timeout", help="Set rpc timeout")
         return parser
 
     def validate(self, parser, options, args):
@@ -135,6 +137,8 @@ class ClusterUpdateconfCmd(Cmd):
 
     def run(self):
         self.cluster.set_configuration_option("hinted_handoff_enabled", self.options.hinted_handoff)
+        if self.options.rpc_timeout:
+            self.cluster.set_configuration_option("rpc_timeout_in_ms", self.options.rpc_timeout)
         if self.options.cl_batch:
             self.cluster.set_configuration_option("commitlog_sync", "batch")
             self.cluster.set_configuration_option("commitlog_sync_batch_window_in_ms", 5)
