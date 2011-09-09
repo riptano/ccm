@@ -71,7 +71,7 @@ class NodeStopCmd(Cmd):
             print >> sys.stderr, "%s is not running" % self.name
             exit(1)
 
-class __NodeToolCmd(Cmd):
+class _NodeToolCmd(Cmd):
     def get_parser(self):
         parser = self._get_default_parser(self.usage, self.description(), cassandra_dir=True)
         return parser
@@ -85,41 +85,41 @@ class __NodeToolCmd(Cmd):
     def run(self):
         self.node.nodetool(self.options.cassandra_dir, self.nodetool_cmd)
 
-class NodeRingCmd(__NodeToolCmd):
+class NodeRingCmd(_NodeToolCmd):
     usage = "usage: ccm node_name ring [options]"
     nodetool_cmd = 'ring'
     descr_text = "Print ring (connecting to node name)"
 
-class NodeFlushCmd(__NodeToolCmd):
+class NodeFlushCmd(_NodeToolCmd):
     usage = "usage: ccm node_name flush [options]"
     nodetool_cmd = 'flush'
     descr_text = "Flush node name"
 
-class NodeCompactCmd(__NodeToolCmd):
+class NodeCompactCmd(_NodeToolCmd):
     usage = "usage: ccm node_name compact [options]"
     nodetool_cmd = 'compact'
     descr_text = "Compact node name"
 
-class NodeCleanupCmd(__NodeToolCmd):
+class NodeCleanupCmd(_NodeToolCmd):
     usage = "usage: ccm node_name cleanup [options]"
     nodetool_cmd = 'cleanup'
     descr_text = "Run cleanup on node name"
 
-class NodeRepairCmd(__NodeToolCmd):
+class NodeRepairCmd(_NodeToolCmd):
     usage = "usage: ccm node_name repair [options]"
     nodetool_cmd = 'repair'
     descr_text = "Run repair on node name"
 
-class NodeDecommissionCmd(__NodeToolCmd):
+class NodeDecommissionCmd(_NodeToolCmd):
     usage = "usage: ccm node_name decommission [options]"
     nodetool_cmd = 'decommission'
     descr_text = "Run decommission on node name"
 
     def run(self):
-        __NodeToolCmd.run(self)
+        _NodeToolCmd.run(self)
         self.node.decommission()
 
-class NodeScrubCmd(__NodeToolCmd):
+class NodeScrubCmd(_NodeToolCmd):
     usage = "usage: ccm node_name scrub [options]"
     nodetool_cmd = 'scrub'
     descr_text = "Run scrub on node name"

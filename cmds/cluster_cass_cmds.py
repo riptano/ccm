@@ -67,7 +67,7 @@ class ClusterStopCmd(Cmd):
                 sys.out.write(node.name + " ")
             print ""
 
-class __ClusterNodetoolCmd(Cmd):
+class _ClusterNodetoolCmd(Cmd):
     def get_parser(self):
         parser = self._get_default_parser(self.usage, self.description(), cassandra_dir=True)
         return parser
@@ -81,12 +81,12 @@ class __ClusterNodetoolCmd(Cmd):
     def run(self):
         self.cluster.nodetool(self.options.cassandra_dir, self.nodetool_cmd)
 
-class ClusterFlushCmd(__ClusterNodetoolCmd):
+class ClusterFlushCmd(_ClusterNodetoolCmd):
     usage = "usage: ccm cluster flush [options] name"
     nodetool_cmd = 'flush'
     descr_text = "Flush all (running) nodes of the cluster"
 
-class ClusterCompactCmd(__ClusterNodetoolCmd):
+class ClusterCompactCmd(_ClusterNodetoolCmd):
     usage = "usage: ccm cluster compact [options] name"
     nodetool_cmd = 'compact'
     descr_text = "Compact all (running) node of the cluster"
