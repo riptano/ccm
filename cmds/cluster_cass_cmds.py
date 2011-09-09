@@ -68,13 +68,12 @@ class ClusterStopCmd(Cmd):
             print ""
 
 class __ClusterNodetoolCmd(Cmd):
-    def __init__(self, usage, nodetool_cmd):
-        self.usage = usage
-        self.nodetool_cmd = nodetool_cmd
-
     def get_parser(self):
         parser = self._get_default_parser(self.usage, self.description(), cassandra_dir=True)
         return parser
+
+    def description(self):
+        return self.descr_text
 
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, load_cluster=True)
@@ -83,20 +82,14 @@ class __ClusterNodetoolCmd(Cmd):
         self.cluster.nodetool(self.options.cassandra_dir, self.nodetool_cmd)
 
 class ClusterFlushCmd(__ClusterNodetoolCmd):
-    def description(self):
-        return "Flush all (running) nodes of the cluster"
-
-    def __init__(self):
-        usage = "usage: ccm cluster flush [options] name"
-        super(ClusterFlushCmd, self).__init__(usage, 'flush')
+    usage = "usage: ccm cluster flush [options] name"
+    nodetool_cmd = 'flush'
+    descr_text = "Flush all (running) nodes of the cluster"
 
 class ClusterCompactCmd(__ClusterNodetoolCmd):
-    def description(self):
-        return "Compact all (running) node of the cluster"
-
-    def __init__(self):
-        usage = "usage: ccm cluster compact [options] name"
-        super(ClusterCompactCmd, self).__init__(usage, 'compact')
+    usage = "usage: ccm cluster compact [options] name"
+    nodetool_cmd = 'compact'
+    descr_text = "Compact all (running) node of the cluster"
 
 class ClusterStressCmd(Cmd):
     def description(self):

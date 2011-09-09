@@ -72,13 +72,12 @@ class NodeStopCmd(Cmd):
             exit(1)
 
 class __NodeToolCmd(Cmd):
-    def __init__(self, usage, nodetool_cmd):
-        self.usage = usage
-        self.nodetool_cmd = nodetool_cmd
-
     def get_parser(self):
         parser = self._get_default_parser(self.usage, self.description(), cassandra_dir=True)
         return parser
+
+    def description(self):
+        return self.descr_text
 
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
@@ -87,67 +86,43 @@ class __NodeToolCmd(Cmd):
         self.node.nodetool(self.options.cassandra_dir, self.nodetool_cmd)
 
 class NodeRingCmd(__NodeToolCmd):
-    def description(self):
-        return "Print ring (connecting to node name)"
-
-    def __init__(self):
-        usage = "usage: ccm node_name ring [options]"
-        super(NodeRingCmd, self).__init__(usage, 'ring')
+    usage = "usage: ccm node_name ring [options]"
+    nodetool_cmd = 'ring'
+    descr_text = "Print ring (connecting to node name)"
 
 class NodeFlushCmd(__NodeToolCmd):
-    def description(self):
-        return "Flush node name"
-
-    def __init__(self):
-        usage = "usage: ccm node_name flush [options]"
-        super(NodeFlushCmd, self).__init__(usage, 'flush')
+    usage = "usage: ccm node_name flush [options]"
+    nodetool_cmd = 'flush'
+    descr_text = "Flush node name"
 
 class NodeCompactCmd(__NodeToolCmd):
-    def description(self):
-        return "Compact node name"
-
-    def __init__(self):
-        usage = "usage: ccm node_name compact [options]"
-        super(NodeCompactCmd, self).__init__(usage, 'compact')
+    usage = "usage: ccm node_name compact [options]"
+    nodetool_cmd = 'compact'
+    descr_text = "Compact node name"
 
 class NodeCleanupCmd(__NodeToolCmd):
-    def description(self):
-        return "Run cleanup on node name"
-
-    def __init__(self):
-        usage = "usage: ccm node_name cleanup [options]"
-        super(NodeCleanupCmd, self).__init__(usage, 'cleanup')
+    usage = "usage: ccm node_name cleanup [options]"
+    nodetool_cmd = 'cleanup'
+    descr_text = "Run cleanup on node name"
 
 class NodeRepairCmd(__NodeToolCmd):
-    def description(self):
-        return "Run repair on node name"
-
-    def __init__(self):
-        usage = "usage: ccm node_name repair [options]"
-        super(NodeRepairCmd, self).__init__(usage, 'repair')
+    usage = "usage: ccm node_name repair [options]"
+    nodetool_cmd = 'repair'
+    descr_text = "Run repair on node name"
 
 class NodeDecommissionCmd(__NodeToolCmd):
-    def description(self):
-        return "Run decommission on node name"
-
-    def __init__(self):
-        usage = "usage: ccm node_name decommission [options]"
-        super(NodeDecommissionCmd, self).__init__(usage, 'decommission')
+    usage = "usage: ccm node_name decommission [options]"
+    nodetool_cmd = 'decommission'
+    descr_text = "Run decommission on node name"
 
     def run(self):
-        super(NodeDecommissionCmd, self).run()
+        __NodeToolCmd.run(self)
         self.node.decommission()
 
 class NodeScrubCmd(__NodeToolCmd):
-    def description(self):
-        return "Run scrub on node name"
-
-    def __init__(self):
-        usage = "usage: ccm node_name scrub [options]"
-        super(NodeScrubCmd, self).__init__(usage, 'scrub')
-
-    def run(self):
-        super(NodeScrubCmd, self).run()
+    usage = "usage: ccm node_name scrub [options]"
+    nodetool_cmd = 'scrub'
+    descr_text = "Run scrub on node name"
 
 class NodeCliCmd(Cmd):
     def description(self):
