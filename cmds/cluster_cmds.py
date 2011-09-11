@@ -23,7 +23,8 @@ def cluster_cmds():
         "flush",
         "compact",
         "stress",
-        "updateconf"
+        "updateconf",
+        "cli",
     ]
 
 class ClusterCreateCmd(Cmd):

@@ -101,6 +101,13 @@ class Cluster():
         except KeyboardInterrupt:
             pass
 
+    def run_cli(self, cassandra_dir, cmds=None, show_output=False, cli_options=[]):
+        livenodes = [ node for node in self.nodes.values() if node.is_live() ]
+        if len(livenodes) == 0:
+            print "No live node"
+            return
+        livenodes[0].run_cli(cassandra_dir, cmds, show_output, cli_options)
+
     def update_configuration(self, cassandra_dir):
         for node in self.nodes.values():
             node.update_configuration(cassandra_dir)

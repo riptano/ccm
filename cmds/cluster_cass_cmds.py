@@ -137,3 +137,23 @@ class ClusterUpdateconfCmd(Cmd):
             self.cluster.set_configuration_option("commitlog_sync_batch_window_in_ms", 5)
             self.cluster.unset_configuration_option("commitlog_sync_period_in_ms")
         self.cluster.update_configuration(self.options.cassandra_dir)
+
+class ClusterCliCmd(Cmd):
+    def description(self):
+        return "Launch cassandra cli connected to some live node (if any)"
+
+    def get_parser(self):
+        usage = "usage: ccm cli [options] [cli_options]"
+        parser = self._get_default_parser(usage, self.description(), cassandra_dir=True, ignore_unknown_options=True)
+        parser.add_option('-x', '--exec', type="string", dest="cmds", default=None,
+            help="Execute the specified commands and exit")
+        parser.add_option('-v', '--verbose', action="store_true", dest="verbose",
+            help="With --exec, show cli output after completion", default=False)
+        return parser
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, load_cluster=True)
+        self.cli_options = parser.get_ignored() + args[1:]
+
+    def run(self):
+        self.cluster.run_cli(self.options.cassandra_dir, self.options.cmds, self.options.verbose, self.cli_options)

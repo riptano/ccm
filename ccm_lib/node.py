@@ -266,7 +266,6 @@ class Node():
                         print log,
                     i = i + 1
 
-
     def set_log_level(self, new_level):
         append_pattern='log4j.rootLogger=';
         conf_file = os.path.join(self.get_conf_dir(), common.LOG4J_CONF)
