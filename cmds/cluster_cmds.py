@@ -11,6 +11,7 @@ def cluster_cmds():
     return [
         "create",
         "add",
+        "populate",
         "list",
         "switch",
         "status",
@@ -110,6 +111,46 @@ class ClusterAddCmd(Cmd):
         self.cluster.save()
 
         node.update_configuration(self.options.cassandra_dir)
+
+class ClusterPopulateCmd(Cmd):
+    def description(self):
+        return "Add a group of new nodes with default options"
+
+    def get_parser(self):
+        usage = "usage: ccm populate -n <node count>"
+        parser = self._get_default_parser(usage, self.description(), cassandra_dir=True)
+        parser.add_option('-n', '--nodes', type="int", dest="nodes",
+            help="Number of nodes to populate with")
+        return parser
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args)
+        self.cluster = common.load_current_cluster(self.path)
+
+        if options.nodes < 1 or options.nodes >= 10:
+            print 'invalide node count %s' % options.nodes
+            exit(1)
+
+        for i in xrange(1, options.nodes + 1):
+            if 'node%s' % i in self.cluster.nodes:
+                print 'Cannot create existing node node%s' % i
+                exit(1)
+
+        self.nodes = options.nodes
+
+    def run(self):
+        for i in xrange(1, self.nodes + 1):
+            node = Node('node%s' % i, 
+                        self.cluster, 
+                        False, 
+                        ('127.0.0.%s' % i, 9160), 
+                        ('127.0.0.%s' % i, 7000),
+                        str(7000 + i * 100), 
+                        None)
+            self.cluster.add(node, True)
+            node.save()
+            self.cluster.save()
+            node.update_configuration(self.options.cassandra_dir)
 
 class ClusterListCmd(Cmd):
     def description(self):

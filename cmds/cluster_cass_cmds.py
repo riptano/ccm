@@ -67,14 +67,13 @@ class ClusterStopCmd(Cmd):
                 sys.out.write(node.name + " ")
             print ""
 
-class __ClusterNodetoolCmd(Cmd):
-    def __init__(self, usage, nodetool_cmd):
-        self.usage = usage
-        self.nodetool_cmd = nodetool_cmd
-
+class _ClusterNodetoolCmd(Cmd):
     def get_parser(self):
         parser = self._get_default_parser(self.usage, self.description(), cassandra_dir=True)
         return parser
+
+    def description(self):
+        return self.descr_text
 
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, load_cluster=True)
@@ -82,21 +81,15 @@ class __ClusterNodetoolCmd(Cmd):
     def run(self):
         self.cluster.nodetool(self.options.cassandra_dir, self.nodetool_cmd)
 
-class ClusterFlushCmd(__ClusterNodetoolCmd):
-    def description(self):
-        return "Flush all (running) nodes of the cluster"
+class ClusterFlushCmd(_ClusterNodetoolCmd):
+    usage = "usage: ccm cluster flush [options] name"
+    nodetool_cmd = 'flush'
+    descr_text = "Flush all (running) nodes of the cluster"
 
-    def __init__(self):
-        usage = "usage: ccm cluster flush [options] name"
-        super(ClusterFlushCmd, self).__init__(usage, 'flush')
-
-class ClusterCompactCmd(__ClusterNodetoolCmd):
-    def description(self):
-        return "Compact all (running) node of the cluster"
-
-    def __init__(self):
-        usage = "usage: ccm cluster compact [options] name"
-        super(ClusterCompactCmd, self).__init__(usage, 'compact')
+class ClusterCompactCmd(_ClusterNodetoolCmd):
+    usage = "usage: ccm cluster compact [options] name"
+    nodetool_cmd = 'compact'
+    descr_text = "Compact all (running) node of the cluster"
 
 class ClusterStressCmd(Cmd):
     def description(self):
@@ -128,6 +121,8 @@ class ClusterUpdateconfCmd(Cmd):
             dest="hinted_handoff", default=True, help="Disable hinted handoff")
         parser.add_option('--batch-cl', '--batch-commit-log', action="store_true",
             dest="cl_batch", default=True, help="Set commit log to batch mode")
+        parser.add_option('--rt', '--rpc-timeout', action="store", type='int',
+            dest="rpc_timeout", help="Set rpc timeout")
         return parser
 
     def validate(self, parser, options, args):
@@ -135,6 +130,8 @@ class ClusterUpdateconfCmd(Cmd):
 
     def run(self):
         self.cluster.set_configuration_option("hinted_handoff_enabled", self.options.hinted_handoff)
+        if self.options.rpc_timeout:
+            self.cluster.set_configuration_option("rpc_timeout_in_ms", self.options.rpc_timeout)
         if self.options.cl_batch:
             self.cluster.set_configuration_option("commitlog_sync", "batch")
             self.cluster.set_configuration_option("commitlog_sync_batch_window_in_ms", 5)
