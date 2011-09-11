@@ -98,3 +98,21 @@ class NodeSetlogCmd(Cmd):
 
     def run(self):
         self.node.set_log_level(self.level)
+
+class NodeClearCmd(Cmd):
+    def description(self):
+        return "Clear the node data & logs (and stop the node nodes)"
+
+    def get_parser(self):
+        usage = "usage: ccm node_name_clear [options]"
+        parser =  self._get_default_parser(usage, self.description())
+        parser.add_option('-a', '--all', action="store_true", dest="all",
+                help="Also clear the saved cache and node log files", default=False)
+        return parser
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
+
+    def run(self):
+        self.node.stop()
+        self.node.clear(self.options.all)

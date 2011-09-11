@@ -273,8 +273,10 @@ class Node():
         l = new_level + ",stdout,R"
         common.replace_in_file(conf_file, append_pattern, append_pattern + l)
 
-    def clear(self):
-        data_dirs = [ 'data', 'commitlogs', 'saved_caches', 'logs']
+    def clear(self, clear_all = False):
+        data_dirs = [ 'data', 'commitlogs']
+        if clear_all:
+            data_dirs = data_dirs + [ 'saved_caches', 'logs']
         for d in data_dirs:
             full_dir = os.path.join(self.get_path(), d)
             shutil.rmtree(full_dir)
