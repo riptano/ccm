@@ -25,6 +25,7 @@ def node_cmds():
         "json",
         "updateconf",
         "stress",
+        "cli",
     ]
 
 class NodeShowCmd(Cmd):
