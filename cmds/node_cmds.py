@@ -64,7 +64,7 @@ class NodeRemoveCmd(Cmd):
 
 class NodeShowlogCmd(Cmd):
     def description(self):
-        return "Show the log of node name (run 'less' on its system.log)"
+        return "Show the log of node name (runs your $PAGER on its system.log)"
 
     def get_parser(self):
         usage = "usage: ccm node_name showlog [options]"
@@ -75,10 +75,8 @@ class NodeShowlogCmd(Cmd):
 
     def run(self):
         log = os.path.join(self.node.get_path(), 'logs', 'system.log')
-        try:
-            subprocess.call(['less', log])
-        except KeyboardInterrupt:
-            pass
+        pager = os.environ.get('PAGER', 'less')
+        os.execvp(pager, (pager, log))
 
 class NodeSetlogCmd(Cmd):
     def description(self):
