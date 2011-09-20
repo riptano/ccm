@@ -9,16 +9,9 @@ class Status():
     DECOMMISIONNED = "DECOMMISIONNED"
 
 class StartError(Exception):
-    def __init__(self, msg, process):
+    def __init__(self, msg, process=None):
         self.msg = msg
         self.process = process
-
-    def __repr__(self):
-        return self.msg
-
-class ArgumentError(Exception):
-    def __init__(self, msg):
-        self.msg = msg
 
     def __repr__(self):
         return self.msg
@@ -34,6 +27,7 @@ class Node():
         self.initial_token = initial_token
         self.pid = None
         self.config_options = {}
+        self.save()
 
     def save(self):
         dir_name = self.get_path()
@@ -88,7 +82,15 @@ class Node():
     def get_conf_dir(self):
         return os.path.join(self.get_path(), 'conf')
 
-    def update_configuration(self, cassandra_dir):
+    def update_configuration(self, cassandra_dir, hh=True, cl_batch=False, rpc_timeout=None):
+        self.set_configuration_option("hinted_handoff_enabled", hh, update_yaml=False)
+        if cl_batch:
+            self.set_configuration_option("commitlog_sync", "batch", update_yaml=False)
+            self.set_configuration_option("commitlog_sync_batch_window_in_ms", 5, update_yaml=False)
+            self.unset_configuration_option("commitlog_sync_period_in_ms", update_yaml=False)
+        if rpc_timeout is not None:
+            self.set_configuration_option("rpc_timeout_in_ms", self.options.rpc_timeout, update_yaml=False)
+
         conf_dir = os.path.join(cassandra_dir, 'conf')
         for name in os.listdir(conf_dir):
             filename = os.path.join(conf_dir, name)
@@ -132,13 +134,15 @@ class Node():
         with open(conf_file, 'w') as f:
             yaml.dump(data, f, default_flow_style=False)
 
-    def set_configuration_option(self, name, value):
+    def set_configuration_option(self, name, value, update_yaml=True):
         self.config_options[name] = value
-        self.update_yaml()
+        if update_yaml:
+            self.update_yaml()
 
-    def unset_configuration_option(self, name):
+    def unset_configuration_option(self, name, update_yaml=True):
         self.config_options[name] = None
-        self.update_yaml()
+        if update_yaml:
+            self.update_yaml()
 
     def update_log4j(self):
         append_pattern='log4j.appender.R.File=';
@@ -207,13 +211,29 @@ class Node():
         if not old_status == self.status:
             self.save()
 
-    def start(self, cassandra_dir, join_ring=True):
+    def start(self, cassandra_dir, join_ring=True, no_wait=False, verbose=False):
+        if self.is_running():
+            raise StartError("%s is already running" % self.name)
+
         cass_bin = os.path.join(cassandra_dir, 'bin', 'cassandra')
         env = common.make_cassandra_env(cassandra_dir, self.get_path())
         pidfile = os.path.join(self.get_path(), 'cassandra.pid')
         args = [ cass_bin, '-p', pidfile, '-Dcassandra.join_ring=%s' % str(join_ring) ]
-        p = subprocess.Popen(args, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        return p
+        process = subprocess.Popen(args, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        if no_wait:
+            time.sleep(2) # waiting 2 seconds nevertheless to check for early errors and for the pid to be set
+        else:
+            for line in process.stdout:
+                if verbose:
+                    print line.rstrip('\n')
+
+        self.update_pid(process)
+
+        if not self.is_running():
+            raise StartError("Error starting node %s" % self.name, process)
+
+        return process
 
     def update_pid(self, process):
         pidfile = os.path.join(self.get_path(), 'cassandra.pid')
@@ -267,6 +287,10 @@ class Node():
                     i = i + 1
 
     def set_log_level(self, new_level):
+        known_level = [ 'TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR' ]
+        if new_level not in know_level:
+            raise common.ArgumentError("Unknown log level %s (use one of %s)" % (self.level, " ".join(known_level)))
+
         append_pattern='log4j.rootLogger=';
         conf_file = os.path.join(self.get_conf_dir(), common.LOG4J_CONF)
         l = new_level + ",stdout,R"
@@ -317,7 +341,7 @@ class Node():
     def get_sstables(self, keyspace, column_family):
         keyspace_dir = os.path.join(self.get_path(), 'data', keyspace)
         if not os.path.exists(keyspace_dir):
-            raise ArgumentError("Unknown keyspace {0}".format(keyspace))
+            raise common.ArgumentError("Unknown keyspace {0}".format(keyspace))
 
         files = glob.glob(os.path.join(keyspace_dir, "{0}*-Data.db".format(column_family)))
         for f in files:

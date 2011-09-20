@@ -24,26 +24,16 @@ class ClusterStartCmd(Cmd):
         Cmd.validate(self, parser, options, args, load_cluster=True)
 
     def run(self):
-        started = self.cluster.start(self.options.cassandra_dir)
-
-        if self.options.no_wait:
-            time.sleep(2) # waiting 2 seconds to check for early errors and
-                          # for the pid to be set
-        else:
-            for node, p in started:
-                for line in p.stdout:
-                    if self.options.verbose:
-                        print "[%s] %s" % (node.name, line.rstrip('\n'))
-                if self.options.verbose:
-                    print "----"
-
-        self.cluster.update_pids(started)
-
-        for node, p in started:
-            if not node.is_running():
-                print >> sys.stderr, "Error starting {0}.".format(node.name)
-                for line in p.stderr:
-                    print >> sys.stderr, line.rstrip('\n')
+        try:
+            self.cluster.start(self.options.cassandra_dir,
+                               no_wait=self.options.no_wait,
+                               verbose=self.options.verbose)
+        except StartError as e:
+            print >> sys.stderr, str(e)
+            print >> sys.stderr, "Standard error output is:"
+            for line in e.process.stderr:
+                print >> sys.stderr, line.rstrip('\n')
+            exit(1)
 
 class ClusterStopCmd(Cmd):
     def description(self):
@@ -130,13 +120,10 @@ class ClusterUpdateconfCmd(Cmd):
 
     def run(self):
         self.cluster.set_configuration_option("hinted_handoff_enabled", self.options.hinted_handoff)
-        if self.options.rpc_timeout:
-            self.cluster.set_configuration_option("rpc_timeout_in_ms", self.options.rpc_timeout)
-        if self.options.cl_batch:
-            self.cluster.set_configuration_option("commitlog_sync", "batch")
-            self.cluster.set_configuration_option("commitlog_sync_batch_window_in_ms", 5)
-            self.cluster.unset_configuration_option("commitlog_sync_period_in_ms")
-        self.cluster.update_configuration(self.options.cassandra_dir)
+        self.cluster.update_configuration(self.options.cassandra_dir,
+                                          hh=self.options.hinted_handoff,
+                                          cl_batch=self.options.cl_batch,
+                                          rpc_timeout=self.options.rpc_timeout)
 
 class ClusterCliCmd(Cmd):
     def description(self):

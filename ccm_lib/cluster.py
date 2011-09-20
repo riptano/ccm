@@ -1,15 +1,16 @@
 # ccm clusters
 
-import common, yaml, os, subprocess
+import common, yaml, os, subprocess, shutil
 from node import Node
 
 class Cluster():
-    def __init__(self, path, name):
+    def __init__(self, path, name, partitioner = None):
         self.name = name
         self.nodes = {}
         self.seeds = []
         self.path = path
-        self.partitioner = None
+        self.partitioner = partitioner
+        self.save()
 
     def save(self):
         node_list = [ node.name for node in self.nodes.values() ]
@@ -17,6 +18,10 @@ class Cluster():
         filename = os.path.join(self.path, self.name, 'cluster.conf')
         with open(filename, 'w') as f:
             yaml.dump({ 'name' : self.name, 'nodes' : node_list, 'seeds' : seed_list, 'partitioner' : self.partitioner }, f)
+
+    def set_partitioner(self, partitioner):
+        self.partitioner = partitioner
+        self.save()
 
     @staticmethod
     def load(path, name):
@@ -40,9 +45,51 @@ class Cluster():
         return cluster
 
     def add(self, node, is_seed):
+        if node.name in self.nodes:
+            raise common.ArgumentError('Cannot create existing node %s' % node.name)
         self.nodes[node.name] = node
         if is_seed:
             self.seeds.append(node)
+        self.save()
+
+    def populate(self, cassandra_dir, node_count):
+        if node_count < 1 or node_count >= 10:
+            raise common.ArgumentError('invalid node count %s' % node_count)
+
+        for i in xrange(1, node_count + 1):
+            if 'node%s' % i in self.nodes:
+                raise common.ArgumentError('Cannot create existing node node%s' % i)
+
+        for i in xrange(1, node_count + 1):
+            node = Node('node%s' % i,
+                        self,
+                        False,
+                        ('127.0.0.%s' % i, 9160),
+                        ('127.0.0.%s' % i, 7000),
+                        str(7000 + i * 100),
+                        None)
+            self.add(node, True)
+            node.update_configuration(cassandra_dir)
+
+    def remove(self, node=None):
+        if node is not Node:
+            if not node.name in self.nodes:
+                return
+
+            del self.cluster.nodes[self.node.name]
+            if node in self.cluster.seeds:
+                self.cluster.seeds.remove(self.node)
+            self.cluster.save()
+            node.stop()
+            shutil.rmtree(node.get_path())
+        else:
+            self.stop()
+            shutil.rmtree(self.get_path())
+
+    def clear(self):
+        self.stop()
+        for node in self.nodes.values():
+            node.clear()
 
     def get_path(self):
         return os.path.join(self.path, self.name)
@@ -62,12 +109,29 @@ class Cluster():
                 node.show(only_status=True)
 
     # update_pids() should be called after this
-    def start(self, cassandra_dir):
+    def start(self, cassandra_dir, no_wait=False, verbose=False):
         started = []
         for node in self.nodes.values():
             if not node.is_running():
                 p = node.start(cassandra_dir)
                 started.append((node, p))
+
+        if no_wait:
+            time.sleep(2) # waiting 2 seconds to check for early errors and for the pid to be set
+        else:
+            for node, p in started:
+                for line in p.stdout:
+                    if verbose:
+                        print "[%s] %s" % (node.name, line.rstrip('\n'))
+                if verbose:
+                    print "----"
+
+        self.update_pids(started)
+
+        for node, p in started:
+            if not node.is_running():
+                raise node.StartError("Error starting {0}.".format(node.name), p)
+
         return started
 
     def update_pids(self, started):
@@ -108,9 +172,9 @@ class Cluster():
             return
         livenodes[0].run_cli(cassandra_dir, cmds, show_output, cli_options)
 
-    def update_configuration(self, cassandra_dir):
+    def update_configuration(self, cassandra_dir, hh=True, cl_batch=False, rpc_timeout=None):
         for node in self.nodes.values():
-            node.update_configuration(cassandra_dir)
+            node.update_configuration(cassandra_dir, hh=hh, cl_batch=cl_batch, rpc_timeout=rpc_timeout)
 
     def set_configuration_option(self, name, value):
         for node in self.nodes.values():

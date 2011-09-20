@@ -54,14 +54,7 @@ class NodeRemoveCmd(Cmd):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
 
     def run(self):
-        del self.cluster.nodes[self.name]
-        try:
-            self.cluster.seeds.remove(self.node)
-        except:
-            pass
-        self.cluster.save()
-        self.node.stop()
-        shutil.rmtree(self.node.get_path())
+        self.cluster.remove(self.node)
 
 class NodeShowlogCmd(Cmd):
     def description(self):
@@ -89,18 +82,17 @@ class NodeSetlogCmd(Cmd):
 
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
-        self.level = args[1]
-        known_level = [ 'TRACE', 'DEBUG', 'INFO', 'ERROR' ]
-        if self.level not in known_level:
-            print >> sys.stderr, "Unknown log level %s (use one of %s)" % (self.level, " ".join(known_level))
-            exit(1)
 
     def run(self):
-        self.node.set_log_level(self.level)
+        try:
+            self.node.set_log_level(self.level)
+        except common.ArgumentError as e:
+            print >> syst.stderr, str(e)
+            exit(1)
 
 class NodeClearCmd(Cmd):
     def description(self):
-        return "Clear the node data & logs (and stop the node nodes)"
+        return "Clear the node data & logs (and stop the node)"
 
     def get_parser(self):
         usage = "usage: ccm node_name_clear [options]"

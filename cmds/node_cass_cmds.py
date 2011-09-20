@@ -5,7 +5,7 @@ root = os.path.sep.join(L)
 sys.path.append(os.path.join(root, 'ccm_lib'))
 from command import Cmd
 import common
-from node import Node, StartError, ArgumentError
+from node import Node, StartError
 
 class NodeStartCmd(Cmd):
     def description(self):
@@ -26,33 +26,17 @@ class NodeStartCmd(Cmd):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
 
     def run(self):
-        if self.node.is_running():
-            print >> sys.stderr, "%s is already running" % self.name
-            exit(1)
-
         try:
-            process = self.node.start(self.options.cassandra_dir, not self.options.no_join_ring)
+            self.node.start(self.options.cassandra_dir,
+                            not self.options.no_join_ring,
+                            no_wait=self.options.no_wait,
+                            verbose=self.options.verbose)
         except StartError as e:
             print >> sys.stderr, str(e)
             print >> sys.stderr, "Standard error output is:"
             for line in e.process.stderr:
                 print >> sys.stderr, line.rstrip('\n')
             exit(1)
-
-        if self.options.no_wait:
-            time.sleep(2) # waiting 2 seconds to check for early errors and
-                          # for the pid to be set
-        else:
-            for line in process.stdout:
-                if self.options.verbose:
-                    print line.rstrip('\n')
-
-        self.node.update_pid(process)
-
-        if not self.node.is_running():
-            print >> sys.stderr, "Error starting node."
-            for line in process.stderr:
-                print >> sys.stderr, line.rstrip('\n')
 
 class NodeStopCmd(Cmd):
     def description(self):
@@ -178,7 +162,7 @@ class NodeJsonCmd(Cmd):
     def run(self):
         try:
             self.node.run_sstable2json(self.options.cassandra_dir, self.keyspace, self.datafile, self.column_families, self.options.enumerate_keys)
-        except ArgumentError as e:
+        except common.ArgumentError as e:
             print >> sys.stderr, e
 
 class NodeUpdateconfCmd(Cmd):
@@ -198,12 +182,7 @@ class NodeUpdateconfCmd(Cmd):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
 
     def run(self):
-        self.node.set_configuration_option("hinted_handoff_enabled", self.options.hinted_handoff)
-        if self.options.cl_batch:
-            self.node.set_configuration_option("commitlog_sync", "batch")
-            self.node.set_configuration_option("commitlog_sync_batch_window_in_ms", 5)
-            self.node.unset_configuration_option("commitlog_sync_period_in_ms")
-        self.node.update_configuration(self.options.cassandra_dir)
+        self.node.update_configuration(self.options.cassandra_dir, hh=self.options.hinted_handoff, cl_batch=self.options.cl_batch)
 
 class NodeStressCmd(Cmd):
     def description(self):

@@ -51,9 +51,7 @@ class ClusterCreateCmd(Cmd):
             exit(1)
 
         if self.options.partitioner:
-            cluster.partitioner = self.options.partitioner
-
-        cluster.save()
+            cluster.set_partitioner(self.options.partitioner)
 
         if not self.options.no_switch:
             common.switch_cluster(self.path, self.name)
@@ -86,10 +84,6 @@ class ClusterAddCmd(Cmd):
         Cmd.validate(self, parser, options, args, node_name=True)
         self.cluster = common.load_current_cluster(self.path)
 
-        if self.name in self.cluster.nodes:
-            print >> sys.stderr, 'Cannot create existing node %s' % self.name
-            exit(1)
-
         if options.itfs is None and (options.thrift_itf is None or options.storage_itf is None):
             print >> sys.stderr, 'Missing thrift and/or storage interfaces or jmx port'
             parser.print_help()
@@ -106,10 +100,12 @@ class ClusterAddCmd(Cmd):
         self.initial_token = options.initial_token
 
     def run(self):
-        node = Node(self.name, self.cluster, self.options.boostrap, self.thrift, self.storage, self.jmx_port, self.initial_token)
-        self.cluster.add(node, self.options.is_seed)
-        node.save()
-        self.cluster.save()
+        try:
+            node = Node(self.name, self.cluster, self.options.boostrap, self.thrift, self.storage, self.jmx_port, self.initial_token)
+            self.cluster.add(node, self.options.is_seed)
+        except common.ArgumentError as e:
+            print >> sys.stderr, str(e)
+            exit(1)
 
         node.update_configuration(self.options.cassandra_dir)
 
@@ -127,31 +123,14 @@ class ClusterPopulateCmd(Cmd):
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args)
         self.cluster = common.load_current_cluster(self.path)
-
-        if options.nodes < 1 or options.nodes >= 10:
-            print 'invalide node count %s' % options.nodes
-            exit(1)
-
-        for i in xrange(1, options.nodes + 1):
-            if 'node%s' % i in self.cluster.nodes:
-                print 'Cannot create existing node node%s' % i
-                exit(1)
-
         self.nodes = options.nodes
 
     def run(self):
-        for i in xrange(1, self.nodes + 1):
-            node = Node('node%s' % i, 
-                        self.cluster, 
-                        False, 
-                        ('127.0.0.%s' % i, 9160), 
-                        ('127.0.0.%s' % i, 7000),
-                        str(7000 + i * 100), 
-                        None)
-            self.cluster.add(node, True)
-            node.save()
-            self.cluster.save()
-            node.update_configuration(self.options.cassandra_dir)
+        try:
+            self.cluster.populate(self.options.cassandra_dir, self.nodes)
+        except common.ArgumentError as e:
+            print >> sys.stderr, str(e)
+            exit(1)
 
 class ClusterListCmd(Cmd):
     def description(self):
@@ -221,8 +200,7 @@ class ClusterRemoveCmd(Cmd):
         Cmd.validate(self, parser, options, args, load_cluster=True)
 
     def run(self):
-        self.cluster.stop()
-        shutil.rmtree(self.cluster.get_path())
+        self.cluster.remove()
         os.remove(os.path.join(self.path, 'CURRENT'))
 
 class ClusterClearCmd(Cmd):
@@ -238,9 +216,7 @@ class ClusterClearCmd(Cmd):
         Cmd.validate(self, parser, options, args, load_cluster=True)
 
     def run(self):
-        self.cluster.stop()
-        for node in self.cluster.nodes.values():
-            node.clear()
+        self.cluster.clear()
 
 class ClusterLivesetCmd(Cmd):
     def description(self):

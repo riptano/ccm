@@ -19,6 +19,13 @@ CASSANDRA_SH = "cassandra.in.sh"
 class LoadError(Exception):
     pass
 
+class ArgumentError(Exception):
+    def __init__(self, msg):
+        self.msg = msg
+
+    def __repr__(self):
+        return self.msg
+
 def get_default_path():
     default_path = os.path.join(USER_HOME, '.ccm')
     if not os.path.exists(default_path):
