@@ -27,29 +27,7 @@ class Node():
         self.initial_token = initial_token
         self.pid = None
         self.config_options = {}
-        self.save()
-
-    def save(self):
-        dir_name = self.get_path()
-        if not os.path.exists(dir_name):
-            os.mkdir(dir_name)
-            for dir in self.get_directories():
-                os.mkdir(os.path.join(dir_name, dir))
-
-        filename = os.path.join(dir_name, 'node.conf')
-        values = {
-            'name' : self.name,
-            'status' : self.status,
-            'auto_bootstrap' : self.auto_bootstrap,
-            'interfaces' : self.network_interfaces,
-            'jmx_port' : self.jmx_port
-        }
-        if self.pid:
-            values['pid'] = self.pid
-        if self.initial_token:
-            values['initial_token'] = self.initial_token
-        with open(filename, 'w') as f:
-            yaml.dump(values, f)
+        self.__save()
 
     @staticmethod
     def load(path, name, cluster):
@@ -97,63 +75,19 @@ class Node():
             if os.path.isfile(filename):
                 shutil.copy(filename, self.get_conf_dir())
 
-        self.update_yaml()
-        self.update_log4j()
-        self.update_envfile()
-
-    def update_yaml(self):
-        conf_file = os.path.join(self.get_conf_dir(), common.CASSANDRA_CONF)
-        with open(conf_file, 'r') as f:
-            data = yaml.load(f)
-
-        data['auto_bootstrap'] = self.auto_bootstrap
-        data['initial_token'] = self.initial_token
-        if 'seeds' in data:
-            # cassandra 0.7
-            data['seeds'] = self.cluster.get_seeds()
-        else:
-            # cassandra 0.8
-            data['seed_provider'][0]['parameters'][0]['seeds'] = ','.join(self.cluster.get_seeds())
-        data['listen_address'], data['storage_port'] = self.network_interfaces['storage']
-        data['rpc_address'], data['rpc_port'] = self.network_interfaces['thrift']
-
-        data['data_file_directories'] = [ os.path.join(self.get_path(), 'data') ]
-        data['commitlog_directory'] = os.path.join(self.get_path(), 'commitlogs')
-        data['saved_caches_directory'] = os.path.join(self.get_path(), 'saved_caches')
-
-        if self.cluster.partitioner:
-            data['partitioner'] = self.cluster.partitioner
-
-        for name in self.config_options:
-            value = self.config_options[name]
-            if value is None:
-                del data[name]
-            else:
-                data[name] = self.config_options[name]
-
-        with open(conf_file, 'w') as f:
-            yaml.dump(data, f, default_flow_style=False)
+        self.__update_yaml()
+        self.__update_log4j()
+        self.__update_envfile()
 
     def set_configuration_option(self, name, value, update_yaml=True):
         self.config_options[name] = value
         if update_yaml:
-            self.update_yaml()
+            self.__update_yaml()
 
     def unset_configuration_option(self, name, update_yaml=True):
         self.config_options[name] = None
         if update_yaml:
-            self.update_yaml()
-
-    def update_log4j(self):
-        append_pattern='log4j.appender.R.File=';
-        conf_file = os.path.join(self.get_conf_dir(), common.LOG4J_CONF)
-        log_file = os.path.join(self.get_path(), 'logs', 'system.log')
-        common.replace_in_file(conf_file, append_pattern, append_pattern + log_file)
-
-    def update_envfile(self):
-        jmx_port_pattern='JMX_PORT=';
-        conf_file = os.path.join(self.get_conf_dir(), common.CASSANDRA_ENV)
-        common.replace_in_file(conf_file, jmx_port_pattern, jmx_port_pattern + self.jmx_port)
+            self.__update_yaml()
 
     def get_status_string(self):
         if self.status == Status.UNINITIALIZED:
@@ -162,7 +96,7 @@ class Node():
             return self.status
 
     def show(self, only_status=False, show_cluster=True):
-        self.update_status()
+        self.__update_status()
         indent = ''.join([ " " for i in xrange(0, len(self.name) + 2) ])
         print "%s: %s" % (self.name, self.get_status_string())
         if not only_status:
@@ -177,39 +111,12 @@ class Node():
               print "%s%s=%s" % (indent, 'pid', self.pid)
 
     def is_running(self):
-        self.update_status()
+        self.__update_status()
         return self.status == Status.UP or self.status == Status.DECOMMISIONNED
 
     def is_live(self):
-        self.update_status()
+        self.__update_status()
         return self.status == Status.UP
-
-    def update_status(self):
-        if self.pid is None:
-            if self.status == Status.UP or self.status == Status.DECOMMISIONNED:
-                self.status = Status.DOWN
-            return
-
-        old_status = self.status
-        try:
-            os.kill(self.pid, 0)
-        except OSError, err:
-            if err.errno == errno.ESRCH:
-                # not running
-                if self.status == Status.UP or self.status == Status.DECOMMISIONNED:
-                    self.status = Status.DOWN
-            elif err.errno == errno.EPERM:
-                # no permission to signal this process
-                if self.status == Status.UP or self.status == Status.DECOMMISIONNED:
-                    self.status = Status.DOWN
-            else:
-                # some other error
-                raise err
-        else:
-            if self.status == Status.DOWN or self.status == Status.UNINITIALIZED:
-                self.status = Status.UP
-        if not old_status == self.status:
-            self.save()
 
     def start(self, join_ring=True, no_wait=False, verbose=False):
         if self.is_running():
@@ -243,7 +150,7 @@ class Node():
                 self.pid = int(f.readline().strip())
         except IOError:
             raise StartError('Problem starting node %s' % self.name, process)
-        self.update_status()
+        self.__update_status()
 
     def stop(self):
         is_running = False
@@ -251,7 +158,7 @@ class Node():
             is_running = True
             os.kill(self.pid, signal.SIGKILL)
         self.pid = None
-        self.save()
+        self.__save()
         return is_running
 
     def nodetool(self, cmd):
@@ -310,7 +217,7 @@ class Node():
 
     def decommission(self):
         self.status = Status.DECOMMISIONNED
-        self.save()
+        self.__save()
 
     def run_sstable2json(self, keyspace, datafile, column_families, enumerate_keys=False):
         cdir = self.cluster.get_cassandra_dir()
@@ -360,4 +267,97 @@ class Node():
             subprocess.call(args)
         except KeyboardInterrupt:
             pass
+
+    def __save(self):
+        dir_name = self.get_path()
+        if not os.path.exists(dir_name):
+            os.mkdir(dir_name)
+            for dir in self.get_directories():
+                os.mkdir(os.path.join(dir_name, dir))
+
+        filename = os.path.join(dir_name, 'node.conf')
+        values = {
+            'name' : self.name,
+            'status' : self.status,
+            'auto_bootstrap' : self.auto_bootstrap,
+            'interfaces' : self.network_interfaces,
+            'jmx_port' : self.jmx_port
+        }
+        if self.pid:
+            values['pid'] = self.pid
+        if self.initial_token:
+            values['initial_token'] = self.initial_token
+        with open(filename, 'w') as f:
+            yaml.dump(values, f)
+
+    def __update_yaml(self):
+        conf_file = os.path.join(self.get_conf_dir(), common.CASSANDRA_CONF)
+        with open(conf_file, 'r') as f:
+            data = yaml.load(f)
+
+        data['auto_bootstrap'] = self.auto_bootstrap
+        data['initial_token'] = self.initial_token
+        if 'seeds' in data:
+            # cassandra 0.7
+            data['seeds'] = self.cluster.get_seeds()
+        else:
+            # cassandra 0.8
+            data['seed_provider'][0]['parameters'][0]['seeds'] = ','.join(self.cluster.get_seeds())
+        data['listen_address'], data['storage_port'] = self.network_interfaces['storage']
+        data['rpc_address'], data['rpc_port'] = self.network_interfaces['thrift']
+
+        data['data_file_directories'] = [ os.path.join(self.get_path(), 'data') ]
+        data['commitlog_directory'] = os.path.join(self.get_path(), 'commitlogs')
+        data['saved_caches_directory'] = os.path.join(self.get_path(), 'saved_caches')
+
+        if self.cluster.partitioner:
+            data['partitioner'] = self.cluster.partitioner
+
+        for name in self.config_options:
+            value = self.config_options[name]
+            if value is None:
+                del data[name]
+            else:
+                data[name] = self.config_options[name]
+
+        with open(conf_file, 'w') as f:
+            yaml.dump(data, f, default_flow_style=False)
+
+    def __update_log4j(self):
+        append_pattern='log4j.appender.R.File=';
+        conf_file = os.path.join(self.get_conf_dir(), common.LOG4J_CONF)
+        log_file = os.path.join(self.get_path(), 'logs', 'system.log')
+        common.replace_in_file(conf_file, append_pattern, append_pattern + log_file)
+
+    def __update_envfile(self):
+        jmx_port_pattern='JMX_PORT=';
+        conf_file = os.path.join(self.get_conf_dir(), common.CASSANDRA_ENV)
+        common.replace_in_file(conf_file, jmx_port_pattern, jmx_port_pattern + self.jmx_port)
+
+    def __update_status(self):
+        if self.pid is None:
+            if self.status == Status.UP or self.status == Status.DECOMMISIONNED:
+                self.status = Status.DOWN
+            return
+
+        old_status = self.status
+        try:
+            os.kill(self.pid, 0)
+        except OSError, err:
+            if err.errno == errno.ESRCH:
+                # not running
+                if self.status == Status.UP or self.status == Status.DECOMMISIONNED:
+                    self.status = Status.DOWN
+            elif err.errno == errno.EPERM:
+                # no permission to signal this process
+                if self.status == Status.UP or self.status == Status.DECOMMISIONNED:
+                    self.status = Status.DOWN
+            else:
+                # some other error
+                raise err
+        else:
+            if self.status == Status.DOWN or self.status == Status.UNINITIALIZED:
+                self.status = Status.UP
+        if not old_status == self.status:
+            self.__save()
 

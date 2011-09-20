@@ -11,28 +11,16 @@ class Cluster():
         self.path = path
         self.partitioner = partitioner
         self.cassandra_dir = cassandra_dir
-        self.save()
-
-    def save(self):
-        node_list = [ node.name for node in self.nodes.values() ]
-        seed_list = [ node.name for node in self.seeds ]
-        filename = os.path.join(self.path, self.name, 'cluster.conf')
-        with open(filename, 'w') as f:
-            yaml.dump({
-                'name' : self.name,
-                'nodes' : node_list,
-                'seeds' : seed_list,
-                'partitioner' : self.partitioner
-                'cassandra_dir' : self.cassandra_dir }, f)
+        self.__save()
 
     def set_partitioner(self, partitioner):
         self.partitioner = partitioner
-        self.save()
+        self.__save()
 
     def set_cassandra_dir(self, cassandra_dir):
         common.validate_cassandra_dir(options.cassandra_dir)
         self.cassandra_dir = cassandra_dir
-        self.save()
+        self.__save()
 
     def get_cassandra_dir(self):
         common.validate_cassandra_dir(self.cassandra_dir)
@@ -65,7 +53,7 @@ class Cluster():
         self.nodes[node.name] = node
         if is_seed:
             self.seeds.append(node)
-        self.save()
+        self.__save()
 
     def populate(self, node_count):
         if node_count < 1 or node_count >= 10:
@@ -94,7 +82,7 @@ class Cluster():
             del self.cluster.nodes[self.node.name]
             if node in self.cluster.seeds:
                 self.cluster.seeds.remove(self.node)
-            self.cluster.save()
+            self.cluster.__save()
             node.stop()
             shutil.rmtree(node.get_path())
         else:
@@ -123,7 +111,6 @@ class Cluster():
             else:
                 node.show(only_status=True)
 
-    # update_pids() should be called after this
     def start(self, no_wait=False, verbose=False):
         started = []
         for node in self.nodes.values():
@@ -141,20 +128,13 @@ class Cluster():
                 if verbose:
                     print "----"
 
-        self.update_pids(started)
+        self.__update_pids(started)
 
         for node, p in started:
             if not node.is_running():
                 raise node.StartError("Error starting {0}.".format(node.name), p)
 
         return started
-
-    def update_pids(self, started):
-        for node, p in started:
-            try:
-                node.update_pid(p)
-            except StartError as e:
-                print str(e)
 
     def stop(self):
         not_running = []
@@ -198,3 +178,23 @@ class Cluster():
     def unset_configuration_option(self, name):
         for node in self.nodes.values():
             node.unset_configuration_option(name)
+
+    def __save(self):
+        node_list = [ node.name for node in self.nodes.values() ]
+        seed_list = [ node.name for node in self.seeds ]
+        filename = os.path.join(self.path, self.name, 'cluster.conf')
+        with open(filename, 'w') as f:
+            yaml.dump({
+                'name' : self.name,
+                'nodes' : node_list,
+                'seeds' : seed_list,
+                'partitioner' : self.partitioner
+                'cassandra_dir' : self.cassandra_dir }, f)
+
+    def __update_pids(self, started):
+        for node, p in started:
+            try:
+                node.update_pid(p)
+            except StartError as e:
+                print str(e)
+
