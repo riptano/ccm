@@ -4,12 +4,13 @@ import common, yaml, os, subprocess, shutil
 from node import Node
 
 class Cluster():
-    def __init__(self, path, name, partitioner = None):
+    def __init__(self, path, name, partitioner = None, cassandra_dir=None):
         self.name = name
         self.nodes = {}
         self.seeds = []
         self.path = path
         self.partitioner = partitioner
+        self.cassandra_dir = cassandra_dir
         self.save()
 
     def save(self):
@@ -17,11 +18,25 @@ class Cluster():
         seed_list = [ node.name for node in self.seeds ]
         filename = os.path.join(self.path, self.name, 'cluster.conf')
         with open(filename, 'w') as f:
-            yaml.dump({ 'name' : self.name, 'nodes' : node_list, 'seeds' : seed_list, 'partitioner' : self.partitioner }, f)
+            yaml.dump({
+                'name' : self.name,
+                'nodes' : node_list,
+                'seeds' : seed_list,
+                'partitioner' : self.partitioner
+                'cassandra_dir' : self.cassandra_dir }, f)
 
     def set_partitioner(self, partitioner):
         self.partitioner = partitioner
         self.save()
+
+    def set_cassandra_dir(self, cassandra_dir):
+        common.validate_cassandra_dir(options.cassandra_dir)
+        self.cassandra_dir = cassandra_dir
+        self.save()
+
+    def get_cassandra_dir(self):
+        common.validate_cassandra_dir(self.cassandra_dir)
+        return self.cassandra_dir
 
     @staticmethod
     def load(path, name):
@@ -52,7 +67,7 @@ class Cluster():
             self.seeds.append(node)
         self.save()
 
-    def populate(self, cassandra_dir, node_count):
+    def populate(self, node_count):
         if node_count < 1 or node_count >= 10:
             raise common.ArgumentError('invalid node count %s' % node_count)
 
@@ -69,7 +84,7 @@ class Cluster():
                         str(7000 + i * 100),
                         None)
             self.add(node, True)
-            node.update_configuration(cassandra_dir)
+            node.update_configuration()
 
     def remove(self, node=None):
         if node is not Node:
@@ -109,11 +124,11 @@ class Cluster():
                 node.show(only_status=True)
 
     # update_pids() should be called after this
-    def start(self, cassandra_dir, no_wait=False, verbose=False):
+    def start(self, no_wait=False, verbose=False):
         started = []
         for node in self.nodes.values():
             if not node.is_running():
-                p = node.start(cassandra_dir)
+                p = node.start()
                 started.append((node, p))
 
         if no_wait:
@@ -148,13 +163,13 @@ class Cluster():
                 not_running.append(node)
         return not_running
 
-    def nodetool(self, cassandra_dir, nodetool_cmd):
+    def nodetool(self, nodetool_cmd):
         for node in self.nodes.values():
             if node.is_running():
-                node.nodetool(cassandra_dir, nodetool_cmd)
+                node.nodetool(nodetool_cmd)
 
-    def stress(self, cassandra_dir, stress_options):
-        stress = common.get_stress_bin(cassandra_dir)
+    def stress(self, stress_options):
+        stress = common.get_stress_bin(self.get_cassandra_dir())
         livenodes = [ node.network_interfaces['storage'][0] for node in self.nodes.values() if node.is_live() ]
         if len(livenodes) == 0:
             print "No live node"
@@ -165,16 +180,16 @@ class Cluster():
         except KeyboardInterrupt:
             pass
 
-    def run_cli(self, cassandra_dir, cmds=None, show_output=False, cli_options=[]):
+    def run_cli(self, cmds=None, show_output=False, cli_options=[]):
         livenodes = [ node for node in self.nodes.values() if node.is_live() ]
         if len(livenodes) == 0:
             print "No live node"
             return
-        livenodes[0].run_cli(cassandra_dir, cmds, show_output, cli_options)
+        livenodes[0].run_cli(cmds, show_output, cli_options)
 
-    def update_configuration(self, cassandra_dir, hh=True, cl_batch=False, rpc_timeout=None):
+    def update_configuration(self, hh=True, cl_batch=False, rpc_timeout=None):
         for node in self.nodes.values():
-            node.update_configuration(cassandra_dir, hh=hh, cl_batch=cl_batch, rpc_timeout=rpc_timeout)
+            node.update_configuration(hh=hh, cl_batch=cl_batch, rpc_timeout=rpc_timeout)
 
     def set_configuration_option(self, name, value):
         for node in self.nodes.values():

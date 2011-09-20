@@ -111,3 +111,15 @@ def get_stress_bin(cassandra_dir):
 
     raise Exception("Cannot find stress binary (maybe it isn't compiled)")
 
+def validate_cassandra_dir(cassandra_dir):
+    if cassandra_dir is None:
+        raise ArgumentError('Undefined cassandra directory')
+
+    bin_dir = os.path.join(cassandra_dir, CASSANDRA_BIN_DIR)
+    conf_dir = os.path.join(cassandra_dir, CASSANDRA_CONF_DIR)
+    cnd = os.path.exists(bin_dir)
+    cnd = cnd and os.path.exists(conf_dir)
+    cnd = cnd and os.path.exists(os.path.join(conf_dir, CASSANDRA_CONF))
+    cnd = cnd and os.path.exists(os.path.join(conf_dir, LOG4J_CONF))
+    if not cnd:
+        raise ArgumentError('%s does not appear to be a cassandra source directory' % cassandra_dir)

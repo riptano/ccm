@@ -25,8 +25,7 @@ class ClusterStartCmd(Cmd):
 
     def run(self):
         try:
-            self.cluster.start(self.options.cassandra_dir,
-                               no_wait=self.options.no_wait,
+            self.cluster.start(no_wait=self.options.no_wait,
                                verbose=self.options.verbose)
         except StartError as e:
             print >> sys.stderr, str(e)
@@ -69,7 +68,7 @@ class _ClusterNodetoolCmd(Cmd):
         Cmd.validate(self, parser, options, args, load_cluster=True)
 
     def run(self):
-        self.cluster.nodetool(self.options.cassandra_dir, self.nodetool_cmd)
+        self.cluster.nodetool(self.nodetool_cmd)
 
 class ClusterFlushCmd(_ClusterNodetoolCmd):
     usage = "usage: ccm cluster flush [options] name"
@@ -96,7 +95,7 @@ class ClusterStressCmd(Cmd):
 
     def run(self):
         try:
-            self.cluster.stress(self.options.cassandra_dir, self.stress_options)
+            self.cluster.stress(self.stress_options)
         except Exception as e:
             print >> sys.stderr, e
 
@@ -120,8 +119,7 @@ class ClusterUpdateconfCmd(Cmd):
 
     def run(self):
         self.cluster.set_configuration_option("hinted_handoff_enabled", self.options.hinted_handoff)
-        self.cluster.update_configuration(self.options.cassandra_dir,
-                                          hh=self.options.hinted_handoff,
+        self.cluster.update_configuration(hh=self.options.hinted_handoff,
                                           cl_batch=self.options.cl_batch,
                                           rpc_timeout=self.options.rpc_timeout)
 
@@ -143,4 +141,4 @@ class ClusterCliCmd(Cmd):
         self.cli_options = parser.get_ignored() + args[1:]
 
     def run(self):
-        self.cluster.run_cli(self.options.cassandra_dir, self.options.cmds, self.options.verbose, self.cli_options)
+        self.cluster.run_cli(self.options.cmds, self.options.verbose, self.cli_options)

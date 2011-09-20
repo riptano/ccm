@@ -71,14 +71,11 @@ class Cmd(object):
                     exit(1)
 
         if hasattr(self, 'use_cassandra_dir'):
-            d = options.cassandra_dir
-            bin_dir = os.path.join(d, common.CASSANDRA_BIN_DIR)
-            conf_dir = os.path.join(d, common.CASSANDRA_CONF_DIR)
-            cnd = os.path.exists(bin_dir)
-            cnd = cnd and os.path.exists(conf_dir)
-            cnd = cnd and os.path.exists(os.path.join(conf_dir, common.CASSANDRA_CONF))
-            cnd = cnd and os.path.exists(os.path.join(conf_dir, common.LOG4J_CONF))
-            if not cnd:
+            try:
+                common.validate_cassandra_dir(options.cassandra_dir)
+                if load_cluster:
+                    self.cluster.set_cassandra_dir(options.cassandra_dir)
+            except common.ArgumentError as e:
                 print >> sys.stderr, '%s does not appear to be a cassandra source directory' % d
                 exit(1)
 

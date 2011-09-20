@@ -82,7 +82,7 @@ class Node():
     def get_conf_dir(self):
         return os.path.join(self.get_path(), 'conf')
 
-    def update_configuration(self, cassandra_dir, hh=True, cl_batch=False, rpc_timeout=None):
+    def update_configuration(self, hh=True, cl_batch=False, rpc_timeout=None):
         self.set_configuration_option("hinted_handoff_enabled", hh, update_yaml=False)
         if cl_batch:
             self.set_configuration_option("commitlog_sync", "batch", update_yaml=False)
@@ -91,7 +91,7 @@ class Node():
         if rpc_timeout is not None:
             self.set_configuration_option("rpc_timeout_in_ms", self.options.rpc_timeout, update_yaml=False)
 
-        conf_dir = os.path.join(cassandra_dir, 'conf')
+        conf_dir = os.path.join(self.cluster.get_cassandra_dir(), 'conf')
         for name in os.listdir(conf_dir):
             filename = os.path.join(conf_dir, name)
             if os.path.isfile(filename):
@@ -211,12 +211,13 @@ class Node():
         if not old_status == self.status:
             self.save()
 
-    def start(self, cassandra_dir, join_ring=True, no_wait=False, verbose=False):
+    def start(self, join_ring=True, no_wait=False, verbose=False):
         if self.is_running():
             raise StartError("%s is already running" % self.name)
 
-        cass_bin = os.path.join(cassandra_dir, 'bin', 'cassandra')
-        env = common.make_cassandra_env(cassandra_dir, self.get_path())
+        cdir = self.cluster.get_cassandra_dir()
+        cass_bin = os.path.join(cdir, 'bin', 'cassandra')
+        env = common.make_cassandra_env(cdir, self.get_path())
         pidfile = os.path.join(self.get_path(), 'cassandra.pid')
         args = [ cass_bin, '-p', pidfile, '-Dcassandra.join_ring=%s' % str(join_ring) ]
         process = subprocess.Popen(args, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -253,17 +254,19 @@ class Node():
         self.save()
         return is_running
 
-    def nodetool(self, cassandra_dir, cmd):
-        nodetool = os.path.join(cassandra_dir, 'bin', 'nodetool')
-        env = common.make_cassandra_env(cassandra_dir, self.get_path())
+    def nodetool(self, cmd):
+        cdir = self.cluster.get_cassandra_dir()
+        nodetool = os.path.join(cdir, 'bin', 'nodetool')
+        env = common.make_cassandra_env(cdir, self.get_path())
         host = self.network_interfaces['storage'][0]
         args = [ nodetool, '-h', host, '-p', str(self.jmx_port), cmd ]
         p = subprocess.Popen(args, env=env)
         p.wait()
 
-    def run_cli(self, cassandra_dir, cmds=None, show_output=False, cli_options=[]):
-        cli = os.path.join(cassandra_dir, 'bin', 'cassandra-cli')
-        env = common.make_cassandra_env(cassandra_dir, self.get_path())
+    def run_cli(self, cmds=None, show_output=False, cli_options=[]):
+        cdir = self.cluster.get_cassandra_dir()
+        cli = os.path.join(cdir, 'bin', 'cassandra-cli')
+        env = common.make_cassandra_env(cdir, self.get_path())
         host = self.network_interfaces['thrift'][0]
         port = self.network_interfaces['thrift'][1]
         args = [ '-h', host, '-p', str(port) , '--jmxport', str(self.jmx_port) ] + cli_options
@@ -309,9 +312,10 @@ class Node():
         self.status = Status.DECOMMISIONNED
         self.save()
 
-    def run_sstable2json(self, cassandra_dir, keyspace, datafile, column_families, enumerate_keys=False):
-        sstable2json = os.path.join(cassandra_dir, 'bin', 'sstable2json')
-        env = common.make_cassandra_env(cassandra_dir, self.get_path())
+    def run_sstable2json(self, keyspace, datafile, column_families, enumerate_keys=False):
+        cdir = self.cluster.get_cassandra_dir()
+        sstable2json = os.path.join(cdir, 'bin', 'sstable2json')
+        env = common.make_cassandra_env(cdir, self.get_path())
         datafiles = []
         if not keyspace:
             for k in self.list_keyspaces():
@@ -349,8 +353,8 @@ class Node():
                 files.remove(f)
         return files
 
-    def stress(self, cassandra_dir, stress_options):
-        stress = common.get_stress_bin(cassandra_dir)
+    def stress(self, stress_options):
+        stress = common.get_stress_bin(self.cluster.get_cassandra_dir())
         args = [ stress ] + stress_options
         try:
             subprocess.call(args)

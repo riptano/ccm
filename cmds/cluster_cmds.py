@@ -107,7 +107,7 @@ class ClusterAddCmd(Cmd):
             print >> sys.stderr, str(e)
             exit(1)
 
-        node.update_configuration(self.options.cassandra_dir)
+        node.update_configuration()
 
 class ClusterPopulateCmd(Cmd):
     def description(self):
@@ -127,7 +127,7 @@ class ClusterPopulateCmd(Cmd):
 
     def run(self):
         try:
-            self.cluster.populate(self.options.cassandra_dir, self.nodes)
+            self.cluster.populate(self.nodes)
         except common.ArgumentError as e:
             print >> sys.stderr, str(e)
             exit(1)

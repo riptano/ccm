@@ -27,8 +27,7 @@ class NodeStartCmd(Cmd):
 
     def run(self):
         try:
-            self.node.start(self.options.cassandra_dir,
-                            not self.options.no_join_ring,
+            self.node.start(not self.options.no_join_ring,
                             no_wait=self.options.no_wait,
                             verbose=self.options.verbose)
         except StartError as e:
@@ -67,7 +66,7 @@ class _NodeToolCmd(Cmd):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
 
     def run(self):
-        self.node.nodetool(self.options.cassandra_dir, self.nodetool_cmd)
+        self.node.nodetool(self.nodetool_cmd)
 
 class NodeRingCmd(_NodeToolCmd):
     usage = "usage: ccm node_name ring [options]"
@@ -126,7 +125,7 @@ class NodeCliCmd(Cmd):
         self.cli_options = parser.get_ignored() + args[1:]
 
     def run(self):
-        self.node.run_cli(self.options.cassandra_dir, self.options.cmds, self.options.verbose, self.cli_options)
+        self.node.run_cli(self.options.cmds, self.options.verbose, self.cli_options)
 
 class NodeJsonCmd(Cmd):
     def description(self):
@@ -161,7 +160,7 @@ class NodeJsonCmd(Cmd):
 
     def run(self):
         try:
-            self.node.run_sstable2json(self.options.cassandra_dir, self.keyspace, self.datafile, self.column_families, self.options.enumerate_keys)
+            self.node.run_sstable2json(self.keyspace, self.datafile, self.column_families, self.options.enumerate_keys)
         except common.ArgumentError as e:
             print >> sys.stderr, e
 
@@ -182,7 +181,7 @@ class NodeUpdateconfCmd(Cmd):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
 
     def run(self):
-        self.node.update_configuration(self.options.cassandra_dir, hh=self.options.hinted_handoff, cl_batch=self.options.cl_batch)
+        self.node.update_configuration(hh=self.options.hinted_handoff, cl_batch=self.options.cl_batch)
 
 class NodeStressCmd(Cmd):
     def description(self):
@@ -199,6 +198,6 @@ class NodeStressCmd(Cmd):
 
     def run(self):
         try:
-            self.node.stress(self.options.cassandra_dir, self.stress_options)
+            self.node.stress(self.stress_options)
         except OSError:
             print >> sys.stderr, "Could not find stress binary (you may need to build it)"
