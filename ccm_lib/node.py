@@ -1,6 +1,7 @@
 # ccm node
 
 import common, yaml, os, errno, signal, time, subprocess, shutil, sys, glob
+from cli_session import CliSession
 
 class Status():
     UNINITIALIZED = "UNINITIALIZED"
@@ -78,16 +79,19 @@ class Node():
         self.__update_yaml()
         self.__update_log4j()
         self.__update_envfile()
+        return self
 
     def set_configuration_option(self, name, value, update_yaml=True):
         self.config_options[name] = value
         if update_yaml:
             self.__update_yaml()
+        return self
 
     def unset_configuration_option(self, name, update_yaml=True):
         self.config_options[name] = None
         if update_yaml:
             self.__update_yaml()
+        return self
 
     def get_status_string(self):
         if self.status == Status.UNINITIALIZED:
@@ -191,10 +195,19 @@ class Node():
             if show_output:
                 i = 0
                 for log in p.stdout:
-                    # first four lines are not intersting
+                    # first four lines are not interesting
                     if i >= 4:
                         print log,
                     i = i + 1
+
+    def cli(self):
+        cdir = self.cluster.get_cassandra_dir()
+        cli = os.path.join(cdir, 'bin', 'cassandra-cli')
+        env = common.make_cassandra_env(cdir, self.get_path())
+        host = self.network_interfaces['thrift'][0]
+        port = self.network_interfaces['thrift'][1]
+        args = [ '-h', host, '-p', str(port) , '--jmxport', str(self.jmx_port) ]
+        return CliSession(subprocess.Popen([ cli ] + args, env=env, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE))
 
     def set_log_level(self, new_level):
         known_level = [ 'TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR' ]
@@ -205,6 +218,7 @@ class Node():
         conf_file = os.path.join(self.get_conf_dir(), common.LOG4J_CONF)
         l = new_level + ",stdout,R"
         common.replace_in_file(conf_file, append_pattern, append_pattern + l)
+        return self
 
     def clear(self, clear_all = False):
         data_dirs = [ 'data', 'commitlogs']

@@ -4,7 +4,7 @@ import common, yaml, os, subprocess, shutil
 from node import Node
 
 class Cluster():
-    def __init__(self, path, name, partitioner = None, cassandra_dir=None):
+    def __init__(self, path, name, partitioner=None, cassandra_dir=None):
         self.name = name
         self.nodes = {}
         self.seeds = []
@@ -16,11 +16,13 @@ class Cluster():
     def set_partitioner(self, partitioner):
         self.partitioner = partitioner
         self.__save()
+        return self
 
     def set_cassandra_dir(self, cassandra_dir):
         common.validate_cassandra_dir(options.cassandra_dir)
         self.cassandra_dir = cassandra_dir
         self.__save()
+        return self
 
     def get_cassandra_dir(self):
         common.validate_cassandra_dir(self.cassandra_dir)
@@ -54,6 +56,7 @@ class Cluster():
         if is_seed:
             self.seeds.append(node)
         self.__save()
+        return self
 
     def populate(self, node_count):
         if node_count < 1 or node_count >= 10:
@@ -73,6 +76,7 @@ class Cluster():
                         None)
             self.add(node, True)
             node.update_configuration()
+        return self
 
     def remove(self, node=None):
         if node is not Node:
@@ -147,6 +151,7 @@ class Cluster():
         for node in self.nodes.values():
             if node.is_running():
                 node.nodetool(nodetool_cmd)
+        return self
 
     def stress(self, stress_options):
         stress = common.get_stress_bin(self.get_cassandra_dir())
@@ -159,25 +164,28 @@ class Cluster():
             subprocess.call(args)
         except KeyboardInterrupt:
             pass
+        return self
 
     def run_cli(self, cmds=None, show_output=False, cli_options=[]):
         livenodes = [ node for node in self.nodes.values() if node.is_live() ]
         if len(livenodes) == 0:
-            print "No live node"
-            return
+            raise common.ArgumentError("No live node")
         livenodes[0].run_cli(cmds, show_output, cli_options)
 
     def update_configuration(self, hh=True, cl_batch=False, rpc_timeout=None):
         for node in self.nodes.values():
             node.update_configuration(hh=hh, cl_batch=cl_batch, rpc_timeout=rpc_timeout)
+        return self
 
     def set_configuration_option(self, name, value):
         for node in self.nodes.values():
             node.set_configuration_option(name, value)
+        return self
 
     def unset_configuration_option(self, name):
         for node in self.nodes.values():
             node.unset_configuration_option(name)
+        return self
 
     def __save(self):
         node_list = [ node.name for node in self.nodes.values() ]
@@ -188,7 +196,7 @@ class Cluster():
                 'name' : self.name,
                 'nodes' : node_list,
                 'seeds' : seed_list,
-                'partitioner' : self.partitioner
+                'partitioner' : self.partitioner,
                 'cassandra_dir' : self.cassandra_dir }, f)
 
     def __update_pids(self, started):

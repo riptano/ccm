@@ -3,6 +3,10 @@
 #
 
 import os, common, shutil, re
+
+import sys
+print ">>", sys.path
+
 from cluster import Cluster
 from node import Node
 
