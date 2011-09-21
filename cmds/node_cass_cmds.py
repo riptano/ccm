@@ -5,7 +5,7 @@ root = os.path.sep.join(L)
 sys.path.append(os.path.join(root, 'ccm_lib'))
 from command import Cmd
 import common
-from node import Node, StartError
+from node import Node, NodeError
 
 class NodeStartCmd(Cmd):
     def description(self):
@@ -30,7 +30,7 @@ class NodeStartCmd(Cmd):
             self.node.start(not self.options.no_join_ring,
                             no_wait=self.options.no_wait,
                             verbose=self.options.verbose)
-        except StartError as e:
+        except NodeError as e:
             print >> sys.stderr, str(e)
             print >> sys.stderr, "Standard error output is:"
             for line in e.process.stderr:
@@ -44,14 +44,20 @@ class NodeStopCmd(Cmd):
     def get_parser(self):
         usage = "usage: ccm node stop [options] name"
         parser = self._get_default_parser(usage, self.description())
+        parser.add_option('--no-wait', action="store_true", dest="no_wait",
+            help="Do not wait for the node to be stopped", default=False)
         return parser
 
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
 
     def run(self):
-        if not self.node.stop():
-            print >> sys.stderr, "%s is not running" % self.name
+        try:
+            if not self.node.stop(not self.options.no_wait):
+                print >> sys.stderr, "%s is not running" % self.name
+                exit(1)
+        except NodeError as e:
+            print >> sys.stderr, str(e)
             exit(1)
 
 class _NodeToolCmd(Cmd):

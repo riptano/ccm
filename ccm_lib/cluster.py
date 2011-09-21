@@ -1,17 +1,19 @@
 # ccm clusters
 
 import common, yaml, os, subprocess, shutil
-from node import Node
+from node import Node, NodeError
 
 class Cluster():
-    def __init__(self, path, name, partitioner=None, cassandra_dir=None):
+    def __init__(self, path, name, partitioner=None, cassandra_dir=None, create_directory=True):
         self.name = name
         self.nodes = {}
         self.seeds = []
         self.path = path
         self.partitioner = partitioner
         self.cassandra_dir = cassandra_dir
-        self.__save()
+        if create_directory:
+            os.mkdir(self.get_path())
+            self.__save()
 
     def set_partitioner(self, partitioner):
         self.partitioner = partitioner
@@ -19,7 +21,7 @@ class Cluster():
         return self
 
     def set_cassandra_dir(self, cassandra_dir):
-        common.validate_cassandra_dir(options.cassandra_dir)
+        common.validate_cassandra_dir(cassandra_dir)
         self.cassandra_dir = cassandra_dir
         self.__save()
         return self
@@ -35,7 +37,7 @@ class Cluster():
         with open(filename, 'r') as f:
             data = yaml.load(f)
         try:
-            cluster = Cluster(path, data['name'])
+            cluster = Cluster(path, data['name'], create_directory=False)
             node_list = data['nodes']
             seed_list = data['seeds']
             if 'partitioner' in data:
@@ -79,7 +81,7 @@ class Cluster():
         return self
 
     def remove(self, node=None):
-        if node is not Node:
+        if node is not None:
             if not node.name in self.nodes:
                 return
 
@@ -119,7 +121,7 @@ class Cluster():
         started = []
         for node in self.nodes.values():
             if not node.is_running():
-                p = node.start()
+                p = node.start(update_pid=False)
                 started.append((node, p))
 
         if no_wait:
@@ -136,14 +138,14 @@ class Cluster():
 
         for node, p in started:
             if not node.is_running():
-                raise node.StartError("Error starting {0}.".format(node.name), p)
+                raise NodeError("Error starting {0}.".format(node.name), p)
 
         return started
 
-    def stop(self):
+    def stop(self, wait=True):
         not_running = []
         for node in self.nodes.values():
-            if not node.stop():
+            if not node.stop(wait):
                 not_running.append(node)
         return not_running
 
@@ -201,8 +203,5 @@ class Cluster():
 
     def __update_pids(self, started):
         for node, p in started:
-            try:
-                node.update_pid(p)
-            except StartError as e:
-                print str(e)
+            node.update_pid(p)
 

@@ -2,13 +2,7 @@
 # Cassandra Cluster Management lib
 #
 
-import os, common, shutil, re
-
-import sys
-print ">>", sys.path
-
-from cluster import Cluster
-from node import Node
+import os, common, shutil, re, sys, cluster, node
 
 USER_HOME = os.path.expanduser('~')
 
@@ -24,11 +18,7 @@ class LoadError(Exception):
     pass
 
 class ArgumentError(Exception):
-    def __init__(self, msg):
-        self.msg = msg
-
-    def __repr__(self):
-        return self.msg
+    pass
 
 def get_default_path():
     default_path = os.path.join(USER_HOME, '.ccm')
@@ -58,17 +48,14 @@ def load_current_cluster(path):
         print 'No currently active cluster (use ccm cluster switch)'
         exit(1)
     try:
-        return Cluster.load(path, name)
+        return cluster.Cluster.load(path, name)
     except common.LoadError as e:
         print str(e)
         exit(1)
 
 # may raise OSError if dir exists
 def create_cluster(path, name):
-    dir_name = os.path.join(path, name)
-    os.mkdir(dir_name)
-    cluster = Cluster(path, name)
-    return cluster
+    return cluster.Cluster(path, name)
 
 def switch_cluster(path, new_name):
     with open(os.path.join(path, 'CURRENT'), 'w') as f:

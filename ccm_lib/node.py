@@ -9,16 +9,13 @@ class Status():
     DOWN = "DOWN"
     DECOMMISIONNED = "DECOMMISIONNED"
 
-class StartError(Exception):
+class NodeError(Exception):
     def __init__(self, msg, process=None):
-        self.msg = msg
+        Exception.__init__(self, msg)
         self.process = process
 
-    def __repr__(self):
-        return self.msg
-
 class Node():
-    def __init__(self, name, cluster, auto_bootstrap, thrift_interface, storage_interface, jmx_port, initial_token):
+    def __init__(self, name, cluster, auto_bootstrap, thrift_interface, storage_interface, jmx_port, initial_token, save=True):
         self.name = name
         self.cluster = cluster
         self.status = Status.UNINITIALIZED
@@ -28,7 +25,8 @@ class Node():
         self.initial_token = initial_token
         self.pid = None
         self.config_options = {}
-        self.__save()
+        if save:
+            self.__save()
 
     @staticmethod
     def load(path, name, cluster):
@@ -41,7 +39,7 @@ class Node():
             initial_token = None
             if 'initial_token' in data:
                 initial_token = data['initial_token']
-            node = Node(data['name'], cluster, data['auto_bootstrap'], itf['thrift'], itf['storage'], data['jmx_port'], initial_token)
+            node = Node(data['name'], cluster, data['auto_bootstrap'], itf['thrift'], itf['storage'], data['jmx_port'], initial_token, save=False)
             node.status = data['status']
             if 'pid' in data:
                 node.pid = int(data['pid'])
@@ -122,9 +120,9 @@ class Node():
         self.__update_status()
         return self.status == Status.UP
 
-    def start(self, join_ring=True, no_wait=False, verbose=False):
+    def start(self, join_ring=True, no_wait=False, verbose=False, update_pid=True):
         if self.is_running():
-            raise StartError("%s is already running" % self.name)
+            raise NodeError("%s is already running" % self.name)
 
         cdir = self.cluster.get_cassandra_dir()
         cass_bin = os.path.join(cdir, 'bin', 'cassandra')
@@ -133,17 +131,18 @@ class Node():
         args = [ cass_bin, '-p', pidfile, '-Dcassandra.join_ring=%s' % str(join_ring) ]
         process = subprocess.Popen(args, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-        if no_wait:
-            time.sleep(2) # waiting 2 seconds nevertheless to check for early errors and for the pid to be set
-        else:
-            for line in process.stdout:
-                if verbose:
-                    print line.rstrip('\n')
+        if update_pid:
+            if no_wait:
+                time.sleep(2) # waiting 2 seconds nevertheless to check for early errors and for the pid to be set
+            else:
+                for line in process.stdout:
+                    if verbose:
+                        print line.rstrip('\n')
 
-        self.update_pid(process)
+            self.update_pid(process)
 
-        if not self.is_running():
-            raise StartError("Error starting node %s" % self.name, process)
+            if not self.is_running():
+                raise NodeError("Error starting node %s" % self.name, process)
 
         return process
 
@@ -153,17 +152,28 @@ class Node():
             with open(pidfile, 'r') as f:
                 self.pid = int(f.readline().strip())
         except IOError:
-            raise StartError('Problem starting node %s' % self.name, process)
+            raise NodeError('Problem starting node %s' % self.name, process)
         self.__update_status()
 
-    def stop(self):
-        is_running = False
+    def stop(self, wait=True):
         if self.is_running():
-            is_running = True
             os.kill(self.pid, signal.SIGKILL)
-        self.pid = None
-        self.__save()
-        return is_running
+            time.sleep(.1)
+            still_running = self.is_running()
+            if still_running and wait:
+                wait_time_sec = 1
+                for i in xrange(0, 7):
+                    # we'll double the wait time each try and cassandra should
+                    # not take more than 1 minute to shutdown
+                    time.sleep(wait_time_sec)
+                    if not self.is_running():
+                        return True
+                    wait_time_sec = wait_time_sec * 2
+                raise NodeError("Problem stopping node %s" % self.name)
+            else:
+                return True
+        else:
+            return False
 
     def nodetool(self, cmd):
         cdir = self.cluster.get_cassandra_dir()
@@ -372,6 +382,9 @@ class Node():
         else:
             if self.status == Status.DOWN or self.status == Status.UNINITIALIZED:
                 self.status = Status.UP
+
         if not old_status == self.status:
+            if old_status == Status.UP and self.status == Status.DOWN:
+                self.pid = None
             self.__save()
 

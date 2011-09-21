@@ -40,7 +40,7 @@ class Cmd(object):
     def get_parser(self):
         pass
 
-    def validate(self, parser, options, args, cluster_name=False, node_name=False, load_cluster=False):
+    def validate(self, parser, options, args, cluster_name=False, node_name=False, load_cluster=False, load_node=True):
         self.options = options
         self.args = args
         if options.config_dir is None:
@@ -63,7 +63,7 @@ class Cmd(object):
 
         if load_cluster:
             self.cluster = common.load_current_cluster(self.path)
-            if node_name:
+            if node_name and load_node:
                 try:
                     self.node = self.cluster.nodes[self.name]
                 except KeyError:

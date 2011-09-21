@@ -5,7 +5,7 @@ root = os.path.sep.join(L)
 sys.path.append(os.path.join(root, 'ccm_lib'))
 from command import Cmd
 import common
-from node import Node, StartError
+from node import Node, NodeError
 
 class ClusterStartCmd(Cmd):
     def description(self):
@@ -27,7 +27,7 @@ class ClusterStartCmd(Cmd):
         try:
             self.cluster.start(no_wait=self.options.no_wait,
                                verbose=self.options.verbose)
-        except StartError as e:
+        except NodeError as e:
             print >> sys.stderr, str(e)
             print >> sys.stderr, "Standard error output is:"
             for line in e.process.stderr:
@@ -43,18 +43,24 @@ class ClusterStopCmd(Cmd):
         parser = self._get_default_parser(usage, self.description())
         parser.add_option('-v', '--verbose', action="store_true", dest="verbose",
                 help="Print nodes that were not running", default=False)
+        parser.add_option('--no-wait', action="store_true", dest="no_wait",
+            help="Do not wait for the node to be stopped", default=False)
         return parser
 
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, load_cluster=True)
 
     def run(self):
-        not_running = self.cluster.stop()
-        if self.options.verbose and len(not_running) > 0:
-            sys.out.write("The following nodes were not running: ")
-            for node in not_running:
-                sys.out.write(node.name + " ")
-            print ""
+        try:
+            not_running = self.cluster.stop(not self.options.no_wait)
+            if self.options.verbose and len(not_running) > 0:
+                sys.out.write("The following nodes were not running: ")
+                for node in not_running:
+                    sys.out.write(node.name + " ")
+                print ""
+        except NodeError as e:
+            print >> sys.stderr, str(e)
+            exit(1)
 
 class _ClusterNodetoolCmd(Cmd):
     def get_parser(self):

@@ -81,8 +81,7 @@ class ClusterAddCmd(Cmd):
         return parser
 
     def validate(self, parser, options, args):
-        Cmd.validate(self, parser, options, args, node_name=True)
-        self.cluster = common.load_current_cluster(self.path)
+        Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True, load_node=False)
 
         if options.itfs is None and (options.thrift_itf is None or options.storage_itf is None):
             print >> sys.stderr, 'Missing thrift and/or storage interfaces or jmx port'
@@ -121,8 +120,7 @@ class ClusterPopulateCmd(Cmd):
         return parser
 
     def validate(self, parser, options, args):
-        Cmd.validate(self, parser, options, args)
-        self.cluster = common.load_current_cluster(self.path)
+        Cmd.validate(self, parser, options, args, load_cluster=True)
         self.nodes = options.nodes
 
     def run(self):
