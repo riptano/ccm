@@ -124,6 +124,9 @@ class Node():
         if self.is_running():
             raise NodeError("%s is already running" % self.name)
 
+        for itf in self.network_interfaces.values():
+            common.check_socket_available(itf)
+
         cdir = self.cluster.get_cassandra_dir()
         cass_bin = os.path.join(cdir, 'bin', 'cassandra')
         env = common.make_cassandra_env(cdir, self.get_path())
@@ -387,4 +390,3 @@ class Node():
             if old_status == Status.UP and self.status == Status.DOWN:
                 self.pid = None
             self.__save()
-

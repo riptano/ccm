@@ -13,7 +13,7 @@ class ClusterStartCmd(Cmd):
 
     def get_parser(self):
         usage = "usage: ccm cluter start [options]"
-        parser =  self._get_default_parser(usage, self.description(), cassandra_dir=True)
+        parser =  self._get_default_parser(usage, self.description())
         parser.add_option('-v', '--verbose', action="store_true", dest="verbose",
             help="Print standard output of cassandra process", default=False)
         parser.add_option('--no-wait', action="store_true", dest="no_wait",
@@ -64,7 +64,7 @@ class ClusterStopCmd(Cmd):
 
 class _ClusterNodetoolCmd(Cmd):
     def get_parser(self):
-        parser = self._get_default_parser(self.usage, self.description(), cassandra_dir=True)
+        parser = self._get_default_parser(self.usage, self.description())
         return parser
 
     def description(self):
@@ -92,7 +92,7 @@ class ClusterStressCmd(Cmd):
 
     def get_parser(self):
         usage = "usage: ccm stress [options] [stress_options]"
-        parser = self._get_default_parser(usage, self.description(), cassandra_dir=True, ignore_unknown_options=True)
+        parser = self._get_default_parser(usage, self.description(), ignore_unknown_options=True)
         return parser
 
     def validate(self, parser, options, args):
@@ -111,7 +111,7 @@ class ClusterUpdateconfCmd(Cmd):
 
     def get_parser(self):
         usage = "usage: ccm updateconf [options]"
-        parser = self._get_default_parser(usage, self.description(), cassandra_dir=True)
+        parser = self._get_default_parser(usage, self.description())
         parser.add_option('--no-hh', '--no-hinted-handoff', action="store_false",
             dest="hinted_handoff", default=True, help="Disable hinted handoff")
         parser.add_option('--batch-cl', '--batch-commit-log', action="store_true",
@@ -135,7 +135,7 @@ class ClusterCliCmd(Cmd):
 
     def get_parser(self):
         usage = "usage: ccm cli [options] [cli_options]"
-        parser = self._get_default_parser(usage, self.description(), cassandra_dir=True, ignore_unknown_options=True)
+        parser = self._get_default_parser(usage, self.description(), ignore_unknown_options=True)
         parser.add_option('-x', '--exec', type="string", dest="cmds", default=None,
             help="Execute the specified commands and exit")
         parser.add_option('-v', '--verbose', action="store_true", dest="verbose",

@@ -42,6 +42,8 @@ class Cluster():
             seed_list = data['seeds']
             if 'partitioner' in data:
                 cluster.partitioner = data['partitioner']
+            if 'cassandra_dir' in data:
+                cluster.cassandra_dir = data['cassandra_dir']
         except KeyError as k:
             raise common.LoadError("Error Loading " + filename + ", missing property:" + k)
 

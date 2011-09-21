@@ -13,7 +13,7 @@ class NodeStartCmd(Cmd):
 
     def get_parser(self):
         usage = "usage: ccm node start [options] name"
-        parser = self._get_default_parser(usage, self.description(), cassandra_dir=True)
+        parser = self._get_default_parser(usage, self.description())
         parser.add_option('-v', '--verbose', action="store_true", dest="verbose",
             help="Print standard output of cassandra process", default=False)
         parser.add_option('--no-wait', action="store_true", dest="no_wait",
@@ -62,7 +62,7 @@ class NodeStopCmd(Cmd):
 
 class _NodeToolCmd(Cmd):
     def get_parser(self):
-        parser = self._get_default_parser(self.usage, self.description(), cassandra_dir=True)
+        parser = self._get_default_parser(self.usage, self.description())
         return parser
 
     def description(self):
@@ -119,7 +119,7 @@ class NodeCliCmd(Cmd):
 
     def get_parser(self):
         usage = "usage: ccm node_name cli [options] [cli_options]"
-        parser = self._get_default_parser(usage, self.description(), cassandra_dir=True, ignore_unknown_options=True)
+        parser = self._get_default_parser(usage, self.description(), ignore_unknown_options=True)
         parser.add_option('-x', '--exec', type="string", dest="cmds", default=None,
             help="Execute the specified commands and exit")
         parser.add_option('-v', '--verbose', action="store_true", dest="verbose",
@@ -139,7 +139,7 @@ class NodeJsonCmd(Cmd):
 
     def get_parser(self):
         usage = "usage: ccm node_name json [options] [file]"
-        parser = self._get_default_parser(usage, self.description(), cassandra_dir=True)
+        parser = self._get_default_parser(usage, self.description())
         parser.add_option('-k', '--keyspace', type="string", dest="keyspace",
             help="The keyspace to use [use all keyspaces by default]")
         parser.add_option('-c', '--column-families', type="string", dest="cfs",
@@ -176,7 +176,7 @@ class NodeUpdateconfCmd(Cmd):
 
     def get_parser(self):
         usage = "usage: ccm node_name updateconf [options]"
-        parser = self._get_default_parser(usage, self.description(), cassandra_dir=True)
+        parser = self._get_default_parser(usage, self.description())
         parser.add_option('--no-hh', '--no-hinted-handoff', action="store_false",
             dest="hinted_handoff", default=True, help="Disable hinted handoff")
         parser.add_option('--batch-cl', '--batch-commit-log', action="store_true",
@@ -195,7 +195,7 @@ class NodeStressCmd(Cmd):
 
     def get_parser(self):
         usage = "usage: ccm node_name stress [options] [stress_options]"
-        parser = self._get_default_parser(usage, self.description(), cassandra_dir=True, ignore_unknown_options=True)
+        parser = self._get_default_parser(usage, self.description(), ignore_unknown_options=True)
         return parser
 
     def validate(self, parser, options, args):

@@ -70,29 +70,16 @@ class Cmd(object):
                     print >> sys.stderr, 'Unknown node %s in cluster %s' % (self.name, self.cluster.name)
                     exit(1)
 
-        if hasattr(self, 'use_cassandra_dir'):
-            try:
-                common.validate_cassandra_dir(options.cassandra_dir)
-                if load_cluster:
-                    self.cluster.set_cassandra_dir(options.cassandra_dir)
-            except common.ArgumentError as e:
-                print >> sys.stderr, '%s does not appear to be a cassandra source directory' % d
-                exit(1)
-
     def run(self):
         pass
 
-    def _get_default_parser(self, usage, description, cassandra_dir=False, ignore_unknown_options=False):
+    def _get_default_parser(self, usage, description, ignore_unknown_options=False):
         if ignore_unknown_options:
             parser = ForgivingParser(usage=usage, description=description)
         else:
             parser = OptionParser(usage=usage, description=description)
         parser.add_option('--config-dir', type="string", dest="config_dir",
             help="Directory for the cluster files [default to ~/.ccm]")
-        if cassandra_dir:
-            parser.add_option("--cassandra-dir", type="string", dest="cassandra_dir",
-                    help="Path to the cassandra directory to use [default %default]", default="./")
-            self.use_cassandra_dir = True
         return parser
 
     def description():

@@ -2,7 +2,7 @@
 # Cassandra Cluster Management lib
 #
 
-import os, common, shutil, re, sys, cluster, node
+import os, common, shutil, re, sys, cluster, node, socket
 
 USER_HOME = os.path.expanduser('~')
 
@@ -18,6 +18,9 @@ class LoadError(Exception):
     pass
 
 class ArgumentError(Exception):
+    pass
+
+class UnavailableSocketError(Exception):
     pass
 
 def get_default_path():
@@ -52,10 +55,6 @@ def load_current_cluster(path):
     except common.LoadError as e:
         print str(e)
         exit(1)
-
-# may raise OSError if dir exists
-def create_cluster(path, name):
-    return cluster.Cluster(path, name)
 
 def switch_cluster(path, new_name):
     with open(os.path.join(path, 'CURRENT'), 'w') as f:
@@ -114,3 +113,14 @@ def validate_cassandra_dir(cassandra_dir):
     cnd = cnd and os.path.exists(os.path.join(conf_dir, LOG4J_CONF))
     if not cnd:
         raise ArgumentError('%s does not appear to be a cassandra source directory' % cassandra_dir)
+
+def check_socket_available(itf):
+    s = socket.socket()
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    try:
+        s.bind(itf)
+        s.close()
+    except socket.error, msg:
+        s.close()
+        addr, port = itf
+        raise UnavailableSocketError("Inet address %s:%s is not available: %s" % (addr, port, msg))
