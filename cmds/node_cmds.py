@@ -68,7 +68,7 @@ class NodeShowlogCmd(Cmd):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
 
     def run(self):
-        log = os.path.join(self.node.get_path(), 'logs', 'system.log')
+        log = self.node.logfilename()
         pager = os.environ.get('PAGER', 'less')
         os.execvp(pager, (pager, log))
 

@@ -124,7 +124,6 @@ class ClusterUpdateconfCmd(Cmd):
         Cmd.validate(self, parser, options, args, load_cluster=True)
 
     def run(self):
-        self.cluster.set_configuration_option("hinted_handoff_enabled", self.options.hinted_handoff)
         self.cluster.update_configuration(hh=self.options.hinted_handoff,
                                           cl_batch=self.options.cl_batch,
                                           rpc_timeout=self.options.rpc_timeout)

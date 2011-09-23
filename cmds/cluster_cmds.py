@@ -6,7 +6,7 @@ sys.path.append(os.path.join(root, 'ccm_lib'))
 from command import Cmd
 from node import Node
 from cluster import Cluster
-import common
+import common, repository
 
 def cluster_cmds():
     return [
@@ -40,6 +40,8 @@ class ClusterCreateCmd(Cmd):
             help="Don't switch to the newly created cluster", default=False)
         parser.add_option('-p', '--partitioner', type="string", dest="partitioner",
             help="Set the cluster partitioner class")
+        parser.add_option('-v', "--cassandra-version", type="string", dest="cassandra_version",
+            help="Download and use provided cassandra version (take precedence over --cassandra-dir)", default=None)
         parser.add_option("--cassandra-dir", type="string", dest="cassandra_dir",
             help="Path to the cassandra directory to use [default %default]", default="./")
         return parser
@@ -49,9 +51,10 @@ class ClusterCreateCmd(Cmd):
 
     def run(self):
         try:
-            cluster = Cluster(self.path, self.name, cassandra_dir=self.options.cassandra_dir)
-        except OSError:
-            print >> sys.stderr, 'Cannot create cluster, directory %s already exists.' % os.path.join(self.path, self.name)
+            cluster = Cluster(self.path, self.name, cassandra_dir=self.options.cassandra_dir, cassandra_version=self.options.cassandra_version, verbose=True)
+        except OSError as e:
+            cluster_dir = os.path.join(self.path, self.name)
+            print >> sys.stderr, 'Cannot create cluster: %s' % str(e)
             exit(1)
 
         if self.options.partitioner:
@@ -109,8 +112,6 @@ class ClusterAddCmd(Cmd):
         except common.ArgumentError as e:
             print >> sys.stderr, str(e)
             exit(1)
-
-        node.update_configuration()
 
 class ClusterPopulateCmd(Cmd):
     def description(self):
@@ -241,21 +242,35 @@ class ClusterSetdirCmd(Cmd):
         return "Set the cassandra directory to use"
 
     def get_parser(self):
-        usage = "usage: ccm setdir [options] directory"
+        usage = "usage: ccm setdir [options]"
         parser =  self._get_default_parser(usage, self.description())
+        parser.add_option('-v', "--cassandra-version", type="string", dest="cassandra_version",
+            help="Download and use provided cassandra version (take precedence over --cassandra-dir)", default=None)
+        parser.add_option("--cassandra-dir", type="string", dest="cassandra_dir",
+            help="Path to the cassandra directory to use [default %default]", default="./")
         return parser
 
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, load_cluster=True)
-        if len(args) == 0:
-            print >> sys.stderr, 'Missing directory'
-            parser.print_help()
-            exit(1)
-        self.cassandra_dir = args[0]
 
     def run(self):
         try:
-            self.cluster.set_cassandra_dir(self.cassandra_dir)
+            self.cluster.set_cassandra_dir(cassandra_dir=self.options.cassandra_dir, cassandra_version=self.options.cassandra_version, verbose=True)
         except common.ArgumentError as e:
             print >> sys.stderr, str(e)
             exit(1)
+
+class ClusterClearrepoCmd(Cmd):
+    def description(self):
+        return "Cleanup downloaded cassandra sources"
+
+    def get_parser(self):
+        usage = "usage: ccm clearrepo [options]"
+        parser =  self._get_default_parser(usage, self.description())
+        return parser
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args)
+
+    def run(self):
+        repository.clean_all()

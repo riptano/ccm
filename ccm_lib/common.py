@@ -14,13 +14,16 @@ LOG4J_CONF = "log4j-server.properties"
 CASSANDRA_ENV = "cassandra-env.sh"
 CASSANDRA_SH = "cassandra.in.sh"
 
-class LoadError(Exception):
+class CCMError(Exception):
     pass
 
-class ArgumentError(Exception):
+class LoadError(CCMError):
     pass
 
-class UnavailableSocketError(Exception):
+class ArgumentError(CCMError):
+    pass
+
+class UnavailableSocketError(CCMError):
     pass
 
 def get_default_path():

@@ -1,34 +1,58 @@
 # ccm clusters
 
-import common, yaml, os, subprocess, shutil
+import common, yaml, os, subprocess, shutil, repository
 from node import Node, NodeError
 
 class Cluster():
-    def __init__(self, path, name, partitioner=None, cassandra_dir=None, create_directory=True):
+    def __init__(self, path, name, partitioner=None, cassandra_dir=None, create_directory=True, cassandra_version=None, verbose=False):
         self.name = name
         self.nodes = {}
         self.seeds = []
-        self.path = path
         self.partitioner = partitioner
-        self.cassandra_dir = cassandra_dir
+        self.__path = path
+        self.__version = None
         if create_directory:
+            # we create the dir before potentially downloading to throw an error sooner if need be
             os.mkdir(self.get_path())
-            self.__save()
+
+        try:
+            if cassandra_version is None:
+                self.cassandra_dir = cassandra_dir
+            else:
+                self.cassandra_dir = repository.setup(cassandra_version, verbose)
+                self.__version = cassandra_version
+
+            if create_directory:
+                common.validate_cassandra_dir(self.cassandra_dir)
+                self.__update_config()
+        except:
+            shutil.rmtree(self.get_path())
+            raise
 
     def set_partitioner(self, partitioner):
         self.partitioner = partitioner
-        self.__save()
+        self.__update_config()
         return self
 
-    def set_cassandra_dir(self, cassandra_dir):
-        common.validate_cassandra_dir(cassandra_dir)
-        self.cassandra_dir = cassandra_dir
-        self.__save()
+    def set_cassandra_dir(self, cassandra_dir=None, cassandra_version=None, verbose=False):
+        if cassandra_version is None:
+            self.cassandra_dir = cassandra_dir
+            common.validate_cassandra_dir(cassandra_dir)
+        else:
+            self.cassandra_dir = repository.setup(cassandra_version, verbose=verbose)
+        self.__update_config()
+        for node in self.nodes.values():
+            node.import_config_files()
         return self
 
     def get_cassandra_dir(self):
         common.validate_cassandra_dir(self.cassandra_dir)
         return self.cassandra_dir
+
+    def version(self):
+        if self.__version is None:
+            raise common.CCMError("Version is not set")
+        return self.__version
 
     @staticmethod
     def load(path, name):
@@ -51,6 +75,8 @@ class Cluster():
             cluster.nodes[node_name] = Node.load(cluster_path, node_name, cluster)
         for seed_name in seed_list:
             cluster.seeds.append(cluster.nodes[seed_name])
+
+        repository.validate(cluster.cassandra_dir)
         return cluster
 
     def add(self, node, is_seed):
@@ -59,7 +85,7 @@ class Cluster():
         self.nodes[node.name] = node
         if is_seed:
             self.seeds.append(node)
-        self.__save()
+        self.__update_config()
         return self
 
     def populate(self, node_count):
@@ -79,7 +105,7 @@ class Cluster():
                         str(7000 + i * 100),
                         None)
             self.add(node, True)
-            node.update_configuration()
+            self.__update_config()
         return self
 
     def remove(self, node=None):
@@ -87,10 +113,10 @@ class Cluster():
             if not node.name in self.nodes:
                 return
 
-            del self.cluster.nodes[self.node.name]
-            if node in self.cluster.seeds:
-                self.cluster.seeds.remove(self.node)
-            self.cluster.__save()
+            del self.nodes[self.node.name]
+            if node in self.seeds:
+                self.seeds.remove(self.node)
+            self.__update_config()
             node.stop()
             shutil.rmtree(node.get_path())
         else:
@@ -103,7 +129,7 @@ class Cluster():
             node.clear()
 
     def get_path(self):
-        return os.path.join(self.path, self.name)
+        return os.path.join(self.__path, self.name)
 
     def get_seeds(self):
         return [ s.network_interfaces['storage'][0] for s in self.seeds ]
@@ -191,10 +217,10 @@ class Cluster():
             node.unset_configuration_option(name)
         return self
 
-    def __save(self):
+    def __update_config(self):
         node_list = [ node.name for node in self.nodes.values() ]
         seed_list = [ node.name for node in self.seeds ]
-        filename = os.path.join(self.path, self.name, 'cluster.conf')
+        filename = os.path.join(self.__path, self.name, 'cluster.conf')
         with open(filename, 'w') as f:
             yaml.dump({
                 'name' : self.name,

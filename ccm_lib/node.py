@@ -1,6 +1,7 @@
 # ccm node
+from __future__ import with_statement
 
-import common, yaml, os, errno, signal, time, subprocess, shutil, sys, glob
+import common, yaml, os, errno, signal, time, subprocess, shutil, sys, glob, re
 from cli_session import CliSession
 
 class Status():
@@ -14,6 +15,10 @@ class NodeError(Exception):
         Exception.__init__(self, msg)
         self.process = process
 
+class TimeoutError(Exception):
+    def __init__(self, data):
+        Exception.__init__(self, str(data))
+
 class Node():
     def __init__(self, name, cluster, auto_bootstrap, thrift_interface, storage_interface, jmx_port, initial_token, save=True):
         self.name = name
@@ -26,7 +31,7 @@ class Node():
         self.pid = None
         self.config_options = {}
         if save:
-            self.__save()
+            self.import_config_files()
 
     @staticmethod
     def load(path, name, cluster):
@@ -59,37 +64,18 @@ class Node():
     def get_conf_dir(self):
         return os.path.join(self.get_path(), 'conf')
 
+    def address(self):
+        return self.network_interfaces['storage'][0]
+
     def update_configuration(self, hh=True, cl_batch=False, rpc_timeout=None):
-        self.set_configuration_option("hinted_handoff_enabled", hh, update_yaml=False)
+        self.config_options["hinted_handoff_enabled"] = hh
         if cl_batch:
-            self.set_configuration_option("commitlog_sync", "batch", update_yaml=False)
-            self.set_configuration_option("commitlog_sync_batch_window_in_ms", 5, update_yaml=False)
-            self.unset_configuration_option("commitlog_sync_period_in_ms", update_yaml=False)
+            self.config_options["commitlog_sync"] = "batch"
+            self.config_options["commitlog_sync_batch_window_in_ms"] = 5
+            self.config_options["commitlog_sync_period_in_ms"] = None
         if rpc_timeout is not None:
-            self.set_configuration_option("rpc_timeout_in_ms", self.options.rpc_timeout, update_yaml=False)
-
-        conf_dir = os.path.join(self.cluster.get_cassandra_dir(), 'conf')
-        for name in os.listdir(conf_dir):
-            filename = os.path.join(conf_dir, name)
-            if os.path.isfile(filename):
-                shutil.copy(filename, self.get_conf_dir())
-
+            self.conf_options["rpc_timeout_in_ms"] = rpc_timeout
         self.__update_yaml()
-        self.__update_log4j()
-        self.__update_envfile()
-        return self
-
-    def set_configuration_option(self, name, value, update_yaml=True):
-        self.config_options[name] = value
-        if update_yaml:
-            self.__update_yaml()
-        return self
-
-    def unset_configuration_option(self, name, update_yaml=True):
-        self.config_options[name] = None
-        if update_yaml:
-            self.__update_yaml()
-        return self
 
     def get_status_string(self):
         if self.status == Status.UNINITIALIZED:
@@ -120,12 +106,74 @@ class Node():
         self.__update_status()
         return self.status == Status.UP
 
-    def start(self, join_ring=True, no_wait=False, verbose=False, update_pid=True):
+    def logfilename(self):
+        return os.path.join(self.get_path(), 'logs', 'system.log')
+
+    def grep_log(self, expr):
+        matchings = []
+        pattern = re.compile(expr)
+        with open(self.logfilename()) as f:
+            for line in f:
+                m = pattern.search(line)
+                if m:
+                    matchings.append((line, m))
+        return matchings
+
+    def mark_log(self):
+        with open(self.logfilename()) as f:
+            f.seek(0, os.SEEK_END)
+            return f.tell()
+
+    # This will return when exprs are found or it timeouts
+    def watch_log_for(self, exprs, from_mark=None, timeout=60):
+        elapsed = 0
+        tofind = [exprs] if isinstance(exprs, basestring) else exprs
+        tofind = [ re.compile(e) for e in tofind ]
+        matchings = []
+        reads = ""
+        if len(tofind) == 0:
+            return None
+        with open(self.logfilename()) as f:
+            if from_mark:
+                f.seek(from_mark)
+
+            while True:
+                line = f.readline()
+                if line:
+                    reads = reads + line
+                    for e in tofind:
+                        m = e.search(line)
+                        if m:
+                            matchings.append((line, m))
+                            tofind.remove(e)
+                            if len(tofind) == 0:
+                                return matchings[0] if isinstance(exprs, basestring) else matchings
+                else:
+                    # yep, it's ugly
+                    time.sleep(.3)
+                    elapsed = elapsed + .3
+                    if elapsed > timeout:
+                        raise TimeoutError(time.strftime("%d %b %Y %H:%M:%S", time.gmtime()) + " [" + self.name + "] Missing: " + str([e.pattern for e in tofind]) + ":\n" + reads)
+
+    def watch_log_for_death(self, nodes, from_mark=None, timeout=600):
+        tofind = nodes if isinstance(nodes, list) else [nodes]
+        tofind = [ "%s is now dead" % node.address() for node in tofind ]
+        self.watch_log_for(tofind, from_mark=from_mark, timeout=timeout)
+
+    def watch_log_for_alive(self, nodes, from_mark=None, timeout=60):
+        tofind = nodes if isinstance(nodes, list) else [nodes]
+        tofind = [ "%s state jump to normal" % node.address() for node in tofind ]
+        self.watch_log_for(tofind, from_mark=from_mark, timeout=timeout)
+
+    def start(self, join_ring=True, no_wait=False, verbose=False, update_pid=True, wait_other_notice=False):
         if self.is_running():
             raise NodeError("%s is already running" % self.name)
 
         for itf in self.network_interfaces.values():
             common.check_socket_available(itf)
+
+        if wait_other_notice:
+            marks = [ (node, node.mark_log()) for node in self.cluster.nodes.values() if node.is_running() ]
 
         cdir = self.cluster.get_cassandra_dir()
         cass_bin = os.path.join(cdir, 'bin', 'cassandra')
@@ -147,6 +195,10 @@ class Node():
             if not self.is_running():
                 raise NodeError("Error starting node %s" % self.name, process)
 
+        if wait_other_notice:
+            for node, mark in marks:
+                node.watch_log_for_alive(self, from_mark=mark)
+
         return process
 
     def update_pid(self, process):
@@ -158,10 +210,21 @@ class Node():
             raise NodeError('Problem starting node %s' % self.name, process)
         self.__update_status()
 
-    def stop(self, wait=True):
+    def stop(self, wait=True, wait_other_notice=False):
         if self.is_running():
+            if wait_other_notice:
+                #tstamp = time.time()
+                marks = [ (node, node.mark_log()) for node in self.cluster.nodes.values() if node.is_running() and node is not self ]
+
             os.kill(self.pid, signal.SIGKILL)
-            time.sleep(.1)
+
+            if wait_other_notice:
+                for node, mark in marks:
+                    node.watch_log_for_death(self, from_mark=mark)
+                    #print node.name, "has marked", self.name, "down in " + str(time.time() - tstamp) + "s"
+            else:
+                time.sleep(.1)
+
             still_running = self.is_running()
             if still_running and wait:
                 wait_time_sec = 1
@@ -182,7 +245,7 @@ class Node():
         cdir = self.cluster.get_cassandra_dir()
         nodetool = os.path.join(cdir, 'bin', 'nodetool')
         env = common.make_cassandra_env(cdir, self.get_path())
-        host = self.network_interfaces['storage'][0]
+        host = self.address()
         args = [ nodetool, '-h', host, '-p', str(self.jmx_port), cmd ]
         p = subprocess.Popen(args, env=env)
         p.wait()
@@ -224,7 +287,7 @@ class Node():
 
     def set_log_level(self, new_level):
         known_level = [ 'TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR' ]
-        if new_level not in know_level:
+        if new_level not in known_level:
             raise common.ArgumentError("Unknown log level %s (use one of %s)" % (self.level, " ".join(known_level)))
 
         append_pattern='log4j.rootLogger=';
@@ -244,7 +307,7 @@ class Node():
 
     def decommission(self):
         self.status = Status.DECOMMISIONNED
-        self.__save()
+        self.__update_config()
 
     def run_sstable2json(self, keyspace, datafile, column_families, enumerate_keys=False):
         cdir = self.cluster.get_cassandra_dir()
@@ -295,7 +358,20 @@ class Node():
         except KeyboardInterrupt:
             pass
 
-    def __save(self):
+    def import_config_files(self):
+        self.__update_config()
+
+        conf_dir = os.path.join(self.cluster.get_cassandra_dir(), 'conf')
+        for name in os.listdir(conf_dir):
+            filename = os.path.join(conf_dir, name)
+            if os.path.isfile(filename):
+                shutil.copy(filename, self.get_conf_dir())
+
+        self.__update_yaml()
+        self.__update_log4j()
+        self.__update_envfile()
+
+    def __update_config(self):
         dir_name = self.get_path()
         if not os.path.exists(dir_name):
             os.mkdir(dir_name)
@@ -389,4 +465,4 @@ class Node():
         if not old_status == self.status:
             if old_status == Status.UP and self.status == Status.DOWN:
                 self.pid = None
-            self.__save()
+            self.__update_config()
