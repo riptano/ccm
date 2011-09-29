@@ -1,7 +1,7 @@
 # downloaded sources handling
 from __future__ import with_statement
 
-import os, shutil, urllib2, tarfile, tempfile, subprocess
+import os, shutil, urllib2, tarfile, tempfile, subprocess, stat
 import common
 
 ARCHIVE="http://archive.apache.org/dist/cassandra"
@@ -46,6 +46,12 @@ def download_version(version, url=None, verbose=False):
             lf.write("\n\n--- cassandra/stress build ------------\n")
             stress_dir = os.path.join(target_dir, "tools", "stress") if version >= "0.8.0" else os.path.join(target_dir, "contrib", "stress")
             try:
+                # set permissions correctly, seems to not always be the case
+                stress_bin_dir = os.path.join(stress_dir, 'bin')
+                for f in os.listdir(stress_bin_dir):
+                    full_path = os.path.join(stress_bin_dir, f)
+                    os.chmod(full_path, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
+
                 if subprocess.call(['ant', 'build'], cwd=stress_dir, stdout=lf, stderr=lf) is not 0:
                     raise common.CCMError("Error compiling Cassandra stress tool.  See %s for details (you will still be able to use ccm but not the stress related commands)" % logfile)
             except IOError as e:

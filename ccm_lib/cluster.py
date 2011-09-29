@@ -1,6 +1,6 @@
 # ccm clusters
 
-import common, yaml, os, subprocess, shutil, repository
+import common, yaml, os, subprocess, shutil, repository, time
 from node import Node, NodeError
 
 class Cluster():
@@ -88,7 +88,7 @@ class Cluster():
         self.__update_config()
         return self
 
-    def populate(self, node_count):
+    def populate(self, node_count, tokens=None):
         if node_count < 1 or node_count >= 10:
             raise common.ArgumentError('invalid node count %s' % node_count)
 
@@ -97,16 +97,26 @@ class Cluster():
                 raise common.ArgumentError('Cannot create existing node node%s' % i)
 
         for i in xrange(1, node_count + 1):
+            tk = None
+            if tokens is not None:
+                try:
+                    tk = tokens[i-1]
+                except IndexError:
+                    pass
             node = Node('node%s' % i,
                         self,
                         False,
                         ('127.0.0.%s' % i, 9160),
                         ('127.0.0.%s' % i, 7000),
                         str(7000 + i * 100),
-                        None)
+                        tk)
             self.add(node, True)
             self.__update_config()
         return self
+
+    @staticmethod
+    def balanced_tokens(node_count):
+        return [ (i*(2**127)/node_count) for i in range(0, node_count) ]
 
     def remove(self, node=None):
         if node is not None:
@@ -147,9 +157,14 @@ class Cluster():
 
     def start(self, no_wait=False, verbose=False):
         started = []
+        marks = []
         for node in self.nodes.values():
             if not node.is_running():
                 p = node.start(update_pid=False)
+                # ugly? indeed!
+                while not os.path.exists(node.logfilename()):
+                    time.sleep(.01)
+                marks.append((node, node.mark_log()))
                 started.append((node, p))
 
         if no_wait:
@@ -167,6 +182,12 @@ class Cluster():
         for node, p in started:
             if not node.is_running():
                 raise NodeError("Error starting {0}.".format(node.name), p)
+
+        if not no_wait:
+            for node, mark in marks:
+                for other_node, _ in marks:
+                    if other_node is not node:
+                        node.watch_log_for_alive(other_node, from_mark=mark)
 
         return started
 
@@ -216,6 +237,18 @@ class Cluster():
         for node in self.nodes.values():
             node.unset_configuration_option(name)
         return self
+
+    def flush(self):
+        self.nodetool("flush")
+
+    def compact(self):
+        self.nodetool("compact")
+
+    def repair(self):
+        self.nodetool("repair")
+
+    def cleanup(self):
+        self.nodetool("cleanup")
 
     def __update_config(self):
         node_list = [ node.name for node in self.nodes.values() ]

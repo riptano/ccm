@@ -19,6 +19,9 @@ class TimeoutError(Exception):
     def __init__(self, data):
         Exception.__init__(self, str(data))
 
+# Groups: 1 = cf, 2 = tmp or none, 3 = suffix (Compacted or Data.db)
+_sstable_regexp = re.compile('([\S])+-(tmp-)?[\S]+-([a-zA-Z.]+)')
+
 class Node():
     def __init__(self, name, cluster, auto_bootstrap, thrift_interface, storage_interface, jmx_port, initial_token, save=True):
         self.name = name
@@ -162,7 +165,7 @@ class Node():
 
     def watch_log_for_alive(self, nodes, from_mark=None, timeout=60):
         tofind = nodes if isinstance(nodes, list) else [nodes]
-        tofind = [ "%s state jump to normal" % node.address() for node in tofind ]
+        tofind = [ "%s is now UP" % node.address() for node in tofind ]
         self.watch_log_for(tofind, from_mark=from_mark, timeout=timeout)
 
     def start(self, join_ring=True, no_wait=False, verbose=False, update_pid=True, wait_other_notice=False):
@@ -296,14 +299,25 @@ class Node():
         common.replace_in_file(conf_file, append_pattern, append_pattern + l)
         return self
 
-    def clear(self, clear_all = False):
-        data_dirs = [ 'data', 'commitlogs']
-        if clear_all:
-            data_dirs = data_dirs + [ 'saved_caches', 'logs']
+    def clear(self, clear_all = False, only_data = False):
+        data_dirs = [ 'data' ]
+        if not only_data:
+            data_dirs = data_dirs + [ 'commitlogs']
+            if clear_all:
+                data_dirs = data_dirs + [ 'saved_caches', 'logs']
         for d in data_dirs:
             full_dir = os.path.join(self.get_path(), d)
-            shutil.rmtree(full_dir)
-            os.mkdir(full_dir)
+            if only_data:
+                for dir in os.listdir(full_dir):
+                    full_dir = os.path.join(full_dir, dir)
+                    if os.path.isdir(full_dir) and not dir is "system":
+                        for f in os.listdir(full_dir):
+                            full_path = os.path.join(full_dir, f)
+                            if os.path.isfile(full_path):
+                                os.remove(full_path)
+            else:
+                shutil.rmtree(full_dir)
+                os.mkdir(full_dir)
 
     def decommission(self):
         self.status = Status.DECOMMISIONNED
@@ -357,6 +371,39 @@ class Node():
             subprocess.call(args)
         except KeyboardInterrupt:
             pass
+
+    def data_size(self, live_data=True):
+        data_dir = os.path.join(self.get_path(), 'data')
+        size = 0
+        for dir in os.listdir(data_dir):
+            full_dir = os.path.join(data_dir, dir)
+            if os.path.isdir(full_dir) and not dir.endswith("system"):
+                for f in os.listdir(full_dir):
+                    full_path = os.path.join(full_dir,f)
+                    if os.path.isfile(full_path):
+                        if live_data:
+                            m = _sstable_regexp.match(f)
+                            if m is None or m.group(2) is not None or m.group(3) != "Data.db":
+                                continue
+                            if os.path.exists(full_path.replace("Data.db", "Compacted")):
+                                continue
+                        size += os.path.getsize(full_path)
+        return size
+
+    def flush(self):
+        self.nodetool("flush")
+
+    def compact(self):
+        self.nodetool("compact")
+
+    def repair(self):
+        self.nodetool("repair")
+
+    def move(self, new_token):
+        self.nodetool("move " + str(new_token))
+
+    def cleanup(self):
+        self.nodetool("cleanup")
 
     def import_config_files(self):
         self.__update_config()
