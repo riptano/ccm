@@ -1,11 +1,7 @@
-from optparse import OptionParser, BadOptionError, Option
 import os, sys, shutil
+from optparse import OptionParser, BadOptionError, Option
 
-L = os.path.realpath(__file__).split(os.path.sep)[:-2]
-root = os.path.sep.join(L)
-sys.path.append(os.path.join(root, 'ccm_lib'))
-import common
-
+from ccmlib import common
 
 # This is fairly fragile, but handy for now
 class ForgivingParser(OptionParser):

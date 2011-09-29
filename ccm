@@ -2,19 +2,13 @@
 
 import os, sys
 
-L = os.path.realpath(__file__).split(os.path.sep)[:-1]
-root = os.path.sep.join(L)
-sys.path.append(os.path.join(root, 'cmds'))
-import command, common
-from cluster_cmds import *
-from cluster_cass_cmds import *
-from node_cmds import *
-from node_cass_cmds import *
+from ccmlib import common
+from ccmlib.cmds import command, cluster_cmds, node_cmds
 
 def get_command(kind, cmd):
     cmd_name = kind.lower().capitalize() + cmd.lower().capitalize() + "Cmd"
     try:
-        klass = globals()[cmd_name]
+        klass = (cluster_cmds if kind.lower() == 'cluster' else node_cmds).__dict__[cmd_name]
     except KeyError:
         return None
     if not issubclass(klass, command.Cmd):
@@ -27,14 +21,14 @@ def print_global_usage():
     print "  ccm <node_name> <node_cmd> [options]"
     print ""
     print "Where <cluster_cmd> is one of"
-    for cmd_name in cluster_cmds():
+    for cmd_name in cluster_cmds.cluster_cmds():
         cmd = get_command("cluster", cmd_name)
         if not cmd:
             print "Internal error, unknown command {0}".format(cmd_name)
             exit(1)
         print "  {0:14} {1}".format(cmd_name, cmd.description())
     print "or <node_name> is the name of a node of the current cluster and <node_cmd> is one of"
-    for cmd_name in node_cmds():
+    for cmd_name in node_cmds.node_cmds():
         cmd = get_command("node", cmd_name)
         if not cmd:
             print "Internal error, unknown command {0}".format(cmd_name)
@@ -48,7 +42,7 @@ if len(sys.argv) <= 1:
 
 arg1 = sys.argv[1].lower()
 
-if arg1 in cluster_cmds():
+if arg1 in cluster_cmds.cluster_cmds():
     kind = 'cluster'
     cmd = arg1
     cmd_args = sys.argv[2:]
