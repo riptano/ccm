@@ -9,6 +9,7 @@ class Cluster():
         self.nodes = {}
         self.seeds = []
         self.partitioner = partitioner
+        self._config_options = {}
         self.__path = path
         self.__version = None
         if create_directory:
@@ -17,13 +18,13 @@ class Cluster():
 
         try:
             if cassandra_version is None:
-                self.cassandra_dir = cassandra_dir
+                self.__cassandra_dir = cassandra_dir
             else:
-                self.cassandra_dir = repository.setup(cassandra_version, verbose)
+                self.__cassandra_dir = repository.setup(cassandra_version, verbose)
                 self.__version = cassandra_version
 
             if create_directory:
-                common.validate_cassandra_dir(self.cassandra_dir)
+                common.validate_cassandra_dir(self.__cassandra_dir)
                 self.__update_config()
         except:
             shutil.rmtree(self.get_path())
@@ -36,18 +37,21 @@ class Cluster():
 
     def set_cassandra_dir(self, cassandra_dir=None, cassandra_version=None, verbose=False):
         if cassandra_version is None:
-            self.cassandra_dir = cassandra_dir
+            self.__cassandra_dir = cassandra_dir
             common.validate_cassandra_dir(cassandra_dir)
         else:
-            self.cassandra_dir = repository.setup(cassandra_version, verbose=verbose)
+            self.__cassandra_dir = repository.setup(cassandra_version, verbose=verbose)
         self.__update_config()
         for node in self.nodes.values():
             node.import_config_files()
         return self
 
     def get_cassandra_dir(self):
-        common.validate_cassandra_dir(self.cassandra_dir)
-        return self.cassandra_dir
+        common.validate_cassandra_dir(self.__cassandra_dir)
+        return self.__cassandra_dir
+
+    def nodelist(self):
+        return [ self.nodes[name] for name in sorted(self.nodes.keys()) ]
 
     def version(self):
         if self.__version is None:
@@ -67,7 +71,10 @@ class Cluster():
             if 'partitioner' in data:
                 cluster.partitioner = data['partitioner']
             if 'cassandra_dir' in data:
-                cluster.cassandra_dir = data['cassandra_dir']
+                cluster.__cassandra_dir = data['cassandra_dir']
+                repository.validate(cluster.__cassandra_dir)
+            if 'config_options' in data:
+                cluster._config_options = data['config_options']
         except KeyError as k:
             raise common.LoadError("Error Loading " + filename + ", missing property:" + k)
 
@@ -76,7 +83,6 @@ class Cluster():
         for seed_name in seed_list:
             cluster.seeds.append(cluster.nodes[seed_name])
 
-        repository.validate(cluster.cassandra_dir)
         return cluster
 
     def add(self, node, is_seed):
@@ -198,6 +204,10 @@ class Cluster():
                 not_running.append(node)
         return not_running
 
+    def set_log_level(self, new_level):
+        for node in self.nodelist():
+            node.set_log_level(new_level)
+
     def nodetool(self, nodetool_cmd):
         for node in self.nodes.values():
             if node.is_running():
@@ -223,19 +233,9 @@ class Cluster():
             raise common.ArgumentError("No live node")
         livenodes[0].run_cli(cmds, show_output, cli_options)
 
-    def update_configuration(self, hh=True, cl_batch=False, rpc_timeout=None):
+    def set_configuration_options(self, values=None, batch_commitlog=None):
         for node in self.nodes.values():
-            node.update_configuration(hh=hh, cl_batch=cl_batch, rpc_timeout=rpc_timeout)
-        return self
-
-    def set_configuration_option(self, name, value):
-        for node in self.nodes.values():
-            node.set_configuration_option(name, value)
-        return self
-
-    def unset_configuration_option(self, name):
-        for node in self.nodes.values():
-            node.unset_configuration_option(name)
+            node.set_configuration_options(values=values, batch_commitlog=batch_commitlog)
         return self
 
     def flush(self):
@@ -260,7 +260,9 @@ class Cluster():
                 'nodes' : node_list,
                 'seeds' : seed_list,
                 'partitioner' : self.partitioner,
-                'cassandra_dir' : self.cassandra_dir }, f)
+                'cassandra_dir' : self.__cassandra_dir,
+                'config_options' : self._config_options
+            }, f)
 
     def __update_pids(self, started):
         for node, p in started:

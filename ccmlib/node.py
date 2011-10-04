@@ -2,6 +2,7 @@
 from __future__ import with_statement
 
 import common, yaml, os, errno, signal, time, subprocess, shutil, sys, glob, re
+import repository
 from cli_session import CliSession
 
 class Status():
@@ -32,7 +33,9 @@ class Node():
         self.jmx_port = jmx_port
         self.initial_token = initial_token
         self.pid = None
-        self.config_options = {}
+        self.__config_options = {}
+        self.__cassandra_dir = None
+        self.__log_level = "INFO"
         if save:
             self.import_config_files()
 
@@ -51,6 +54,10 @@ class Node():
             node.status = data['status']
             if 'pid' in data:
                 node.pid = int(data['pid'])
+            if 'cassandra_dir' in data:
+                node.__cassandra_dir = data['cassandra_dir']
+            if 'config_options' in data:
+                node.__config_options = data['config_options']
             return node
         except KeyError as k:
             raise common.LoadError("Error Loading " + filename + ", missing property: " + str(k))
@@ -70,15 +77,38 @@ class Node():
     def address(self):
         return self.network_interfaces['storage'][0]
 
-    def update_configuration(self, hh=True, cl_batch=False, rpc_timeout=None):
-        self.config_options["hinted_handoff_enabled"] = hh
-        if cl_batch:
-            self.config_options["commitlog_sync"] = "batch"
-            self.config_options["commitlog_sync_batch_window_in_ms"] = 5
-            self.config_options["commitlog_sync_period_in_ms"] = None
-        if rpc_timeout is not None:
-            self.conf_options["rpc_timeout_in_ms"] = rpc_timeout
-        self.__update_yaml()
+    def get_cassandra_dir(self):
+        if self.__cassandra_dir is None:
+            return self.cluster.get_cassandra_dir()
+        else:
+            common.validate_cassandra_dir(self.__cassandra_dir)
+            return self.__cassandra_dir
+
+    def set_cassandra_dir(self, ccassandra_dir=None, cassandra_version=None, verbose=False):
+        if cassandra_version is None:
+            self.__cassandra_dir = cassandra_dir
+            if cassandra_dir is not None:
+                common.validate_cassandra_dir(cassandra_dir)
+        else:
+            self.__cassandra_dir = repository.setup(cassandra_version, verbose=verbose)
+        self.import_config_files()
+        return self
+
+    def set_configuration_options(self, values=None, batch_commitlog=None):
+        if values is not None:
+            for k, v in values.iteritems():
+                self.__config_options[k] = v
+        if batch_commitlog is not None:
+            if batch_commitlog:
+                self.__config_options["commitlog_sync"] = "batch"
+                self.__config_options["commitlog_sync_batch_window_in_ms"] = 5
+                self.__config_options["commitlog_sync_period_in_ms"] = None
+            else:
+                self.__config_options["commitlog_sync"] = "periodic"
+                self.__config_options["commitlog_sync_period_in_ms"] = 10000
+                self.__config_options["commitlog_sync_batch_window_in_ms"] = None
+
+        self.import_config_files()
 
     def get_status_string(self):
         if self.status == Status.UNINITIALIZED:
@@ -178,7 +208,7 @@ class Node():
         if wait_other_notice:
             marks = [ (node, node.mark_log()) for node in self.cluster.nodes.values() if node.is_running() ]
 
-        cdir = self.cluster.get_cassandra_dir()
+        cdir = self.get_cassandra_dir()
         cass_bin = os.path.join(cdir, 'bin', 'cassandra')
         env = common.make_cassandra_env(cdir, self.get_path())
         pidfile = os.path.join(self.get_path(), 'cassandra.pid')
@@ -245,7 +275,7 @@ class Node():
             return False
 
     def nodetool(self, cmd):
-        cdir = self.cluster.get_cassandra_dir()
+        cdir = self.get_cassandra_dir()
         nodetool = os.path.join(cdir, 'bin', 'nodetool')
         env = common.make_cassandra_env(cdir, self.get_path())
         host = self.address()
@@ -254,7 +284,7 @@ class Node():
         p.wait()
 
     def run_cli(self, cmds=None, show_output=False, cli_options=[]):
-        cdir = self.cluster.get_cassandra_dir()
+        cdir = self.get_cassandra_dir()
         cli = os.path.join(cdir, 'bin', 'cassandra-cli')
         env = common.make_cassandra_env(cdir, self.get_path())
         host = self.network_interfaces['thrift'][0]
@@ -280,7 +310,7 @@ class Node():
                     i = i + 1
 
     def cli(self):
-        cdir = self.cluster.get_cassandra_dir()
+        cdir = self.get_cassandra_dir()
         cli = os.path.join(cdir, 'bin', 'cassandra-cli')
         env = common.make_cassandra_env(cdir, self.get_path())
         host = self.network_interfaces['thrift'][0]
@@ -293,10 +323,8 @@ class Node():
         if new_level not in known_level:
             raise common.ArgumentError("Unknown log level %s (use one of %s)" % (self.level, " ".join(known_level)))
 
-        append_pattern='log4j.rootLogger=';
-        conf_file = os.path.join(self.get_conf_dir(), common.LOG4J_CONF)
-        l = new_level + ",stdout,R"
-        common.replace_in_file(conf_file, append_pattern, append_pattern + l)
+        self.__log_level = new_level
+        self.__update_log4j()
         return self
 
     def clear(self, clear_all = False, only_data = False):
@@ -324,7 +352,7 @@ class Node():
         self.__update_config()
 
     def run_sstable2json(self, keyspace, datafile, column_families, enumerate_keys=False):
-        cdir = self.cluster.get_cassandra_dir()
+        cdir = self.get_cassandra_dir()
         sstable2json = os.path.join(cdir, 'bin', 'sstable2json')
         env = common.make_cassandra_env(cdir, self.get_path())
         datafiles = []
@@ -365,7 +393,7 @@ class Node():
         return files
 
     def stress(self, stress_options):
-        stress = common.get_stress_bin(self.cluster.get_cassandra_dir())
+        stress = common.get_stress_bin(self.get_cassandra_dir())
         args = [ stress ] + stress_options
         try:
             subprocess.call(args)
@@ -408,7 +436,7 @@ class Node():
     def import_config_files(self):
         self.__update_config()
 
-        conf_dir = os.path.join(self.cluster.get_cassandra_dir(), 'conf')
+        conf_dir = os.path.join(self.get_cassandra_dir(), 'conf')
         for name in os.listdir(conf_dir):
             filename = os.path.join(conf_dir, name)
             if os.path.isfile(filename):
@@ -431,12 +459,15 @@ class Node():
             'status' : self.status,
             'auto_bootstrap' : self.auto_bootstrap,
             'interfaces' : self.network_interfaces,
-            'jmx_port' : self.jmx_port
+            'jmx_port' : self.jmx_port,
+            'config_options' : self.__config_options
         }
         if self.pid:
             values['pid'] = self.pid
         if self.initial_token:
             values['initial_token'] = self.initial_token
+        if self.__cassandra_dir is not None:
+            values['cassandra_dir'] = self.__cassandra_dir
         with open(filename, 'w') as f:
             yaml.dump(values, f)
 
@@ -463,12 +494,13 @@ class Node():
         if self.cluster.partitioner:
             data['partitioner'] = self.cluster.partitioner
 
-        for name in self.config_options:
-            value = self.config_options[name]
+        full_options = dict(self.cluster._config_options.items() + self.__config_options.items()) # last win and we want node options to win
+        for name in full_options:
+            value = full_options[name]
             if value is None:
                 del data[name]
             else:
-                data[name] = self.config_options[name]
+                data[name] = full_options[name]
 
         with open(conf_file, 'w') as f:
             yaml.dump(data, f, default_flow_style=False)
@@ -478,6 +510,11 @@ class Node():
         conf_file = os.path.join(self.get_conf_dir(), common.LOG4J_CONF)
         log_file = os.path.join(self.get_path(), 'logs', 'system.log')
         common.replace_in_file(conf_file, append_pattern, append_pattern + log_file)
+
+        # Setting the right log level
+        append_pattern='log4j.rootLogger=';
+        l = self.__log_level + ",stdout,R"
+        common.replace_in_file(conf_file, append_pattern, append_pattern + l)
 
     def __update_envfile(self):
         jmx_port_pattern='JMX_PORT=';

@@ -380,7 +380,7 @@ class ClusterUpdateconfCmd(Cmd):
         parser.add_option('--no-hh', '--no-hinted-handoff', action="store_false",
             dest="hinted_handoff", default=True, help="Disable hinted handoff")
         parser.add_option('--batch-cl', '--batch-commit-log', action="store_true",
-            dest="cl_batch", default=True, help="Set commit log to batch mode")
+            dest="cl_batch", default=False, help="Set commit log to batch mode")
         parser.add_option('--rt', '--rpc-timeout', action="store", type='int',
             dest="rpc_timeout", help="Set rpc timeout")
         return parser
@@ -389,9 +389,11 @@ class ClusterUpdateconfCmd(Cmd):
         Cmd.validate(self, parser, options, args, load_cluster=True)
 
     def run(self):
-        self.cluster.update_configuration(hh=self.options.hinted_handoff,
-                                          cl_batch=self.options.cl_batch,
-                                          rpc_timeout=self.options.rpc_timeout)
+        opts = {
+            'hinted_handoff_enabled' : self.options.hinted_handoff,
+            'rpc_timeout_in_ms' : self.options.rpc_timeout
+        }
+        self.cluster.set_configuration_options(values=opts, batch_commitlog=self.options.cl_batch)
 
 class ClusterCliCmd(Cmd):
     def description(self):

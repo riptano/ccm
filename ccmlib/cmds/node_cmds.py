@@ -285,7 +285,11 @@ class NodeUpdateconfCmd(Cmd):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
 
     def run(self):
-        self.node.update_configuration(hh=self.options.hinted_handoff, cl_batch=self.options.cl_batch)
+        opts = {
+            'hinted_handoff_enabled' : self.options.hinted_handoff,
+            'rpc_timeout_in_ms' : self.options.rpc_timeout
+        }
+        self.node.set_configuration_options(values=opts, batch_commitlog=self.options.cl_batch)
 
 class NodeStressCmd(Cmd):
     def description(self):
