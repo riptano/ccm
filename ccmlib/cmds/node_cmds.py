@@ -79,12 +79,16 @@ class NodeSetlogCmd(Cmd):
 
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
+        if len(args) == 1:
+            print >> sys.stderr, 'Missing log level'
+            parser.print_help()
+        self.level = args[1]
 
     def run(self):
         try:
             self.node.set_log_level(self.level)
         except common.ArgumentError as e:
-            print >> syst.stderr, str(e)
+            print >> sys.stderr, str(e)
             exit(1)
 
 class NodeClearCmd(Cmd):

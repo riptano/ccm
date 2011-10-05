@@ -122,7 +122,7 @@ class Cluster():
 
     @staticmethod
     def balanced_tokens(node_count):
-        return [ (i*(2**127)/node_count) for i in range(0, node_count) ]
+        return [ (i*(2**127/node_count)) for i in range(0, node_count) ]
 
     def remove(self, node=None):
         if node is not None:
@@ -250,12 +250,20 @@ class Cluster():
     def cleanup(self):
         self.nodetool("cleanup")
 
+    def decommission(self):
+        for node in self.nodes.values():
+            if node.is_running():
+                node.decommission()
+
+    def removeToken(self, token):
+        self.nodetool("removeToken " + str(token))
+
     def __update_config(self):
         node_list = [ node.name for node in self.nodes.values() ]
         seed_list = [ node.name for node in self.seeds ]
         filename = os.path.join(self.__path, self.name, 'cluster.conf')
         with open(filename, 'w') as f:
-            yaml.dump({
+            yaml.safe_dump({
                 'name' : self.name,
                 'nodes' : node_list,
                 'seeds' : seed_list,

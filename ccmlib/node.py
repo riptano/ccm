@@ -321,7 +321,7 @@ class Node():
     def set_log_level(self, new_level):
         known_level = [ 'TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR' ]
         if new_level not in known_level:
-            raise common.ArgumentError("Unknown log level %s (use one of %s)" % (self.level, " ".join(known_level)))
+            raise common.ArgumentError("Unknown log level %s (use one of %s)" % (new_level, " ".join(known_level)))
 
         self.__log_level = new_level
         self.__update_log4j()
@@ -337,19 +337,15 @@ class Node():
             full_dir = os.path.join(self.get_path(), d)
             if only_data:
                 for dir in os.listdir(full_dir):
-                    full_dir = os.path.join(full_dir, dir)
-                    if os.path.isdir(full_dir) and not dir is "system":
-                        for f in os.listdir(full_dir):
-                            full_path = os.path.join(full_dir, f)
+                    keyspace_dir = os.path.join(full_dir, dir)
+                    if os.path.isdir(keyspace_dir) and dir != "system":
+                        for f in os.listdir(keyspace_dir):
+                            full_path = os.path.join(keyspace_dir, f)
                             if os.path.isfile(full_path):
                                 os.remove(full_path)
             else:
                 shutil.rmtree(full_dir)
                 os.mkdir(full_dir)
-
-    def decommission(self):
-        self.status = Status.DECOMMISIONNED
-        self.__update_config()
 
     def run_sstable2json(self, keyspace, datafile, column_families, enumerate_keys=False):
         cdir = self.get_cassandra_dir()
@@ -433,6 +429,14 @@ class Node():
     def cleanup(self):
         self.nodetool("cleanup")
 
+    def decommission(self):
+        self.nodetool("decommission")
+        self.status = Status.DECOMMISIONNED
+        self.__update_config()
+
+    def removeToken(self, token):
+        self.nodetool("removeToken " + str(token))
+
     def import_config_files(self):
         self.__update_config()
 
@@ -469,7 +473,7 @@ class Node():
         if self.__cassandra_dir is not None:
             values['cassandra_dir'] = self.__cassandra_dir
         with open(filename, 'w') as f:
-            yaml.dump(values, f)
+            yaml.safe_dump(values, f)
 
     def __update_yaml(self):
         conf_file = os.path.join(self.get_conf_dir(), common.CASSANDRA_CONF)
@@ -503,7 +507,7 @@ class Node():
                 data[name] = full_options[name]
 
         with open(conf_file, 'w') as f:
-            yaml.dump(data, f, default_flow_style=False)
+            yaml.safe_dump(data, f, default_flow_style=False)
 
     def __update_log4j(self):
         append_pattern='log4j.appender.R.File=';
