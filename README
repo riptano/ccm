@@ -1,87 +1,100 @@
 CCM (for Cassandra Cluster Manager ... or something)
 ====================================================
 
-A script to create, launch and remove a Apache Cassandra cluster on localhost.
+A script/library to create, launch and remove a Apache Cassandra cluster on
+localhost.
 
-The goal of ccm is to make is easy to create, manage and destroy a small
-cluster on a local box. It is meant for quick testing of a Cassandra cluster.
+The goal of ccm and ccmlib is to make is easy to create, manage and destroy a
+small cluster on a local box. It is meant for testing of a Cassandra cluster.
 
 
-Install
--------
+Requirements
+------------
 
-This requires a working python installation (tested with 2.7) with the pyYAML
-module (http://pyyaml.org/ -- 'sudo easy_install pyYaml').
+- A working python installation (tested to work with python 2.7).
+- pyYAML (http://pyyaml.org/ -- 'sudo easy_install pyYaml')
+- ccm works on localhost only for now. So if you want to create more than one
+  node clusters the simplest way is to use multiple loopback aliases. On
+  modern linux distribution you will probably have nothing to do, but
+  on mac os x, you would have to create such aliases with
+    sudo ifconfig lo0 alias 127.0.0.2 up
+    sudo ifconfig lo0 alias 127.0.0.3 up
+    ...
+  Note that the usage section assumes that at least 127.0.0.1, 127.0.0.2 and
+  127.0.0.3 are available.
+- I'm pretty sure this doesn't work under Windows, but I accept pull requests
 
-Once this repository cloned, you'll probably want to create a symbolic link to
-the ccm executable script somewhere in your path (The following examples
-assume that much).
 
-ccm is only for cluster on localhost so if you want more than one node, you
-will likely need multiple loopback interface aliases. On mac os x for
-instance, you can create such aliases with
-  sudo ifconfig lo0 alias 127.0.0.2 up
-  sudo ifconfig lo0 alias 127.0.0.3 up
-  ...
+Installation
+------------
 
-I'll assume you have at least 127.0.0.1, 127.0.0.2 and 127.0.0.3 set up in
-the next section.
+ccm uses python distutils so from the source directory:
+sudo ./setup.py install
 
 
 Usage
 -----
 
-ccm works from a Cassandra source tree (not the jars). So in the following
-example, I assume that 'ccm' is in the path and that the current directory is
-a Cassandra source directory (either 0.7 or trunk, this doesn't work with 0.6,
-though that could be added easily if there is some interest). It also assumes
-that Cassandra has been compiled (with 'ant build').
+Let's say you want to fire up a 3 nodes Cassandra cluster.
 
-ccm works with the notion of a current cluster. To create a cluster and
-'switch' to it:
-> ccm create test
+* Short version *
 
-Then add some node:
-> ccm add node1 -i 127.0.0.1 -j 7100 -s
-> ccm add node2 -i 127.0.0.2 -j 7200 -s
+ccm create test -v 0.8.6
+ccm populate -n 3
+ccm start
 
-This add 2 nodes on 127.0.0.1 and 127.0.0.2 using default thrift and storage
-port using JMX port 7100 and 7200 (JMX binds itself to all interfaces by
-default, so you want 2 separate ports here).
-Moreover, those nodes are set as seeds ('-s' flag; you need at least one seed
-node).
+* Longer version *
 
-You can then start the whole cluster:
-> ccm start
+ccm works from a Cassandra source tree (not the jars). There is two way to
+tell ccm how to find the sources:
+  1. if you have downloaded *and* compiled Cassandra sources, you can ask ccm
+     to use that by initiating a new cluster with:
+        ccm create test --cassandra-dir=<path/to/cassandra-sources>
+     or, from that source tree directory, simply
+        ccm create test
+  2. you can ask ccm to use a released version of Cassandra. For instance to
+     use Cassandra 0.8.6, do
+        ccm create test -v 0.8.6
+     When doing so, ccm will download the source (from http://archive.apache.org/dist/cassandra),
+     compile them and set the new cluster to use those. This means in
+     particular that this command can take a few minutes the first time you
+     create a cluster for a given version. After the first time, ccm keeps the
+     sources compile in ~/.ccm/repository/, so the same command will be fast
+     the next times (note however that if you create cluster with a lot of
+     different versions, this will take you disk space).
 
-You can check that everything is working fine:
-> ccm node1 ring
+Once the cluster is created, you can populate it (with 3 nodes) and start all
+the nodes with:
+  ccm populate -n 3
+  ccm start
 
-which simply calls nodetool ring on node1.
+That will start 3 nodes on IP 127.0.0.[1, 2, 3] on port 9160 for thrift, port
+7000 for the internal cluster communication and ports 7100, 7200 and 7300 for JMX.
+You can check that the cluster is correctly set up with
+  ccm node1 ring
 
-You can now bootstrap a new node and start it with:
-> ccm add node3 -i 127.0.0.3 -j 7300 -b
-> ccm node3 start
 
-This will wait for node3 to be fully bootstrapped, so this will take around 90
-seconds. You can use --no-wait to avoid this.
+You can then boostrap a 4th node with
+  ccm add node3 -i 127.0.0.4 -j 7400 -b
+(populate is just a shortcut for adding multiple nodes initially)
 
-ccm then provides a few conveniences, like flushing a full cluster:
-> ccm flush
-or a single node:
-> ccm node2 flush
+ccm then provides a number of conveniences, like flushing all of the nodes of
+the cluster:
+  ccm flush
+or only one node:
+  ccm node2 flush
 
-You can also look at the log file of a given node with:
-> ccm node1 showlog
-(this exec 'less' on the log file)
+You can also easily look at the log file of a given node with:
+  ccm node1 showlog
 
-And you can remove the whole cluster with:
-> ccm remove
+Finally, you can get rid of the whole cluster (which will stop the node and
+remove all the data) with
+  ccm remove
 
-There is a bunch of other commands (some of nodetool commands are provided, just so that
-you don't have to remember the IP addresses and port number). Just try 'ccm'
-to get a list of available command. Then each command options are documented:
-for instance 'ccm add -h' describe the option for 'ccm add'.
+The list of other provided command is available through
+  ccm
+then each command is then documented through the -h (or --help) flag. For
+instance 'ccm add -h' describe the options for 'ccm add'.
 
 
 Where are things stored
@@ -91,11 +104,33 @@ By default, ccm stores all the node data and configuration files under ~/.ccm/cl
 This can be overridden using the --config-dir option with each command.
 
 
-Notes
------
+CCM Lib
+-------
 
-I use this script almost daily for quick Cassandra testing, but this is *not*
-heavily tested. You have been warned. I do welcome suggestions however.
+The ccm facilities are available programmatically through ccmlib. This could
+be use to implement automated tests again Cassandra. An hopefully self
+explanatory simple example of use of ccmlib could be:
+
+  import ccmlib
+
+  CLUSTER_PATH="."
+  cluster = ccmlib.Cluster(CLUSTER_PATH, 'test', cassandra_version='0.8.6')
+  cluster.populate(3).start()
+  [node1, node2, node3] = cluster.nodelist()
+
+  # do some test on the cluster/nodes. To connect to a node through thrift,
+  # the host and port to a node is available through
+  #   node.network_interfaces['thrift']
+
+  cluster.flush()
+  node2.compact()
+
+  # do some other test
+
+  # after the test, you can leave the cluster running, you can stop all nodes
+  # using cluster.stop() but keep the data around (in CLUSTER_PATH/test), or
+  # you can remove everything with cluster.remove()
 
 
+--
 Sylvain Lebresne <sylvain@datastax.com>

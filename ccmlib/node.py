@@ -198,7 +198,7 @@ class Node():
         tofind = [ "%s is now UP" % node.address() for node in tofind ]
         self.watch_log_for(tofind, from_mark=from_mark, timeout=timeout)
 
-    def start(self, join_ring=True, no_wait=False, verbose=False, update_pid=True, wait_other_notice=False):
+    def start(self, join_ring=True, no_wait=False, verbose=False, update_pid=True, wait_other_notice=False, replace_token=None):
         if self.is_running():
             raise NodeError("%s is already running" % self.name)
 
@@ -213,6 +213,8 @@ class Node():
         env = common.make_cassandra_env(cdir, self.get_path())
         pidfile = os.path.join(self.get_path(), 'cassandra.pid')
         args = [ cass_bin, '-p', pidfile, '-Dcassandra.join_ring=%s' % str(join_ring) ]
+        if replace_token is not None:
+            args = args + [ '-Dcassandra.replace_token=%s' % str(replace_token) ]
         process = subprocess.Popen(args, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
         if update_pid:
