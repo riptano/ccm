@@ -24,7 +24,23 @@ class TimeoutError(Exception):
 _sstable_regexp = re.compile('([\S])+-(tmp-)?[\S]+-([a-zA-Z.]+)')
 
 class Node():
+    """
+    Provides interactions to a Cassandra node.
+    """
+
     def __init__(self, name, cluster, auto_bootstrap, thrift_interface, storage_interface, jmx_port, initial_token, save=True):
+        """
+        Create a new Node.
+          - name: the name for that node
+          - cluster: the cluster this node is part of
+          - auto_boostrap: whether or not this node should be set for auto-boostrap
+          - thrift_interface: the (host, port) tuple for thrift
+          - storage_interface: the (host, port) tuple for internal cluster communication
+          - jmx_port: the port for JMX to bind to
+          - initial_token: the token for this node. If None, use Cassandra token auto-assigment
+          - save: copy all data useful for this node to the right position.  Leaving this true
+            is almost always the right choice.
+        """
         self.name = name
         self.cluster = cluster
         self.status = Status.UNINITIALIZED
@@ -41,6 +57,10 @@ class Node():
 
     @staticmethod
     def load(path, name, cluster):
+        """
+        Load a node from from the path on disk to the config files, the node name and the
+        cluster the node is part of.
+        """
         node_path = os.path.join(path, name)
         filename = os.path.join(node_path, 'node.conf')
         with open(filename, 'r') as f:
@@ -50,7 +70,7 @@ class Node():
             initial_token = None
             if 'initial_token' in data:
                 initial_token = data['initial_token']
-            node = Node(data['name'], cluster, data['auto_bootstrap'], itf['thrift'], itf['storage'], data['jmx_port'], initial_token, save=False)
+            node = Node(data['name'], cluster, data['auto_bootstrap'], tuple(itf['thrift']), tuple(itf['storage']), data['jmx_port'], initial_token, save=False)
             node.status = data['status']
             if 'pid' in data:
                 node.pid = int(data['pid'])
@@ -62,22 +82,28 @@ class Node():
         except KeyError as k:
             raise common.LoadError("Error Loading " + filename + ", missing property: " + str(k))
 
-    def get_directories(self):
-        dirs = {}
-        for i in ['data', 'commitlogs', 'saved_caches', 'logs', 'conf', 'bin']:
-            dirs[i] = os.path.join(self.cluster.get_path(), self.name, i)
-        return dirs
-
     def get_path(self):
+        """
+        Returns the path to this node top level directory (where config/data is stored)
+        """
         return os.path.join(self.cluster.get_path(), self.name)
 
     def get_conf_dir(self):
+        """
+        Returns the path to the directory where Cassandra config are located
+        """
         return os.path.join(self.get_path(), 'conf')
 
     def address(self):
+        """
+        Returns the IP use by this node for internal communication
+        """
         return self.network_interfaces['storage'][0]
 
     def get_cassandra_dir(self):
+        """
+        Returns the path to the cassandra source directory used by this node.
+        """
         if self.__cassandra_dir is None:
             return self.cluster.get_cassandra_dir()
         else:
@@ -85,6 +111,9 @@ class Node():
             return self.__cassandra_dir
 
     def set_cassandra_dir(self, ccassandra_dir=None, cassandra_version=None, verbose=False):
+        """
+        Sets the path to the cassandra source directory for use by this node.
+        """
         if cassandra_version is None:
             self.__cassandra_dir = cassandra_dir
             if cassandra_dir is not None:
@@ -95,6 +124,16 @@ class Node():
         return self
 
     def set_configuration_options(self, values=None, batch_commitlog=None):
+        """
+        Set Cassandra configuration options.
+        ex:
+            node.set_configuration_options(values={
+                'hinted_handoff_enabled' : True,
+                'concurrent_writes' : 64,
+            })
+        The batch_commitlog option gives an easier way to switch to batch
+        commitlog (since it requires setting 2 options and unsetting one).
+        """
         if values is not None:
             for k, v in values.iteritems():
                 self.__config_options[k] = v
@@ -110,16 +149,13 @@ class Node():
 
         self.import_config_files()
 
-    def get_status_string(self):
-        if self.status == Status.UNINITIALIZED:
-            return "%s (%s)" % (Status.DOWN, "Not initialized")
-        else:
-            return self.status
-
     def show(self, only_status=False, show_cluster=True):
+        """
+        Print infos on this node configuration.
+        """
         self.__update_status()
         indent = ''.join([ " " for i in xrange(0, len(self.name) + 2) ])
-        print "%s: %s" % (self.name, self.get_status_string())
+        print "%s: %s" % (self.name, self.__get_status_string())
         if not only_status:
           if show_cluster:
               print "%s%s=%s" % (indent, 'cluster', self.cluster.name)
@@ -132,17 +168,30 @@ class Node():
               print "%s%s=%s" % (indent, 'pid', self.pid)
 
     def is_running(self):
+        """
+        Return true if the node is running
+        """
         self.__update_status()
         return self.status == Status.UP or self.status == Status.DECOMMISIONNED
 
     def is_live(self):
+        """
+        Return true if the node is live (it's run and is not decommissionned).
+        """
         self.__update_status()
         return self.status == Status.UP
 
     def logfilename(self):
+        """
+        Return the path to the current Cassandra log of this node.
+        """
         return os.path.join(self.get_path(), 'logs', 'system.log')
 
     def grep_log(self, expr):
+        """
+        Returns a list of lines matching the regular expression in parameter
+        in the Cassandra log of this node
+        """
         matchings = []
         pattern = re.compile(expr)
         with open(self.logfilename()) as f:
@@ -153,12 +202,23 @@ class Node():
         return matchings
 
     def mark_log(self):
+        """
+        Returns "a mark" to the current position of this node Cassandra log.
+        This is for use with the from_mark parameter of watch_log_for_* methods,
+        allowing to watch the log from the position when this method was called.
+        """
         with open(self.logfilename()) as f:
             f.seek(0, os.SEEK_END)
             return f.tell()
 
     # This will return when exprs are found or it timeouts
     def watch_log_for(self, exprs, from_mark=None, timeout=60):
+        """
+        Watch the log until one or more (regular) expression are found.
+        This methods when all the expressions have been found or the method
+        timeouts (a TimeoutError is then raised). On successful completion,
+        a list of pair (line matched, match object) is returned.
+        """
         elapsed = 0
         tofind = [exprs] if isinstance(exprs, basestring) else exprs
         tofind = [ re.compile(e) for e in tofind ]
@@ -189,16 +249,38 @@ class Node():
                         raise TimeoutError(time.strftime("%d %b %Y %H:%M:%S", time.gmtime()) + " [" + self.name + "] Missing: " + str([e.pattern for e in tofind]) + ":\n" + reads)
 
     def watch_log_for_death(self, nodes, from_mark=None, timeout=600):
+        """
+        Watch the log of this node until it detects that the provided other
+        nodes are marked dead. This method returns nothing but throw a
+        TimeoutError if all the requested node have not been found to be
+        marked dead before timeout sec.
+        A mark as returned by mark_log() can be used as the from_mark
+        parameter to start watching the log from a given position. Otherwise
+        the log is watched from the beginning.
+        """
         tofind = nodes if isinstance(nodes, list) else [nodes]
         tofind = [ "%s is now dead" % node.address() for node in tofind ]
         self.watch_log_for(tofind, from_mark=from_mark, timeout=timeout)
 
     def watch_log_for_alive(self, nodes, from_mark=None, timeout=60):
+        """
+        Watch the log of this node until it detects that the provided other
+        nodes are marked UP. This method works similarily to watch_log_for_death.
+        """
         tofind = nodes if isinstance(nodes, list) else [nodes]
         tofind = [ "%s is now UP" % node.address() for node in tofind ]
         self.watch_log_for(tofind, from_mark=from_mark, timeout=timeout)
 
     def start(self, join_ring=True, no_wait=False, verbose=False, update_pid=True, wait_other_notice=False, replace_token=None):
+        """
+        Start the node. Options includes:
+          - join_ring: if false, start the node with -Dcassandra.join_ring=False
+          - no_wait: by default, this method returns when the node is started and listening to clients.
+            If no_wait=True, the method returns sooner.
+          - wait_other_notice: if True, this method returns only when all other live node of the cluster
+            have marked this node UP.
+          - replace_token: start the node with the -Dcassandra.replace_token option.
+        """
         if self.is_running():
             raise NodeError("%s is already running" % self.name)
 
@@ -225,7 +307,7 @@ class Node():
                     if verbose:
                         print line.rstrip('\n')
 
-            self.update_pid(process)
+            self._update_pid(process)
 
             if not self.is_running():
                 raise NodeError("Error starting node %s" % self.name, process)
@@ -236,16 +318,14 @@ class Node():
 
         return process
 
-    def update_pid(self, process):
-        pidfile = os.path.join(self.get_path(), 'cassandra.pid')
-        try:
-            with open(pidfile, 'r') as f:
-                self.pid = int(f.readline().strip())
-        except IOError:
-            raise NodeError('Problem starting node %s' % self.name, process)
-        self.__update_status()
-
     def stop(self, wait=True, wait_other_notice=False):
+        """
+        Stop the node.
+          - wait: if True (the default), wait for the Cassandra process to be
+            really dead. Otherwise return after having sent the kill signal.
+          - wait_other_notice: return only when the other live nodes of the
+            cluster have marked this node has dead.
+        """
         if self.is_running():
             if wait_other_notice:
                 #tstamp = time.time()
@@ -349,16 +429,16 @@ class Node():
                 shutil.rmtree(full_dir)
                 os.mkdir(full_dir)
 
-    def run_sstable2json(self, keyspace, datafile, column_families, enumerate_keys=False):
+    def run_sstable2json(self, keyspace=None, datafile=None, column_families=None, enumerate_keys=False):
         cdir = self.get_cassandra_dir()
         sstable2json = os.path.join(cdir, 'bin', 'sstable2json')
         env = common.make_cassandra_env(cdir, self.get_path())
         datafiles = []
-        if not keyspace:
+        if keyspace is None:
             for k in self.list_keyspaces():
                 datafiles = datafiles + self.get_sstables(k, "")
-        elif not datafile:
-            if not column_families:
+        elif datafile is None:
+            if column_families is None:
                 datafiles = datafiles + self.get_sstables(keyspace, "")
             else:
                 for cf in column_families:
@@ -452,11 +532,16 @@ class Node():
         self.__update_log4j()
         self.__update_envfile()
 
+    def _save(self):
+        self.__update_yaml()
+        self.__update_log4j()
+        self.__update_envfile()
+
     def __update_config(self):
         dir_name = self.get_path()
         if not os.path.exists(dir_name):
             os.mkdir(dir_name)
-            for dir in self.get_directories():
+            for dir in self.__get_diretories():
                 os.mkdir(os.path.join(dir_name, dir))
 
         filename = os.path.join(dir_name, 'node.conf')
@@ -556,3 +641,25 @@ class Node():
             if old_status == Status.UP and self.status == Status.DOWN:
                 self.pid = None
             self.__update_config()
+
+    def __get_diretories(self):
+        dirs = {}
+        for i in ['data', 'commitlogs', 'saved_caches', 'logs', 'conf', 'bin']:
+            dirs[i] = os.path.join(self.cluster.get_path(), self.name, i)
+        return dirs
+
+    def __get_status_string(self):
+        if self.status == Status.UNINITIALIZED:
+            return "%s (%s)" % (Status.DOWN, "Not initialized")
+        else:
+            return self.status
+
+    def _update_pid(self, process):
+        pidfile = os.path.join(self.get_path(), 'cassandra.pid')
+        try:
+            with open(pidfile, 'r') as f:
+                self.pid = int(f.readline().strip())
+        except IOError:
+            raise NodeError('Problem starting node %s' % self.name, process)
+        self.__update_status()
+

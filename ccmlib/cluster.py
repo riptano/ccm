@@ -1,6 +1,6 @@
 # ccm clusters
 
-import common, yaml, os, subprocess, shutil, repository, time
+import common, yaml, os, subprocess, shutil, repository, time, re
 from node import Node, NodeError
 
 class Cluster():
@@ -18,7 +18,11 @@ class Cluster():
 
         try:
             if cassandra_version is None:
-                self.__cassandra_dir = cassandra_dir
+                # at this point, cassandra_dir should always not be None, but
+                # we keep this for backward compatibility (in loading old cluster)
+                if cassandra_dir is not None:
+                    self.__cassandra_dir = os.path.abspath(cassandra_dir)
+                    self.__version = self.__get_version_from_build()
             else:
                 self.__cassandra_dir = repository.setup(cassandra_version, verbose)
                 self.__version = cassandra_version
@@ -27,7 +31,8 @@ class Cluster():
                 common.validate_cassandra_dir(self.__cassandra_dir)
                 self.__update_config()
         except:
-            shutil.rmtree(self.get_path())
+            if create_directory:
+                shutil.rmtree(self.get_path())
             raise
 
     def set_partitioner(self, partitioner):
@@ -39,8 +44,10 @@ class Cluster():
         if cassandra_version is None:
             self.__cassandra_dir = cassandra_dir
             common.validate_cassandra_dir(cassandra_dir)
+            self.__version = self.__get_version_from_build()
         else:
             self.__cassandra_dir = repository.setup(cassandra_version, verbose=verbose)
+            self.__version = cassandra_version
         self.__update_config()
         for node in self.nodes.values():
             node.import_config_files()
@@ -54,8 +61,6 @@ class Cluster():
         return [ self.nodes[name] for name in sorted(self.nodes.keys()) ]
 
     def version(self):
-        if self.__version is None:
-            raise common.CCMError("Version is not set")
         return self.__version
 
     @staticmethod
@@ -65,14 +70,16 @@ class Cluster():
         with open(filename, 'r') as f:
             data = yaml.load(f)
         try:
-            cluster = Cluster(path, data['name'], create_directory=False)
+            cassandra_dir = None
+            if 'cassandra_dir' in data:
+                cassandra_dir = data['cassandra_dir']
+                repository.validate(cassandra_dir)
+
+            cluster = Cluster(path, data['name'], cassandra_dir=cassandra_dir, create_directory=False)
             node_list = data['nodes']
             seed_list = data['seeds']
             if 'partitioner' in data:
                 cluster.partitioner = data['partitioner']
-            if 'cassandra_dir' in data:
-                cluster.__cassandra_dir = data['cassandra_dir']
-                repository.validate(cluster.__cassandra_dir)
             if 'config_options' in data:
                 cluster._config_options = data['config_options']
         except KeyError as k:
@@ -92,6 +99,7 @@ class Cluster():
         if is_seed:
             self.seeds.append(node)
         self.__update_config()
+        node._save()
         return self
 
     def populate(self, node_count, tokens=None):
@@ -189,7 +197,9 @@ class Cluster():
             if not node.is_running():
                 raise NodeError("Error starting {0}.".format(node.name), p)
 
-        if not no_wait:
+        if not no_wait and self.version() >= "0.8":
+            # 0.7 gossip messages seems less predictible that from 0.8 onwards and
+            # I don't care enough
             for node, mark in marks:
                 for other_node, _ in marks:
                     if other_node is not node:
@@ -258,6 +268,16 @@ class Cluster():
     def removeToken(self, token):
         self.nodetool("removeToken " + str(token))
 
+    def __get_version_from_build(self):
+        cassandra_dir = self.get_cassandra_dir()
+        build = os.path.join(cassandra_dir, 'build.xml')
+        with open(build) as f:
+            for line in f:
+                match = re.search('name="base\.version" value="([0-9.]+)[^"]*"', line)
+                if match:
+                    return match.group(1)
+        raise common.CCMError("Cannot find version")
+
     def __update_config(self):
         node_list = [ node.name for node in self.nodes.values() ]
         seed_list = [ node.name for node in self.seeds ]
@@ -274,5 +294,5 @@ class Cluster():
 
     def __update_pids(self, started):
         for node, p in started:
-            node.update_pid(p)
+            node._update_pid(p)
 

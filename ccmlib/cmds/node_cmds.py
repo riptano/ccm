@@ -242,9 +242,9 @@ class NodeJsonCmd(Cmd):
     def get_parser(self):
         usage = "usage: ccm node_name json [options] [file]"
         parser = self._get_default_parser(usage, self.description())
-        parser.add_option('-k', '--keyspace', type="string", dest="keyspace",
+        parser.add_option('-k', '--keyspace', type="string", dest="keyspace", default=None,
             help="The keyspace to use [use all keyspaces by default]")
-        parser.add_option('-c', '--column-families', type="string", dest="cfs",
+        parser.add_option('-c', '--column-families', type="string", dest="cfs", default=None,
             help="Comma separated list of column families to use (requires -k to be set)")
         parser.add_option('-e', '--enumerate-keys', action="store_true", dest="enumerate_keys",
             help="Only enumerate keys (i.e, call sstable2keys)", default=False)
@@ -254,14 +254,14 @@ class NodeJsonCmd(Cmd):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
         self.keyspace = options.keyspace
         self.column_families = None
-        if len(args) > 0:
-            self.datafile = args[0]
-            if not self.keyspace:
+        self.datafile = None
+        if len(args) > 1:
+            self.datafile = args[1]
+            if self.keyspace is None:
                 print >> sys.stderr, "You need a keyspace specified (option -k) if you specify a file"
                 exit(1)
-        elif options.cfs:
-            self.datafile = None
-            if not self.keyspace:
+        elif options.cfs is not None:
+            if self.keyspace is None:
                 print >> sys.stderr, "You need a keyspace specified (option -k) if you specify column families"
                 exit(1)
             self.column_families = options.cfs.split(',')
