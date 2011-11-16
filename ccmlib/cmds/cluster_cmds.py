@@ -24,6 +24,7 @@ def cluster_cmds():
         "updateconf",
         "cli",
         "setdir",
+        "bulkload",
     ]
 
 class ClusterCreateCmd(Cmd):
@@ -41,6 +42,10 @@ class ClusterCreateCmd(Cmd):
             help="Download and use provided cassandra version (take precedence over --cassandra-dir)", default=None)
         parser.add_option("--cassandra-dir", type="string", dest="cassandra_dir",
             help="Path to the cassandra directory to use [default %default]", default="./")
+        parser.add_option('-n', "--nodes", type="int", dest="nodes",
+            help="Populate the new cluster with that number of nodes", default=None)
+        parser.add_option('-s', "--start", action="store_true", dest="start_nodes",
+            help="Start nodes added through -s", default=False)
         return parser
 
     def validate(self, parser, options, args):
@@ -60,6 +65,15 @@ class ClusterCreateCmd(Cmd):
         if not self.options.no_switch:
             common.switch_cluster(self.path, self.name)
             print 'Current cluster is now: %s' % self.name
+
+        if self.options.nodes is not None:
+            try:
+                cluster.populate(self.options.nodes)
+                if self.options.start_nodes:
+                    cluster.start()
+            except common.ArgumentError as e:
+                print >> sys.stderr, str(e)
+                exit(1)
 
 class ClusterAddCmd(Cmd):
     def description(self):
@@ -310,6 +324,8 @@ class ClusterStopCmd(Cmd):
                 help="Print nodes that were not running", default=False)
         parser.add_option('--no-wait', action="store_true", dest="no_wait",
             help="Do not wait for the node to be stopped", default=False)
+        parser.add_option('-g', '--gently', action="store_true", dest="gently",
+            help="Ask gently", default=False)
         return parser
 
     def validate(self, parser, options, args):
@@ -317,7 +333,7 @@ class ClusterStopCmd(Cmd):
 
     def run(self):
         try:
-            not_running = self.cluster.stop(not self.options.no_wait)
+            not_running = self.cluster.stop(not self.options.no_wait, gently=self.options.gently)
             if self.options.verbose and len(not_running) > 0:
                 sys.out.write("The following nodes were not running: ")
                 for node in not_running:
@@ -414,3 +430,19 @@ class ClusterCliCmd(Cmd):
 
     def run(self):
         self.cluster.run_cli(self.options.cmds, self.options.verbose, self.cli_options)
+
+class ClusterBulkloadCmd(Cmd):
+    def description(self):
+        return "Bulkload files into the cluster"
+
+    def get_parser(self):
+        usage = "usage: ccm bulkload [options] [sstable_dir]"
+        parser = self._get_default_parser(usage, self.description(), ignore_unknown_options=True)
+        return parser
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, load_cluster=True)
+        self.loader_options = parser.get_ignored() + args
+
+    def run(self):
+        self.cluster.bulkload(self.loader_options)

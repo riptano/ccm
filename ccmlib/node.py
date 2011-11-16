@@ -318,7 +318,7 @@ class Node():
 
         return process
 
-    def stop(self, wait=True, wait_other_notice=False):
+    def stop(self, wait=True, wait_other_notice=False, gently=False):
         """
         Stop the node.
           - wait: if True (the default), wait for the Cassandra process to be
@@ -331,7 +331,10 @@ class Node():
                 #tstamp = time.time()
                 marks = [ (node, node.mark_log()) for node in self.cluster.nodes.values() if node.is_running() and node is not self ]
 
-            os.kill(self.pid, signal.SIGKILL)
+            if gently:
+                os.kill(self.pid, signal.SIGTERM)
+            else:
+                os.kill(self.pid, signal.SIGKILL)
 
             if wait_other_notice:
                 for node, mark in marks:
@@ -607,6 +610,10 @@ class Node():
         l = self.__log_level + ",stdout,R"
         common.replace_in_file(conf_file, append_pattern, append_pattern + l)
 
+        tool_conf_file = os.path.join(self.get_conf_dir(), common.LOG4J_TOOL_CONF)
+        tool_log_file = os.path.join(self.get_path(), 'logs', 'tools.log')
+        common.replace_in_file(tool_conf_file, append_pattern, append_pattern + tool_log_file)
+
     def __update_envfile(self):
         jmx_port_pattern='JMX_PORT=';
         conf_file = os.path.join(self.get_conf_dir(), common.CASSANDRA_ENV)
@@ -645,7 +652,7 @@ class Node():
     def __get_diretories(self):
         dirs = {}
         for i in ['data', 'commitlogs', 'saved_caches', 'logs', 'conf', 'bin']:
-            dirs[i] = os.path.join(self.cluster.get_path(), self.name, i)
+            dirs[i] = os.path.join(self.get_path(), i)
         return dirs
 
     def __get_status_string(self):

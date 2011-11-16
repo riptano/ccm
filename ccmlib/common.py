@@ -11,6 +11,7 @@ CASSANDRA_CONF_DIR= "conf"
 
 CASSANDRA_CONF = "cassandra.yaml"
 LOG4J_CONF = "log4j-server.properties"
+LOG4J_TOOL_CONF = "log4j-tools.properties"
 CASSANDRA_ENV = "cassandra-env.sh"
 CASSANDRA_SH = "cassandra.in.sh"
 

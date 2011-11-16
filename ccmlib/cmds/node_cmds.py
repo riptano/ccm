@@ -148,6 +148,8 @@ class NodeStopCmd(Cmd):
         parser = self._get_default_parser(usage, self.description())
         parser.add_option('--no-wait', action="store_true", dest="no_wait",
             help="Do not wait for the node to be stopped", default=False)
+        parser.add_option('-g', '--gently', action="store_true", dest="gently",
+            help="Ask gently", default=False)
         return parser
 
     def validate(self, parser, options, args):
@@ -155,7 +157,7 @@ class NodeStopCmd(Cmd):
 
     def run(self):
         try:
-            if not self.node.stop(not self.options.no_wait):
+            if not self.node.stop(not self.options.no_wait, gently=self.options.gently):
                 print >> sys.stderr, "%s is not running" % self.name
                 exit(1)
         except NodeError as e:

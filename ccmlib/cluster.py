@@ -2,6 +2,7 @@
 
 import common, yaml, os, subprocess, shutil, repository, time, re
 from node import Node, NodeError
+from bulkloader import BulkLoader
 
 class Cluster():
     def __init__(self, path, name, partitioner=None, cassandra_dir=None, create_directory=True, cassandra_version=None, verbose=False):
@@ -207,10 +208,10 @@ class Cluster():
 
         return started
 
-    def stop(self, wait=True):
+    def stop(self, wait=True, gently=False):
         not_running = []
         for node in self.nodes.values():
-            if not node.stop(wait):
+            if not node.stop(wait, gently=gently):
                 not_running.append(node)
         return not_running
 
@@ -267,6 +268,10 @@ class Cluster():
 
     def removeToken(self, token):
         self.nodetool("removeToken " + str(token))
+
+    def bulkload(self, options):
+        loader = BulkLoader(self)
+        loader.load(options)
 
     def __get_version_from_build(self):
         cassandra_dir = self.get_cassandra_dir()
