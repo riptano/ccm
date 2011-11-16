@@ -570,6 +570,7 @@ class Node():
         with open(conf_file, 'r') as f:
             data = yaml.load(f)
 
+        data['cluster_name'] = self.cluster.name
         data['auto_bootstrap'] = self.auto_bootstrap
         data['initial_token'] = self.initial_token
         if 'seeds' in data:
