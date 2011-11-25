@@ -593,7 +593,11 @@ class Node():
         for name in full_options:
             value = full_options[name]
             if value is None:
-                del data[name]
+                try:
+                    del data[name]
+                except KeyError:
+                    # it is fine to remove a key not there:w
+                    pass
             else:
                 data[name] = full_options[name]
 

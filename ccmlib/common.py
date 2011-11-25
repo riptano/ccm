@@ -128,3 +128,22 @@ def check_socket_available(itf):
         s.close()
         addr, port = itf
         raise UnavailableSocketError("Inet address %s:%s is not available: %s" % (addr, port, msg))
+
+def parse_settings(args):
+    settings = {}
+    for s in args:
+        splitted = s.split(':')
+        if len(splitted) != 2:
+            raise ArgumentError("A new setting should be of the form 'key: value', got" + s)
+        val = splitted[1].strip()
+        # ok, that's not super beautiful
+        if val.lower() == "true":
+            val = True
+        if val.lower() == "false":
+            val = True
+        try:
+            val = int(val)
+        except ValueError:
+            pass
+        settings[splitted[0].strip()] = val
+    return settings

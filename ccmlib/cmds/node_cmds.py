@@ -279,23 +279,31 @@ class NodeUpdateconfCmd(Cmd):
         return "Update the cassandra config files for this node (useful when updating cassandra)"
 
     def get_parser(self):
-        usage = "usage: ccm node_name updateconf [options]"
+        usage = "usage: ccm node_name updateconf [options] [ new_setting | ...  ], where new_setting should be a string of the form 'compaction_throughput_mb_per_sec: 32'"
         parser = self._get_default_parser(usage, self.description())
         parser.add_option('--no-hh', '--no-hinted-handoff', action="store_false",
             dest="hinted_handoff", default=True, help="Disable hinted handoff")
         parser.add_option('--batch-cl', '--batch-commit-log', action="store_true",
             dest="cl_batch", default=False, help="Set commit log to batch mode")
+        parser.add_option('--rt', '--rpc-timeout', action="store", type='int',
+            dest="rpc_timeout", help="Set rpc timeout")
         return parser
 
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
+        args = args[1:]
+        try:
+            self.setting = common.parse_settings(args)
+        except common.ArgumentError as e:
+            print >> sys.stderr, str(e)
+            exit(1)
 
     def run(self):
-        opts = {
-            'hinted_handoff_enabled' : self.options.hinted_handoff,
-            'rpc_timeout_in_ms' : self.options.rpc_timeout
-        }
-        self.node.set_configuration_options(values=opts, batch_commitlog=self.options.cl_batch)
+        self.setting['hinted_handoff_enabled'] = self.options.hinted_handoff
+        if self.options.rpc_timeout is not None:
+            self.setting['rpc_timeout_in_ms'] = self.options.rpc_timeout
+        self.node.set_configuration_options(values=self.setting, batch_commitlog=self.options.cl_batch)
+
 
 class NodeStressCmd(Cmd):
     def description(self):
