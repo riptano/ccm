@@ -93,31 +93,45 @@ class Cluster():
 
         return cluster
 
-    def add(self, node, is_seed):
+    def add(self, node, is_seed, data_center=None):
         if node.name in self.nodes:
             raise common.ArgumentError('Cannot create existing node %s' % node.name)
         self.nodes[node.name] = node
         if is_seed:
             self.seeds.append(node)
         self.__update_config()
+        node.data_center = data_center
         node._save()
+        if data_center is not None:
+            self.__update_topology_files()
         return self
 
-    def populate(self, node_count, tokens=None):
-        if node_count < 1 or node_count >= 10:
-            raise common.ArgumentError('invalid node count %s' % node_count)
+    def populate(self, nodes, tokens=None):
+        node_count = nodes
+        dcs = []
+        if isinstance(nodes, list):
+            self.set_configuration_options(values={'endpoint_snitch' : 'org.apache.cassandra.locator.PropertyFileSnitch'})
+            node_count = 0
+            i = 0
+            for c in nodes:
+                i = i + 1
+                node_count = node_count + c
+                for x in xrange(0, c):
+                    dcs.append('dc%d' % i)
+
+        if node_count < 1:
+            raise common.ArgumentError('invalid node count %s' % nodes)
 
         for i in xrange(1, node_count + 1):
-            if 'node%s' % i in self.nodes:
+            if 'node%s' % i in self.nodes.values():
                 raise common.ArgumentError('Cannot create existing node node%s' % i)
 
         for i in xrange(1, node_count + 1):
             tk = None
-            if tokens is not None:
-                try:
-                    tk = tokens[i-1]
-                except IndexError:
-                    pass
+            if tokens is not None and i-1 < len(tokens):
+                tk = tokens[i-1]
+            dc = dcs[i-1] if i-1 < len(dcs) else None
+
             node = Node('node%s' % i,
                         self,
                         False,
@@ -125,7 +139,7 @@ class Cluster():
                         ('127.0.0.%s' % i, 7000),
                         str(7000 + i * 100),
                         tk)
-            self.add(node, True)
+            self.add(node, True, dc)
             self.__update_config()
         return self
 
@@ -245,8 +259,21 @@ class Cluster():
         livenodes[0].run_cli(cmds, show_output, cli_options)
 
     def set_configuration_options(self, values=None, batch_commitlog=None):
+        if values is not None:
+            for k, v in values.iteritems():
+                self._config_options[k] = v
+        if batch_commitlog is not None:
+            if batch_commitlog:
+                self._config_options["commitlog_sync"] = "batch"
+                self._config_options["commitlog_sync_batch_window_in_ms"] = 5
+                self._config_options["commitlog_sync_period_in_ms"] = None
+            else:
+                self._config_options["commitlog_sync"] = "periodic"
+                self._config_options["commitlog_sync_period_in_ms"] = 10000
+                self._config_options["commitlog_sync_batch_window_in_ms"] = None
+
         for node in self.nodes.values():
-            node.set_configuration_options(values=values, batch_commitlog=batch_commitlog)
+            node.import_config_files()
         return self
 
     def flush(self):
@@ -301,3 +328,17 @@ class Cluster():
         for node, p in started:
             node._update_pid(p)
 
+    def __update_topology_files(self):
+        dcs = [('default', 'dc1')]
+        for node in self.nodelist():
+            if node.data_center is not None:
+                dcs.append((node.address(), node.data_center))
+
+        content = ""
+        for k, v in dcs:
+            content = "%s%s=%s:r1\n" % (content, k, v)
+
+        for node in self.nodelist():
+            topology_file = os.path.join(node.get_conf_dir(), 'cassandra-topology.properties')
+            with open(topology_file, 'w') as f:
+                f.write(content)

@@ -49,6 +49,7 @@ class Node():
         self.jmx_port = jmx_port
         self.initial_token = initial_token
         self.pid = None
+        self.data_center = None
         self.__config_options = {}
         self.__cassandra_dir = None
         self.__log_level = "INFO"
@@ -78,6 +79,8 @@ class Node():
                 node.__cassandra_dir = data['cassandra_dir']
             if 'config_options' in data:
                 node.__config_options = data['config_options']
+            if 'data_center' in data:
+                node.data_center = data['data_center']
             return node
         except KeyError as k:
             raise common.LoadError("Error Loading " + filename + ", missing property: " + str(k))
@@ -554,7 +557,7 @@ class Node():
             'auto_bootstrap' : self.auto_bootstrap,
             'interfaces' : self.network_interfaces,
             'jmx_port' : self.jmx_port,
-            'config_options' : self.__config_options
+            'config_options' : self.__config_options,
         }
         if self.pid:
             values['pid'] = self.pid
@@ -562,6 +565,8 @@ class Node():
             values['initial_token'] = self.initial_token
         if self.__cassandra_dir is not None:
             values['cassandra_dir'] = self.__cassandra_dir
+        if self.data_center:
+            values['data_center'] = self.data_center
         with open(filename, 'w') as f:
             yaml.safe_dump(values, f)
 
@@ -674,4 +679,3 @@ class Node():
         except IOError:
             raise NodeError('Problem starting node %s' % self.name, process)
         self.__update_status()
-

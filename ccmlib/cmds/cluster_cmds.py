@@ -27,6 +27,15 @@ def cluster_cmds():
         "bulkload",
     ]
 
+def parse_populate_count(v):
+    if v is None:
+        return None
+    tmp = v.split(':')
+    if len(tmp) == 1:
+        return int(tmp)
+    else:
+        return [ int(t) for t in tmp ]
+
 class ClusterCreateCmd(Cmd):
     def description(self):
         return "Create a new cluster"
@@ -42,14 +51,15 @@ class ClusterCreateCmd(Cmd):
             help="Download and use provided cassandra version (take precedence over --cassandra-dir)", default=None)
         parser.add_option("--cassandra-dir", type="string", dest="cassandra_dir",
             help="Path to the cassandra directory to use [default %default]", default="./")
-        parser.add_option('-n', "--nodes", type="int", dest="nodes",
-            help="Populate the new cluster with that number of nodes", default=None)
+        parser.add_option('-n', '--nodes', type="string", dest="nodes",
+            help="Populate the new cluster with that number of nodes (a single int or a colon-separate list of ints for multi-dc setups)")
         parser.add_option('-s', "--start", action="store_true", dest="start_nodes",
             help="Start nodes added through -s", default=False)
         return parser
 
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, cluster_name=True)
+        self.nodes = parse_populate_count(options.nodes)
 
     def run(self):
         try:
@@ -66,9 +76,9 @@ class ClusterCreateCmd(Cmd):
             common.switch_cluster(self.path, self.name)
             print 'Current cluster is now: %s' % self.name
 
-        if self.options.nodes is not None:
+        if self.nodes is not None:
             try:
-                cluster.populate(self.options.nodes)
+                cluster.populate(self.nodes)
                 if self.options.start_nodes:
                     cluster.start()
             except common.ArgumentError as e:
@@ -96,6 +106,8 @@ class ClusterAddCmd(Cmd):
             help="JMX port for the node", default="7199")
         parser.add_option('-n', '--token', type="string", dest="initial_token",
             help="Initial token for the node", default=None)
+        parser.add_option('-d', '--data-center', type="string", dest="data_center",
+            help="Datacenter name this node is part of", default=None)
         return parser
 
     def validate(self, parser, options, args):
@@ -119,7 +131,7 @@ class ClusterAddCmd(Cmd):
     def run(self):
         try:
             node = Node(self.name, self.cluster, self.options.boostrap, self.thrift, self.storage, self.jmx_port, self.initial_token)
-            self.cluster.add(node, self.options.is_seed)
+            self.cluster.add(node, self.options.is_seed, self.options.data_center)
         except common.ArgumentError as e:
             print >> sys.stderr, str(e)
             exit(1)
@@ -131,13 +143,13 @@ class ClusterPopulateCmd(Cmd):
     def get_parser(self):
         usage = "usage: ccm populate -n <node count>"
         parser = self._get_default_parser(usage, self.description())
-        parser.add_option('-n', '--nodes', type="int", dest="nodes",
-            help="Number of nodes to populate with")
+        parser.add_option('-n', '--nodes', type="string", dest="nodes",
+            help="Number of nodes to populate with (a single int or a colon-separate list of ints for multi-dc setups)")
         return parser
 
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, load_cluster=True)
-        self.nodes = options.nodes
+        self.nodes = parse_populate_count(options.nodes)
 
     def run(self):
         try:
