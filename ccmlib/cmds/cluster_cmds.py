@@ -32,7 +32,7 @@ def parse_populate_count(v):
         return None
     tmp = v.split(':')
     if len(tmp) == 1:
-        return int(tmp)
+        return int(tmp[0])
     else:
         return [ int(t) for t in tmp ]
 
