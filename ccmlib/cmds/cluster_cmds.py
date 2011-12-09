@@ -25,6 +25,7 @@ def cluster_cmds():
         "cli",
         "setdir",
         "bulkload",
+        "setlog",
     ]
 
 def parse_populate_count(v):
@@ -463,3 +464,25 @@ class ClusterBulkloadCmd(Cmd):
 
     def run(self):
         self.cluster.bulkload(self.loader_options)
+
+class ClusterSetlogCmd(Cmd):
+    def description(self):
+        return "Set log level (INFO, DEBUG, ...) for all node of the cluster - require a node restart"
+
+    def get_parser(self):
+        usage = "usage: ccm setlog [options] level"
+        return self._get_default_parser(usage, self.description())
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, load_cluster=True)
+        if len(args) == 0:
+            print >> sys.stderr, 'Missing log level'
+            parser.print_help()
+        self.level = args[0]
+
+    def run(self):
+        try:
+            self.cluster.set_log_level(self.level)
+        except common.ArgumentError as e:
+            print >> sys.stderr, str(e)
+            exit(1)
