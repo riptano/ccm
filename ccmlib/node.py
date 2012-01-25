@@ -117,7 +117,7 @@ class Node():
         """
         Sets the path to the cassandra source directory for use by this node.
         """
-        if cassandra_version is None:
+        if cassandra_version is None and git_branch is None:
             self.__cassandra_dir = cassandra_dir
             if cassandra_dir is not None:
                 common.validate_cassandra_dir(cassandra_dir)
