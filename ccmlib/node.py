@@ -113,7 +113,7 @@ class Node():
             common.validate_cassandra_dir(self.__cassandra_dir)
             return self.__cassandra_dir
 
-    def set_cassandra_dir(self, ccassandra_dir=None, cassandra_version=None, verbose=False):
+    def set_cassandra_dir(self, ccassandra_dir=None, cassandra_version=None, git_branch=None, verbose=False):
         """
         Sets the path to the cassandra source directory for use by this node.
         """
@@ -122,7 +122,7 @@ class Node():
             if cassandra_dir is not None:
                 common.validate_cassandra_dir(cassandra_dir)
         else:
-            self.__cassandra_dir = repository.setup(cassandra_version, verbose=verbose)
+            self.__cassandra_dir = repository.setup(cassandra_version, git_branch, verbose=verbose)
         self.import_config_files()
         return self
 

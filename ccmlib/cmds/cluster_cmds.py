@@ -49,7 +49,9 @@ class ClusterCreateCmd(Cmd):
         parser.add_option('-p', '--partitioner', type="string", dest="partitioner",
             help="Set the cluster partitioner class")
         parser.add_option('-v', "--cassandra-version", type="string", dest="cassandra_version",
-            help="Download and use provided cassandra version (take precedence over --cassandra-dir)", default=None)
+            help="Download and use provided cassandra version (take precedence over --cassandra-dir).", default=None)
+        parser.add_option('-b', "--git-branch", type="string", dest="git_branch",
+            help="Clone the given branch from the git repository (take precedence over --cassandra-dir and --cassandra-version).", default=None)
         parser.add_option("--cassandra-dir", type="string", dest="cassandra_dir",
             help="Path to the cassandra directory to use [default %default]", default="./")
         parser.add_option('-n', '--nodes', type="string", dest="nodes",
@@ -64,7 +66,7 @@ class ClusterCreateCmd(Cmd):
 
     def run(self):
         try:
-            cluster = Cluster(self.path, self.name, cassandra_dir=self.options.cassandra_dir, cassandra_version=self.options.cassandra_version, verbose=True)
+            cluster = Cluster(self.path, self.name, cassandra_dir=self.options.cassandra_dir, cassandra_version=self.options.cassandra_version, git_branch=self.options.git_branch, verbose=True)
         except OSError as e:
             cluster_dir = os.path.join(self.path, self.name)
             print >> sys.stderr, 'Cannot create cluster: %s' % str(e)
@@ -268,6 +270,8 @@ class ClusterSetdirCmd(Cmd):
     def get_parser(self):
         usage = "usage: ccm setdir [options]"
         parser =  self._get_default_parser(usage, self.description())
+        parser.add_option('-b', "--git-branch", type="string", dest="git_branch",
+            help="Clone the given git branch (take precedence over --cassandra-dir and --cassandra-version)", default=None)
         parser.add_option('-v', "--cassandra-version", type="string", dest="cassandra_version",
             help="Download and use provided cassandra version (take precedence over --cassandra-dir)", default=None)
         parser.add_option("--cassandra-dir", type="string", dest="cassandra_dir",
@@ -279,7 +283,7 @@ class ClusterSetdirCmd(Cmd):
 
     def run(self):
         try:
-            self.cluster.set_cassandra_dir(cassandra_dir=self.options.cassandra_dir, cassandra_version=self.options.cassandra_version, verbose=True)
+            self.cluster.set_cassandra_dir(cassandra_dir=self.options.cassandra_dir, cassandra_version=self.options.cassandra_version, git_branch=self.options.git_branch, verbose=True)
         except common.ArgumentError as e:
             print >> sys.stderr, str(e)
             exit(1)
