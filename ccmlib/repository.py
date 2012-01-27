@@ -39,15 +39,15 @@ def clone_development(git_branch, verbose=False):
                     target_dir
             )
             # make sure we're on the right git branch. Then pull.
-            if verbose:
-                print "checking out branch %s" % git_branch
-            out = subprocess.call(['git', 'checkout', '-b', git_branch, 
-                    'origin/' + git_branch], cwd=target_dir, 
-                    stdout=lf, stderr=lf)
-            if int(out) != 0:
-                shutil.rmtree(target_dir)
-                raise Exception("Could not check out git branch %s. Is this a valid branch name?" % git_branch)
-            
+            if git_branch != 'trunk':
+                if verbose:
+                    print "checking out branch %s" % git_branch
+                out = subprocess.call(['git', 'checkout', '-b', git_branch, 
+                        'origin/' + git_branch], cwd=target_dir, 
+                        stdout=lf, stderr=lf)
+                if int(out) != 0:
+                    shutil.rmtree(target_dir)
+                    raise Exception("Could not check out git branch %s. Is this a valid branch name? (output was %d)" % (git_branch, int(out)))
 
         if verbose:
             print "running git pull"
