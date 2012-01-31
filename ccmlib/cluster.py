@@ -5,7 +5,7 @@ from node import Node, NodeError
 from bulkloader import BulkLoader
 
 class Cluster():
-    def __init__(self, path, name, partitioner=None, cassandra_dir=None, create_directory=True, cassandra_version=None, verbose=False):
+    def __init__(self, path, name, partitioner=None, cassandra_dir=None, create_directory=True, cassandra_version=None, git_branch=None, verbose=False):
         self.name = name
         self.nodes = {}
         self.seeds = []
@@ -18,15 +18,18 @@ class Cluster():
             os.mkdir(self.get_path())
 
         try:
-            if cassandra_version is None:
+            if cassandra_version is None and git_branch is None:
                 # at this point, cassandra_dir should always not be None, but
                 # we keep this for backward compatibility (in loading old cluster)
                 if cassandra_dir is not None:
                     self.__cassandra_dir = os.path.abspath(cassandra_dir)
                     self.__version = self.__get_version_from_build()
             else:
-                self.__cassandra_dir = repository.setup(cassandra_version, verbose)
-                self.__version = cassandra_version
+                self.__cassandra_dir = repository.setup(cassandra_version, git_branch, verbose)
+                if git_branch:
+                    self.__version = git_branch
+                else:
+                    self.__version = cassandra_version
 
             if create_directory:
                 common.validate_cassandra_dir(self.__cassandra_dir)
@@ -41,14 +44,18 @@ class Cluster():
         self.__update_config()
         return self
 
-    def set_cassandra_dir(self, cassandra_dir=None, cassandra_version=None, verbose=False):
-        if cassandra_version is None:
+    def set_cassandra_dir(self, cassandra_dir=None, cassandra_version=None, git_branch=None, verbose=False):
+        if cassandra_version is None and git_branch is None:
+            # cassandra_dir specifies
             self.__cassandra_dir = cassandra_dir
             common.validate_cassandra_dir(cassandra_dir)
             self.__version = self.__get_version_from_build()
         else:
-            self.__cassandra_dir = repository.setup(cassandra_version, verbose=verbose)
-            self.__version = cassandra_version
+            self.__cassandra_dir = repository.setup(cassandra_version, git_branch, verbose=verbose)
+            if git_branch:
+                self._version = git_branch
+            else:
+                self.__version = cassandra_version
         self.__update_config()
         for node in self.nodes.values():
             node.import_config_files()
