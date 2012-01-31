@@ -152,9 +152,9 @@ class Cluster():
             if not node.name in self.nodes:
                 return
 
-            del self.nodes[self.node.name]
+            del self.nodes[node.name]
             if node in self.seeds:
-                self.seeds.remove(self.node)
+                self.seeds.remove(node)
             self.__update_config()
             node.stop()
             shutil.rmtree(node.get_path())
