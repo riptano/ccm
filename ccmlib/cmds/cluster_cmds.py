@@ -49,7 +49,7 @@ class ClusterCreateCmd(Cmd):
         parser.add_option('-p', '--partitioner', type="string", dest="partitioner",
             help="Set the cluster partitioner class")
         parser.add_option('-v', "--cassandra-version", type="string", dest="cassandra_version",
-            help="Download and use provided cassandra version (take precedence over --cassandra-dir)", default=None)
+            help="Download and use provided cassandra version. If version is of the form 'git:<branch name>', then the specified branch will be downloaded from the git repo and compiled. (takes precedence over --cassandra-dir)", default=None)
         parser.add_option("--cassandra-dir", type="string", dest="cassandra_dir",
             help="Path to the cassandra directory to use [default %default]", default="./")
         parser.add_option('-n', '--nodes', type="string", dest="nodes",
@@ -269,7 +269,7 @@ class ClusterSetdirCmd(Cmd):
         usage = "usage: ccm setdir [options]"
         parser =  self._get_default_parser(usage, self.description())
         parser.add_option('-v', "--cassandra-version", type="string", dest="cassandra_version",
-            help="Download and use provided cassandra version (take precedence over --cassandra-dir)", default=None)
+            help="Download and use provided cassandra version. If version is of the form 'git:<branch name>', then the specified branch will be downloaded from the git repo and compiled. (takes precedence over --cassandra-dir)", default=None)
         parser.add_option("--cassandra-dir", type="string", dest="cassandra_dir",
             help="Path to the cassandra directory to use [default %default]", default="./")
         return parser

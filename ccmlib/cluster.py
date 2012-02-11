@@ -62,7 +62,10 @@ class Cluster():
         return [ self.nodes[name] for name in sorted(self.nodes.keys()) ]
 
     def version(self):
-        return self.__version
+        if self.__version[0:4] == 'git:':
+            return self.__version[4:]
+        else:
+            return self.__version
 
     @staticmethod
     def load(path, name):
