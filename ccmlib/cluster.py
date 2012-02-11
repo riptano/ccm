@@ -25,8 +25,9 @@ class Cluster():
                     self.__cassandra_dir = os.path.abspath(cassandra_dir)
                     self.__version = self.__get_version_from_build()
             else:
-                self.__cassandra_dir = repository.setup(cassandra_version, verbose)
-                self.__version = cassandra_version
+                dir, v = repository.setup(cassandra_version, verbose)
+                self.__cassandra_dir = dir
+                self.__version = v if v is not None else self.__get_version_from_build()
 
             if create_directory:
                 common.validate_cassandra_dir(self.__cassandra_dir)
@@ -47,8 +48,9 @@ class Cluster():
             common.validate_cassandra_dir(cassandra_dir)
             self.__version = self.__get_version_from_build()
         else:
-            self.__cassandra_dir = repository.setup(cassandra_version, verbose=verbose)
-            self.__version = cassandra_version
+            dir, v = repository.setup(cassandra_version, verbose)
+            self.__cassandra_dir = dir
+            self.__version = v if v is not None else self.__get_version_from_build()
         self.__update_config()
         for node in self.nodes.values():
             node.import_config_files()

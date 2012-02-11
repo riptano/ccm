@@ -5,18 +5,46 @@ import os, shutil, urllib2, tarfile, tempfile, subprocess, stat
 import common
 
 ARCHIVE="http://archive.apache.org/dist/cassandra"
+GIT_REPO="http://git-wip-us.apache.org/repos/asf/cassandra.git"
 
 def setup(version, verbose=False):
-    cdir = version_directory(version)
-    if cdir is None:
-        download_version(version, verbose=verbose)
+    if version.startswith('git:'):
+        clone_development(version, verbose=verbose)
+        return (version_directory(version), None)
+    else:
         cdir = version_directory(version)
-    return cdir
+        if cdir is None:
+            download_version(version, verbose=verbose)
+            cdir = version_directory(version)
+        return (cdir, version)
 
 def validate(path):
     if path.startswith(__get_dir()):
         _, version = os.path.split(os.path.normpath(path))
         setup(version)
+
+def clone_development(version, verbose=False):
+    target_dir = os.path.join(__get_dir(), version.replace(':', '_')) # handle git branches like 'git:trunk'.
+    git_branch = version[4:] # the part of the version after the 'git:'
+    logfile = os.path.join(__get_dir(), "last.log")
+    with open(logfile, 'w') as lf:
+        if not os.path.exists(target_dir):
+            # development branch doesn't exist. Check it out.
+            if verbose:
+                print "Cloning Cassandra"
+            subprocess.call(['git', 'clone', GIT_REPO, target_dir], cwd=__get_dir(), stdout=lf, stderr=lf)
+        else: # branch is already checked out. Do a fetch.
+            out = subprocess.call(['git', 'fetch', 'origin'], cwd=target_dir, stdout=lf, stderr=lf)
+        # now check out the right version
+        if verbose:
+            print "Checking out requested branch (origin/%s)" % git_branch
+        out = subprocess.call(['git', 'checkout', 'origin/' + git_branch], cwd=target_dir, stdout=lf, stderr=lf)
+        if int(out) != 0:
+            shutil.rmtree(target_dir)
+            raise Exception("Could not check out git branch %s. Is this a valid branch name? (see last.log for details)" % git_branch)
+
+        # now compile
+        compile_version(git_branch, target_dir, verbose)
 
 def download_version(version, url=None, verbose=False):
     u = "%s/%s/apache-cassandra-%s-src.tar.gz" % (ARCHIVE, version.split('-')[0], version) if url is None else url
@@ -34,28 +62,8 @@ def download_version(version, url=None, verbose=False):
             shutil.rmtree(target_dir)
         shutil.move(os.path.join(__get_dir(), dir), target_dir)
 
-        # compiling cassandra and the stress tool
-        logfile = os.path.join(__get_dir(), "last.log")
-        if verbose:
-            print "Compiling Cassandra %s ..." % version
-        with open(logfile, 'w') as lf:
-            lf.write("--- Cassandra build -------------------\n")
-            if subprocess.call(['ant', 'build'], cwd=target_dir, stdout=lf, stderr=lf) is not 0:
-                raise common.CCMError("Error compiling Cassandra. See %s for details" % logfile)
+        compile_version(version, target_dir, verbose=verbose)
 
-            lf.write("\n\n--- cassandra/stress build ------------\n")
-            stress_dir = os.path.join(target_dir, "tools", "stress") if version >= "0.8.0" else os.path.join(target_dir, "contrib", "stress")
-            try:
-                # set permissions correctly, seems to not always be the case
-                stress_bin_dir = os.path.join(stress_dir, 'bin')
-                for f in os.listdir(stress_bin_dir):
-                    full_path = os.path.join(stress_bin_dir, f)
-                    os.chmod(full_path, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
-
-                if subprocess.call(['ant', 'build'], cwd=stress_dir, stdout=lf, stderr=lf) is not 0:
-                    raise common.CCMError("Error compiling Cassandra stress tool.  See %s for details (you will still be able to use ccm but not the stress related commands)" % logfile)
-            except IOError as e:
-                raise common.CCMError("Error compiling Cassandra stress tool: %s (you will still be able to use ccm but not the stress related commands)" % str(e))
     except urllib2.URLError as e:
         msg = "Invalid version %s" % version if url is None else "Invalid url %s" % url
         msg = msg + " (underlying error is: %s)" % str(e)
@@ -63,7 +71,37 @@ def download_version(version, url=None, verbose=False):
     except tarfile.ReadError as e:
         raise common.ArgumentError("Unable to uncompress downloaded file: %s" % str(e))
 
+def compile_version(version, target_dir, verbose=False):
+    # compiling cassandra and the stress tool
+    logfile = os.path.join(__get_dir(), "last.log")
+    if verbose:
+        print "Compiling Cassandra %s ..." % version
+    with open(logfile, 'w') as lf:
+        lf.write("--- Cassandra build -------------------\n")
+        if subprocess.call(['ant', 'build'], cwd=target_dir, stdout=lf, stderr=lf) is not 0:
+            raise common.CCMError("Error compiling Cassandra. See %s for details" % logfile)
+
+        lf.write("\n\n--- cassandra/stress build ------------\n")
+        stress_dir = os.path.join(target_dir, "tools", "stress") if (
+                version >= "0.8.0") else \
+                os.path.join(target_dir, "contrib", "stress")
+        try:
+            # set permissions correctly, seems to not always be the case
+            stress_bin_dir = os.path.join(stress_dir, 'bin')
+            for f in os.listdir(stress_bin_dir):
+                full_path = os.path.join(stress_bin_dir, f)
+                os.chmod(full_path, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
+
+            if subprocess.call(['ant', 'build'], cwd=stress_dir, stdout=lf, stderr=lf) is not 0:
+                raise common.CCMError("Error compiling Cassandra stress tool.  "
+                        "See %s for details (you will still be able to use ccm "
+                        "but not the stress related commands)" % logfile)
+        except IOError as e:
+            raise common.CCMError("Error compiling Cassandra stress tool: %s (you will "
+            "still be able to use ccm but not the stress related commands)" % str(e))
+
 def version_directory(version):
+    version = version.replace(':', '_') # handle git branches like 'git:trunk'.
     dir = os.path.join(__get_dir(), version)
     if os.path.exists(dir):
         try:
