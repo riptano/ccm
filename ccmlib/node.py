@@ -21,7 +21,7 @@ class TimeoutError(Exception):
         Exception.__init__(self, str(data))
 
 # Groups: 1 = cf, 2 = tmp or none, 3 = suffix (Compacted or Data.db)
-_sstable_regexp = re.compile('([\S])+-(tmp-)?[\S]+-([a-zA-Z.]+)')
+_sstable_regexp = re.compile('(?P<cf>[\S]+)+-(?P<tmp>tmp-)?[\S]+-(?P<suffix>[a-zA-Z.]+)')
 
 class Node():
     """
@@ -487,11 +487,10 @@ class Node():
     def data_size(self, live_data=True):
         data_dir = os.path.join(self.get_path(), 'data')
         size = 0
-        for dir in os.listdir(data_dir):
-            full_dir = os.path.join(data_dir, dir)
-            if os.path.isdir(full_dir) and not dir.endswith("system"):
-                for f in os.listdir(full_dir):
-                    full_path = os.path.join(full_dir,f)
+        for root, dirs, files in os.walk(data_dir):
+            if root.endswith("system"): continue
+            for f in files:
+                    full_path = os.path.join(root ,f)
                     if os.path.isfile(full_path):
                         if live_data:
                             m = _sstable_regexp.match(f)
@@ -501,7 +500,7 @@ class Node():
                                 continue
                         size += os.path.getsize(full_path)
         return size
-
+   
     def flush(self):
         self.nodetool("flush")
 
