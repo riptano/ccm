@@ -113,7 +113,7 @@ class Node():
             common.validate_cassandra_dir(self.__cassandra_dir)
             return self.__cassandra_dir
 
-    def set_cassandra_dir(self, ccassandra_dir=None, cassandra_version=None, verbose=False):
+    def set_cassandra_dir(self, cassandra_dir=None, cassandra_version=None, verbose=False):
         """
         Sets the path to the cassandra source directory for use by this node.
         """
