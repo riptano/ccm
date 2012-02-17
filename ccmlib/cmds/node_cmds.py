@@ -122,6 +122,8 @@ class NodeStartCmd(Cmd):
             help="Do not wait for cassandra node to be ready", default=False)
         parser.add_option('-j', '--dont-join-ring', action="store_true", dest="no_join_ring",
             help="Launch the instance without joining the ring", default=False)
+        parser.add_option('--jvm_arg', action="append", dest="jvm_args",
+            help="Specify a JVM argument", default=[])
         return parser
 
     def validate(self, parser, options, args):
@@ -131,7 +133,8 @@ class NodeStartCmd(Cmd):
         try:
             self.node.start(not self.options.no_join_ring,
                             no_wait=self.options.no_wait,
-                            verbose=self.options.verbose)
+                            verbose=self.options.verbose,
+                            jvm_args=self.options.jvm_args)
         except NodeError as e:
             print >> sys.stderr, str(e)
             print >> sys.stderr, "Standard error output is:"

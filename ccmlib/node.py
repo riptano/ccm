@@ -122,7 +122,8 @@ class Node():
             if cassandra_dir is not None:
                 common.validate_cassandra_dir(cassandra_dir)
         else:
-            self.__cassandra_dir = repository.setup(cassandra_version, verbose=verbose)
+            dir, v = repository.setup(cassandra_version, verbose=verbose)
+            self.__cassandra_dir = dir
         self.import_config_files()
         return self
 
@@ -274,7 +275,7 @@ class Node():
         tofind = [ "%s is now UP" % node.address() for node in tofind ]
         self.watch_log_for(tofind, from_mark=from_mark, timeout=timeout)
 
-    def start(self, join_ring=True, no_wait=False, verbose=False, update_pid=True, wait_other_notice=False, replace_token=None):
+    def start(self, join_ring=True, no_wait=False, verbose=False, update_pid=True, wait_other_notice=False, replace_token=None, jvm_args=[]):
         """
         Start the node. Options includes:
           - join_ring: if false, start the node with -Dcassandra.join_ring=False
@@ -300,6 +301,7 @@ class Node():
         args = [ cass_bin, '-p', pidfile, '-Dcassandra.join_ring=%s' % str(join_ring) ]
         if replace_token is not None:
             args = args + [ '-Dcassandra.replace_token=%s' % str(replace_token) ]
+        args = args + jvm_args
         process = subprocess.Popen(args, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
         if update_pid:
