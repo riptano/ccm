@@ -621,10 +621,6 @@ class Node():
         l = self.__log_level + ",stdout,R"
         common.replace_in_file(conf_file, append_pattern, append_pattern + l)
 
-        tool_conf_file = os.path.join(self.get_conf_dir(), common.LOG4J_TOOL_CONF)
-        tool_log_file = os.path.join(self.get_path(), 'logs', 'tools.log')
-        common.replace_in_file(tool_conf_file, append_pattern, append_pattern + tool_log_file)
-
     def __update_envfile(self):
         jmx_port_pattern='JMX_PORT=';
         conf_file = os.path.join(self.get_conf_dir(), common.CASSANDRA_ENV)
