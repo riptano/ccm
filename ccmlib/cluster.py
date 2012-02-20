@@ -11,6 +11,7 @@ class Cluster():
         self.seeds = []
         self.partitioner = partitioner
         self._config_options = {}
+        self.__log_level = "INFO"
         self.__path = path
         self.__version = None
         if create_directory:
@@ -85,6 +86,8 @@ class Cluster():
                 cluster.partitioner = data['partitioner']
             if 'config_options' in data:
                 cluster._config_options = data['config_options']
+            if 'log_level' in data:
+                cluster.__log_level = data['log_level']
         except KeyError as k:
             raise common.LoadError("Error Loading " + filename + ", missing property:" + k)
 
@@ -103,6 +106,7 @@ class Cluster():
             self.seeds.append(node)
         self.__update_config()
         node.data_center = data_center
+        node.set_log_level(self.__log_level)
         node._save()
         if data_center is not None:
             self.__update_topology_files()
@@ -232,6 +236,13 @@ class Cluster():
         return not_running
 
     def set_log_level(self, new_level):
+        known_level = [ 'TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR' ]
+        if new_level not in known_level:
+            raise common.ArgumentError("Unknown log level %s (use one of %s)" % (new_level, " ".join(known_level)))
+
+        self.__log_level = new_level
+        self.__update_config()
+
         for node in self.nodelist():
             node.set_log_level(new_level)
 
@@ -323,7 +334,8 @@ class Cluster():
                 'seeds' : seed_list,
                 'partitioner' : self.partitioner,
                 'cassandra_dir' : self.__cassandra_dir,
-                'config_options' : self._config_options
+                'config_options' : self._config_options,
+                'log_level' : self.__log_level
             }, f)
 
     def __update_pids(self, started):
