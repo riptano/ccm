@@ -25,5 +25,8 @@ class BulkLoader(Node):
         cdir = self.get_cassandra_dir()
         loader_bin = os.path.join(cdir, 'bin', 'sstableloader')
         env = common.make_cassandra_env(cdir, self.get_path())
+        if not "-d" in options:
+            l = [ node.network_interfaces['storage'][0] for node in self.cluster.nodes.values() if node.is_live() ]
+            options = [ "-d",  ",".join(l) ] + options
         print "Executing with", options
         os.execve(loader_bin, [ 'sstableloader' ] + options, env)

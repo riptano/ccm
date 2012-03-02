@@ -1,7 +1,7 @@
 # downloaded sources handling
 from __future__ import with_statement
 
-import os, shutil, urllib2, tarfile, tempfile, subprocess, stat
+import os, shutil, urllib2, tarfile, tempfile, subprocess, stat, time
 import common
 
 ARCHIVE="http://archive.apache.org/dist/cassandra"
@@ -127,10 +127,17 @@ def __download(url, target, show_progress=False):
     file_size_dl = 0
     block_sz = 8192
     status = None
-    while True:
+    attempts = 0
+    while file_size_dl < file_size:
         buffer = u.read(block_sz)
         if not buffer:
-            break
+            attempts = attempts + 1
+            if attempts >= 5:
+                raise common.CCMError("Error downloading file (nothing read after %i attemps, downloded only %i of %i bytes)" % (attempts, file_size_dl, file_size))
+            time.sleep(0.5 * attempts)
+            continue;
+        else:
+            attemps = 0
 
         file_size_dl += len(buffer)
         f.write(buffer)
