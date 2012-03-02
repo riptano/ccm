@@ -37,8 +37,8 @@ def clone_development(version, verbose=False):
             out = subprocess.call(['git', 'fetch', 'origin'], cwd=target_dir, stdout=lf, stderr=lf)
         # now check out the right version
         if verbose:
-            print "Checking out requested branch (origin/%s)" % git_branch
-        out = subprocess.call(['git', 'checkout', 'origin/' + git_branch], cwd=target_dir, stdout=lf, stderr=lf)
+            print "Checking out requested branch (%s)" % git_branch
+        out = subprocess.call(['git', 'checkout', git_branch], cwd=target_dir, stdout=lf, stderr=lf)
         if int(out) != 0:
             shutil.rmtree(target_dir)
             raise Exception("Could not check out git branch %s. Is this a valid branch name? (see last.log for details)" % git_branch)
