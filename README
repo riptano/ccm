@@ -75,7 +75,7 @@ You can check that the cluster is correctly set up with
 
 
 You can then boostrap a 4th node with
-  ccm add node3 -i 127.0.0.4 -j 7400 -b
+  ccm add node4 -i 127.0.0.4 -j 7400 -b
 (populate is just a shortcut for adding multiple nodes initially)
 
 ccm then provides a number of conveniences, like flushing all of the nodes of
