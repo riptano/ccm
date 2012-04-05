@@ -472,7 +472,12 @@ class Node():
         if not os.path.exists(keyspace_dir):
             raise common.ArgumentError("Unknown keyspace {0}".format(keyspace))
 
-        files = glob.glob(os.path.join(keyspace_dir, "{0}*-Data.db".format(column_family)))
+        version = self.cluster.version()
+        # data directory layout is changed from 1.1
+        if float(version[:version.index('.')+2]) < 1.1:
+            files = glob.glob(os.path.join(keyspace_dir, "{0}*-Data.db".format(column_family)))
+        else:
+            files = glob.glob(os.path.join(keyspace_dir, column_family or "*", "%s-%s*-Data.db" % (keyspace, column_family)))
         for f in files:
             if os.path.exists(f.replace('Data.db', 'Compacted')):
                 files.remove(f)
@@ -487,20 +492,14 @@ class Node():
             pass
 
     def data_size(self, live_data=True):
-        data_dir = os.path.join(self.get_path(), 'data')
         size = 0
-        for root, dirs, files in os.walk(data_dir):
-            if root.endswith("system"): continue
-            for f in files:
-                    full_path = os.path.join(root ,f)
-                    if os.path.isfile(full_path):
-                        if live_data:
-                            m = _sstable_regexp.match(f)
-                            if m is None or m.group(2) is not None or m.group(3) != "Data.db":
-                                continue
-                            if os.path.exists(full_path.replace("Data.db", "Compacted")):
-                                continue
-                        size += os.path.getsize(full_path)
+        if live_data:
+            for ks in self.list_keyspaces():
+                size += sum((os.path.getsize(path) for path in self.get_sstables(ks, "")))
+        else:
+            for ks in self.list_keyspaces():
+                for root, dirs, files in os.walk(os.path.join(self.get_path(), 'data', ks)):
+                    size += sum((os.path.getsize(os.path.join(root, f)) for f in files if os.path.isfile(os.path.join(root, f))))
         return size
    
     def flush(self):
