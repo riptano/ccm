@@ -103,6 +103,10 @@ def get_stress_bin(cassandra_dir):
     if os.path.exists(stress):
         return stress
 
+    stress = os.path.join(cassandra_dir, 'tools', 'bin', 'stress')
+    if os.path.exists(stress):
+        return stress
+
     raise Exception("Cannot find stress binary (maybe it isn't compiled)")
 
 def validate_cassandra_dir(cassandra_dir):
