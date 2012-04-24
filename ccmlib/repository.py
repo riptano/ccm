@@ -78,27 +78,31 @@ def compile_version(version, target_dir, verbose=False):
         print "Compiling Cassandra %s ..." % version
     with open(logfile, 'w') as lf:
         lf.write("--- Cassandra build -------------------\n")
-        if subprocess.call(['ant', 'build'], cwd=target_dir, stdout=lf, stderr=lf) is not 0:
+        if subprocess.call(['ant', 'jar'], cwd=target_dir, stdout=lf, stderr=lf) is not 0:
             raise common.CCMError("Error compiling Cassandra. See %s for details" % logfile)
-
+        
         lf.write("\n\n--- cassandra/stress build ------------\n")
         stress_dir = os.path.join(target_dir, "tools", "stress") if (
                 version >= "0.8.0") else \
                 os.path.join(target_dir, "contrib", "stress")
-        try:
-            # set permissions correctly, seems to not always be the case
-            stress_bin_dir = os.path.join(stress_dir, 'bin')
-            for f in os.listdir(stress_bin_dir):
-                full_path = os.path.join(stress_bin_dir, f)
-                os.chmod(full_path, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
 
-            if subprocess.call(['ant', 'build'], cwd=stress_dir, stdout=lf, stderr=lf) is not 0:
-                raise common.CCMError("Error compiling Cassandra stress tool.  "
-                        "See %s for details (you will still be able to use ccm "
-                        "but not the stress related commands)" % logfile)
-        except IOError as e:
-            raise common.CCMError("Error compiling Cassandra stress tool: %s (you will "
-            "still be able to use ccm but not the stress related commands)" % str(e))
+        build_xml = os.path.join(stress_dir, 'build.xml')
+        if os.path.exists(build_xml): # building stress separately is only necessary pre-1.1
+            try:
+                # set permissions correctly, seems to not always be the case
+                stress_bin_dir = os.path.join(stress_dir, 'bin')
+                for f in os.listdir(stress_bin_dir):
+                    full_path = os.path.join(stress_bin_dir, f)
+                    os.chmod(full_path, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
+
+                if subprocess.call(['ant', 'build'], cwd=stress_dir, stdout=lf, stderr=lf) is not 0:
+                    if subprocess.call(['ant', 'stress-build'], cwd=target_dir, stdout=lf, stderr=lf) is not 0:
+                        raise common.CCMError("Error compiling Cassandra stress tool.  "
+                                "See %s for details (you will still be able to use ccm "
+                                "but not the stress related commands)" % logfile)
+            except IOError as e:
+                raise common.CCMError("Error compiling Cassandra stress tool: %s (you will "
+                "still be able to use ccm but not the stress related commands)" % str(e))
 
 def version_directory(version):
     version = version.replace(':', '_') # handle git branches like 'git:trunk'.
