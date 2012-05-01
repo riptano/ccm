@@ -42,6 +42,10 @@ def clone_development(version, verbose=False):
         if int(out) != 0:
             shutil.rmtree(target_dir)
             raise Exception("Could not check out git branch %s. Is this a valid branch name? (see last.log for details)" % git_branch)
+        # do a git pull to make sure the branch stays up to date.
+        # this could throw an error if the requested branch is a tag.
+        # such an error should be safe to ignore.
+        out = subprocess.call(['git', 'pull'], cwd=target_dir, stdout=lf, stderr=lf)
 
         # now compile
         compile_version(git_branch, target_dir, verbose)
