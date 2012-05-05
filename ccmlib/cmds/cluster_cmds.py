@@ -105,6 +105,8 @@ class ClusterAddCmd(Cmd):
             help="Set the storage (cassandra internal) host and port for the node (format: host[:port])")
         parser.add_option('-j', '--jmx-port', type="string", dest="jmx_port",
             help="JMX port for the node", default="7199")
+        parser.add_option('-r', '--remote-debug-port', type="string", dest="remote_debug_port", 
+            help="Remote Debugging Port for the node", default="2000")
         parser.add_option('-n', '--token', type="string", dest="initial_token",
             help="Initial token for the node", default=None)
         parser.add_option('-d', '--data-center', type="string", dest="data_center",
@@ -127,11 +129,12 @@ class ClusterAddCmd(Cmd):
         self.thrift = common.parse_interface(options.thrift_itf, 9160)
         self.storage = common.parse_interface(options.storage_itf, 7000)
         self.jmx_port = options.jmx_port
+        self.remote_debug_port = options.remote_debug_port
         self.initial_token = options.initial_token
 
     def run(self):
         try:
-            node = Node(self.name, self.cluster, self.options.boostrap, self.thrift, self.storage, self.jmx_port, self.initial_token)
+            node = Node(self.name, self.cluster, self.options.boostrap, self.thrift, self.storage, self.jmx_port, self.remote_debug_port, self.initial_token)
             self.cluster.add(node, self.options.is_seed, self.options.data_center)
         except common.ArgumentError as e:
             print >> sys.stderr, str(e)

@@ -144,6 +144,7 @@ class Cluster():
                         ('127.0.0.%s' % i, 9160),
                         ('127.0.0.%s' % i, 7000),
                         str(7000 + i * 100),
+                        str(2000 + i * 100),
                         tk)
             self.add(node, True, dc)
             self.__update_config()
