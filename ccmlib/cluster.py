@@ -112,7 +112,7 @@ class Cluster():
             self.__update_topology_files()
         return self
 
-    def populate(self, nodes, tokens=None):
+    def populate(self, nodes, debug=False, tokens=None):
         node_count = nodes
         dcs = []
         if isinstance(nodes, list):
@@ -144,6 +144,7 @@ class Cluster():
                         ('127.0.0.%s' % i, 9160),
                         ('127.0.0.%s' % i, 7000),
                         str(7000 + i * 100),
+                        (str(0),  str(2000 + i * 100))[debug == True],
                         tk)
             self.add(node, True, dc)
             self.__update_config()
