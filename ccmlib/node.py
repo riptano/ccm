@@ -28,7 +28,7 @@ class Node():
     Provides interactions to a Cassandra node.
     """
 
-    def __init__(self, name, cluster, auto_bootstrap, thrift_interface, storage_interface, jmx_port, initial_token, save=True):
+    def __init__(self, name, cluster, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save=True):
         """
         Create a new Node.
           - name: the name for that node
@@ -37,6 +37,7 @@ class Node():
           - thrift_interface: the (host, port) tuple for thrift
           - storage_interface: the (host, port) tuple for internal cluster communication
           - jmx_port: the port for JMX to bind to
+          - remote_debug_port: the port for remote debugging
           - initial_token: the token for this node. If None, use Cassandra token auto-assigment
           - save: copy all data useful for this node to the right position.  Leaving this true
             is almost always the right choice.
@@ -47,6 +48,7 @@ class Node():
         self.auto_bootstrap = auto_bootstrap
         self.network_interfaces = { 'thrift' : thrift_interface, 'storage' : storage_interface }
         self.jmx_port = jmx_port
+        self.remote_debug_port = remote_debug_port
         self.initial_token = initial_token
         self.pid = None
         self.data_center = None
@@ -71,7 +73,7 @@ class Node():
             initial_token = None
             if 'initial_token' in data:
                 initial_token = data['initial_token']
-            node = Node(data['name'], cluster, data['auto_bootstrap'], tuple(itf['thrift']), tuple(itf['storage']), data['jmx_port'], initial_token, save=False)
+            node = Node(data['name'], cluster, data['auto_bootstrap'], tuple(itf['thrift']), tuple(itf['storage']), data['jmx_port'], data['remote_debug_port'], initial_token, save=False)
             node.status = data['status']
             if 'pid' in data:
                 node.pid = int(data['pid'])
@@ -167,6 +169,7 @@ class Node():
           print "%s%s=%s" % (indent, 'thrift', self.network_interfaces['thrift'])
           print "%s%s=%s" % (indent, 'storage', self.network_interfaces['storage'])
           print "%s%s=%s" % (indent, 'jmx_port', self.jmx_port)
+          print "%s%s=%s" % (indent, 'remote_debug_port', self.remote_debug_port)
           print "%s%s=%s" % (indent, 'initial_token', self.initial_token)
           if self.pid:
               print "%s%s=%s" % (indent, 'pid', self.pid)
@@ -557,6 +560,7 @@ class Node():
             'auto_bootstrap' : self.auto_bootstrap,
             'interfaces' : self.network_interfaces,
             'jmx_port' : self.jmx_port,
+            'remote_debug_port' : self.remote_debug_port,
             'config_options' : self.__config_options,
         }
         if self.pid:
@@ -622,8 +626,11 @@ class Node():
 
     def __update_envfile(self):
         jmx_port_pattern='JMX_PORT=';
+        remote_debug_port_pattern='address=';
         conf_file = os.path.join(self.get_conf_dir(), common.CASSANDRA_ENV)
         common.replace_in_file(conf_file, jmx_port_pattern, jmx_port_pattern + self.jmx_port)
+	if self.remote_debug_port != '0':
+        	common.replace_in_file(conf_file, remote_debug_port_pattern, 'JVM_OPTS="$JVM_OPTS -Xdebug -Xnoagent -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=' + self.remote_debug_port + '"')
 
     def __update_status(self):
         if self.pid is None:
