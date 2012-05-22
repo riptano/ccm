@@ -382,7 +382,7 @@ class Node():
         env = common.make_cassandra_env(cdir, self.get_path())
         host = self.network_interfaces['thrift'][0]
         port = self.network_interfaces['thrift'][1]
-        args = [ '-h', host, '-p', str(port) , '--jmxport', str(self.jmx_port) , '--remotedebugport', str(self.remote_debug_port) ] + cli_options
+        args = [ '-h', host, '-p', str(port) , '--jmxport', str(self.jmx_port) ] + cli_options
         sys.stdout.flush()
         if cmds is None:
             os.execve(cli, [ 'cassandra-cli' ] + args, env)
@@ -408,7 +408,7 @@ class Node():
         env = common.make_cassandra_env(cdir, self.get_path())
         host = self.network_interfaces['thrift'][0]
         port = self.network_interfaces['thrift'][1]
-        args = [ '-h', host, '-p', str(port) , '--jmxport', str(self.jmx_port), '--remotedebugport', str(self.remote_debug_port) ]
+        args = [ '-h', host, '-p', str(port) , '--jmxport', str(self.jmx_port) ]
         return CliSession(subprocess.Popen([ cli ] + args, env=env, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE))
 
     def set_log_level(self, new_level):
