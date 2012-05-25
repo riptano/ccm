@@ -73,7 +73,10 @@ class Node():
             initial_token = None
             if 'initial_token' in data:
                 initial_token = data['initial_token']
-            node = Node(data['name'], cluster, data['auto_bootstrap'], tuple(itf['thrift']), tuple(itf['storage']), data['jmx_port'], data['remote_debug_port'], initial_token, save=False)
+            remote_debug_port = 2000
+            if 'remote_debug_port' in data:
+                remote_debug_port = data['remote_debug_port']
+            node = Node(data['name'], cluster, data['auto_bootstrap'], tuple(itf['thrift']), tuple(itf['storage']), data['jmx_port'], remote_debug_port, initial_token, save=False)
             node.status = data['status']
             if 'pid' in data:
                 node.pid = int(data['pid'])
@@ -560,7 +563,6 @@ class Node():
             'auto_bootstrap' : self.auto_bootstrap,
             'interfaces' : self.network_interfaces,
             'jmx_port' : self.jmx_port,
-            'remote_debug_port' : self.remote_debug_port,
             'config_options' : self.__config_options,
         }
         if self.pid:
@@ -571,6 +573,8 @@ class Node():
             values['cassandra_dir'] = self.__cassandra_dir
         if self.data_center:
             values['data_center'] = self.data_center
+        if self.remote_debug_port:
+            values['remote_debug_port'] = self.remote_debug_port
         with open(filename, 'w') as f:
             yaml.safe_dump(values, f)
 
@@ -629,8 +633,8 @@ class Node():
         remote_debug_port_pattern='address=';
         conf_file = os.path.join(self.get_conf_dir(), common.CASSANDRA_ENV)
         common.replace_in_file(conf_file, jmx_port_pattern, jmx_port_pattern + self.jmx_port)
-	if self.remote_debug_port != '0':
-        	common.replace_in_file(conf_file, remote_debug_port_pattern, 'JVM_OPTS="$JVM_OPTS -Xdebug -Xnoagent -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=' + self.remote_debug_port + '"')
+        if self.remote_debug_port != '0':
+            common.replace_in_file(conf_file, remote_debug_port_pattern, 'JVM_OPTS="$JVM_OPTS -Xdebug -Xnoagent -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=' + self.remote_debug_port + '"')
 
     def __update_status(self):
         if self.pid is None:
