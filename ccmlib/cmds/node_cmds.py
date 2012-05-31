@@ -1,8 +1,8 @@
-import os, sys, shutil, subprocess
+import os, sys
 from command import Cmd
 
 from ccmlib import common
-from ccmlib.node import Node
+from ccmlib.node import NodeError
 
 def node_cmds():
     return [
