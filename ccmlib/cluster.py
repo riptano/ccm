@@ -132,9 +132,12 @@ class Cluster():
             if 'node%s' % i in self.nodes.values():
                 raise common.ArgumentError('Cannot create existing node node%s' % i)
 
+        if tokens is None:
+            tokens = Cluster.balanced_tokens(node_count)
+
         for i in xrange(1, node_count + 1):
             tk = None
-            if tokens is not None and i-1 < len(tokens):
+            if i-1 < len(tokens):
                 tk = tokens[i-1]
             dc = dcs[i-1] if i-1 < len(dcs) else None
 
