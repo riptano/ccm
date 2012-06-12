@@ -56,6 +56,8 @@ class ClusterCreateCmd(Cmd):
             help="Populate the new cluster with that number of nodes (a single int or a colon-separate list of ints for multi-dc setups)")
         parser.add_option('-s', "--start", action="store_true", dest="start_nodes",
             help="Start nodes added through -s", default=False)
+        parser.add_option('-d', "--debug", action="store_true", dest="debug",
+            help="If -s is used, show the standard output when starting the nodes", default=False)
         return parser
 
     def validate(self, parser, options, args):
@@ -81,7 +83,7 @@ class ClusterCreateCmd(Cmd):
             try:
                 cluster.populate(self.nodes)
                 if self.options.start_nodes:
-                    cluster.start()
+                    cluster.start(verbose=self.options.debug)
             except common.ArgumentError as e:
                 print >> sys.stderr, str(e)
                 exit(1)
