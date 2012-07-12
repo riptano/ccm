@@ -23,6 +23,7 @@ def node_cmds():
         "updateconf",
         "stress",
         "cli",
+        "scrub",
     ]
 
 class NodeShowCmd(Cmd):
@@ -239,6 +240,22 @@ class NodeCliCmd(Cmd):
 
     def run(self):
         self.node.run_cli(self.options.cmds, self.options.verbose, self.cli_options)
+
+class NodeScrubCmd(Cmd):
+    def description(self):
+        return "Scrub files"
+
+    def get_parser(self):
+        usage = "usage: ccm node_name scrub [options] <keyspace> <cf>"
+        parser = self._get_default_parser(usage, self.description(), ignore_unknown_options=True)
+        return parser
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
+        self.scrub_options = parser.get_ignored() + args[1:]
+
+    def run(self):
+        self.node.scrub(self.scrub_options)
 
 class NodeJsonCmd(Cmd):
     def description(self):

@@ -379,6 +379,12 @@ class Node():
         p = subprocess.Popen(args, env=env)
         p.wait()
 
+    def scrub(self, options):
+        cdir = self.get_cassandra_dir()
+        scrub_bin = os.path.join(cdir, 'bin', 'sstablescrub')
+        env = common.make_cassandra_env(cdir, self.get_path())
+        os.execve(scrub_bin, [ 'sstablescrub' ] + options, env)
+
     def run_cli(self, cmds=None, show_output=False, cli_options=[]):
         cdir = self.get_cassandra_dir()
         cli = os.path.join(cdir, 'bin', 'cassandra-cli')

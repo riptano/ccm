@@ -26,6 +26,7 @@ def cluster_cmds():
         "setdir",
         "bulkload",
         "setlog",
+        "scrub",
     ]
 
 def parse_populate_count(v):
@@ -471,6 +472,22 @@ class ClusterBulkloadCmd(Cmd):
 
     def run(self):
         self.cluster.bulkload(self.loader_options)
+
+class ClusterScrubCmd(Cmd):
+    def description(self):
+        return "Scrub files"
+
+    def get_parser(self):
+        usage = "usage: ccm scrub [options] <keyspace> <cf>"
+        parser = self._get_default_parser(usage, self.description(), ignore_unknown_options=True)
+        return parser
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, load_cluster=True)
+        self.scrub_options = parser.get_ignored() + args
+
+    def run(self):
+        self.cluster.scrub(self.scrub_options)
 
 class ClusterSetlogCmd(Cmd):
     def description(self):

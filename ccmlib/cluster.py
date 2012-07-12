@@ -322,6 +322,10 @@ class Cluster():
         loader = BulkLoader(self)
         loader.load(options)
 
+    def scrub(self, options):
+        for node in self.nodes.values():
+            node.scrub(options)
+
     def __get_version_from_build(self):
         cassandra_dir = self.get_cassandra_dir()
         build = os.path.join(cassandra_dir, 'build.xml')
