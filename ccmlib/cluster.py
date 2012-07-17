@@ -304,6 +304,9 @@ class Cluster():
     def compact(self):
         self.nodetool("compact")
 
+    def drain(self):
+        self.nodetool("drain")
+
     def repair(self):
         self.nodetool("repair")
 

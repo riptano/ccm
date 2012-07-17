@@ -15,6 +15,7 @@ def node_cmds():
         "ring",
         "flush",
         "compact",
+        "drain",
         "cleanup",
         "repair",
         "scrub",
@@ -196,6 +197,11 @@ class NodeCompactCmd(_NodeToolCmd):
     usage = "usage: ccm node_name compact [options]"
     nodetool_cmd = 'compact'
     descr_text = "Compact node name"
+
+class NodeDrainCmd(_NodeToolCmd):
+    usage = "usage: ccm node_name drain [options]"
+    nodetool_cmd = 'drain'
+    descr_text = "Drain node name"
 
 class NodeCleanupCmd(_NodeToolCmd):
     usage = "usage: ccm node_name cleanup [options]"

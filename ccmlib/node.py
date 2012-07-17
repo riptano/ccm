@@ -515,12 +515,15 @@ class Node():
                 for root, dirs, files in os.walk(os.path.join(self.get_path(), 'data', ks)):
                     size += sum((os.path.getsize(os.path.join(root, f)) for f in files if os.path.isfile(os.path.join(root, f))))
         return size
-   
+
     def flush(self):
         self.nodetool("flush")
 
     def compact(self):
         self.nodetool("compact")
+
+    def drain(self):
+        self.nodetool("drain")
 
     def repair(self):
         self.nodetool("repair")

@@ -108,7 +108,7 @@ class ClusterAddCmd(Cmd):
             help="Set the storage (cassandra internal) host and port for the node (format: host[:port])")
         parser.add_option('-j', '--jmx-port', type="string", dest="jmx_port",
             help="JMX port for the node", default="7199")
-        parser.add_option('-r', '--remote-debug-port', type="string", dest="remote_debug_port", 
+        parser.add_option('-r', '--remote-debug-port', type="string", dest="remote_debug_port",
             help="Remote Debugging Port for the node", default="2000")
         parser.add_option('-n', '--token', type="string", dest="initial_token",
             help="Initial token for the node", default=None)
@@ -154,7 +154,7 @@ class ClusterPopulateCmd(Cmd):
             help="Number of nodes to populate with (a single int or a colon-separate list of ints for multi-dc setups)")
         parser.add_option('-d', '--debug', action="store_true", dest="debug",
             help="Enable remote debugging options", default=False)
-	return parser
+        return parser
 
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, load_cluster=True)
@@ -387,6 +387,11 @@ class ClusterCompactCmd(_ClusterNodetoolCmd):
     usage = "usage: ccm cluster compact [options] name"
     nodetool_cmd = 'compact'
     descr_text = "Compact all (running) node of the cluster"
+
+class ClusterDrainCmd(_ClusterNodetoolCmd):
+    usage = "usage: ccm cluster drain [options] name"
+    nodetool_cmd = 'drain'
+    descr_text = "Drain all (running) node of the cluster"
 
 class ClusterStressCmd(Cmd):
     def description(self):
