@@ -141,6 +141,9 @@ class Cluster():
                 tk = tokens[i-1]
             dc = dcs[i-1] if i-1 < len(dcs) else None
 
+            binary = None
+            if self.version() >= '1.2':
+                binary = ('127.0.0.%s' % i, 8000)
             node = Node('node%s' % i,
                         self,
                         False,
@@ -148,7 +151,8 @@ class Cluster():
                         ('127.0.0.%s' % i, 7000),
                         str(7000 + i * 100),
                         (str(0),  str(2000 + i * 100))[debug == True],
-                        tk)
+                        tk,
+                        binary_interface=binary)
             self.add(node, True, dc)
             self.__update_config()
         return self

@@ -28,7 +28,7 @@ class Node():
     Provides interactions to a Cassandra node.
     """
 
-    def __init__(self, name, cluster, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save=True):
+    def __init__(self, name, cluster, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save=True, binary_interface=None):
         """
         Create a new Node.
           - name: the name for that node
@@ -46,7 +46,7 @@ class Node():
         self.cluster = cluster
         self.status = Status.UNINITIALIZED
         self.auto_bootstrap = auto_bootstrap
-        self.network_interfaces = { 'thrift' : thrift_interface, 'storage' : storage_interface }
+        self.network_interfaces = { 'thrift' : thrift_interface, 'storage' : storage_interface, 'binary' : binary_interface }
         self.jmx_port = jmx_port
         self.remote_debug_port = remote_debug_port
         self.initial_token = initial_token
@@ -76,7 +76,10 @@ class Node():
             remote_debug_port = 2000
             if 'remote_debug_port' in data:
                 remote_debug_port = data['remote_debug_port']
-            node = Node(data['name'], cluster, data['auto_bootstrap'], tuple(itf['thrift']), tuple(itf['storage']), data['jmx_port'], remote_debug_port, initial_token, save=False)
+            binary_interface = None
+            if 'binary' in itf and itf['binary'] is not None:
+                binary_interface = tuple(itf['binary'])
+            node = Node(data['name'], cluster, data['auto_bootstrap'], tuple(itf['thrift']), tuple(itf['storage']), data['jmx_port'], remote_debug_port, initial_token, save=False, binary_interface=binary_interface)
             node.status = data['status']
             if 'pid' in data:
                 node.pid = int(data['pid'])
@@ -166,16 +169,18 @@ class Node():
         indent = ''.join([ " " for i in xrange(0, len(self.name) + 2) ])
         print "%s: %s" % (self.name, self.__get_status_string())
         if not only_status:
-          if show_cluster:
-              print "%s%s=%s" % (indent, 'cluster', self.cluster.name)
-          print "%s%s=%s" % (indent, 'auto_bootstrap', self.auto_bootstrap)
-          print "%s%s=%s" % (indent, 'thrift', self.network_interfaces['thrift'])
-          print "%s%s=%s" % (indent, 'storage', self.network_interfaces['storage'])
-          print "%s%s=%s" % (indent, 'jmx_port', self.jmx_port)
-          print "%s%s=%s" % (indent, 'remote_debug_port', self.remote_debug_port)
-          print "%s%s=%s" % (indent, 'initial_token', self.initial_token)
-          if self.pid:
-              print "%s%s=%s" % (indent, 'pid', self.pid)
+            if show_cluster:
+                print "%s%s=%s" % (indent, 'cluster', self.cluster.name)
+            print "%s%s=%s" % (indent, 'auto_bootstrap', self.auto_bootstrap)
+            print "%s%s=%s" % (indent, 'thrift', self.network_interfaces['thrift'])
+            if self.network_interfaces['binary'] is not None:
+                print "%s%s=%s" % (indent, 'binary', self.network_interfaces['binary'])
+            print "%s%s=%s" % (indent, 'storage', self.network_interfaces['storage'])
+            print "%s%s=%s" % (indent, 'jmx_port', self.jmx_port)
+            print "%s%s=%s" % (indent, 'remote_debug_port', self.remote_debug_port)
+            print "%s%s=%s" % (indent, 'initial_token', self.initial_token)
+            if self.pid:
+                print "%s%s=%s" % (indent, 'pid', self.pid)
 
     def is_running(self):
         """
@@ -220,7 +225,8 @@ class Node():
         with open(self.logfilename()) as f:
             f.seek(0, os.SEEK_END)
             mark = f.tell() - 1024
-            if mark < 0: mark = 0
+            if mark < 0:
+                mark = 0
             return mark
 
     # This will return when exprs are found or it timeouts
@@ -297,7 +303,8 @@ class Node():
             raise NodeError("%s is already running" % self.name)
 
         for itf in self.network_interfaces.values():
-            common.check_socket_available(itf)
+            if itf is not None:
+                common.check_socket_available(itf)
 
         if wait_other_notice:
             marks = [ (node, node.mark_log()) for node in self.cluster.nodes.values() if node.is_running() ]
@@ -472,7 +479,7 @@ class Node():
             print "-- {0} -----".format(os.path.basename(file))
             args = [ sstable2json , file ]
             if enumerate_keys:
-                args = args + ["-e"];
+                args = args + ["-e"]
             subprocess.call(args, env=env)
             print ""
 
@@ -605,6 +612,8 @@ class Node():
             data['seed_provider'][0]['parameters'][0]['seeds'] = ','.join(self.cluster.get_seeds())
         data['listen_address'], data['storage_port'] = self.network_interfaces['storage']
         data['rpc_address'], data['rpc_port'] = self.network_interfaces['thrift']
+        if self.network_interfaces['binary'] is not None:
+            data['native_transport_address'], data['native_transport_port'] = self.network_interfaces['binary']
 
         data['data_file_directories'] = [ os.path.join(self.get_path(), 'data') ]
         data['commitlog_directory'] = os.path.join(self.get_path(), 'commitlogs')
@@ -629,19 +638,19 @@ class Node():
             yaml.safe_dump(data, f, default_flow_style=False)
 
     def __update_log4j(self):
-        append_pattern='log4j.appender.R.File=';
+        append_pattern='log4j.appender.R.File='
         conf_file = os.path.join(self.get_conf_dir(), common.LOG4J_CONF)
         log_file = os.path.join(self.get_path(), 'logs', 'system.log')
         common.replace_in_file(conf_file, append_pattern, append_pattern + log_file)
 
         # Setting the right log level
-        append_pattern='log4j.rootLogger=';
+        append_pattern='log4j.rootLogger='
         l = self.__log_level + ",stdout,R"
         common.replace_in_file(conf_file, append_pattern, append_pattern + l)
 
     def __update_envfile(self):
-        jmx_port_pattern='JMX_PORT=';
-        remote_debug_port_pattern='address=';
+        jmx_port_pattern='JMX_PORT='
+        remote_debug_port_pattern='address='
         conf_file = os.path.join(self.get_conf_dir(), common.CASSANDRA_ENV)
         common.replace_in_file(conf_file, jmx_port_pattern, jmx_port_pattern + self.jmx_port)
         if self.remote_debug_port != '0':

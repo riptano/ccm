@@ -59,6 +59,10 @@ class ClusterCreateCmd(Cmd):
             help="Start nodes added through -s", default=False)
         parser.add_option('-d', "--debug", action="store_true", dest="debug",
             help="If -s is used, show the standard output when starting the nodes", default=False)
+        parser.add_option('-b', "--binary-protocol", action="store_true", dest="binary_protocol",
+            help="Enable the binary protocol", default=False)
+        parser.add_option('-D', "--debug-log", action="store_true", dest="debug_log",
+            help="With -n, sets debug logging on the new nodes", default=False)
         return parser
 
     def validate(self, parser, options, args):
@@ -76,12 +80,16 @@ class ClusterCreateCmd(Cmd):
         if self.options.partitioner:
             cluster.set_partitioner(self.options.partitioner)
 
+        if cluster.version() >= "1.2" and self.options.binary_protocol:
+            cluster.set_configuration_options({ 'start_native_transport' : True })
+
         if not self.options.no_switch:
             common.switch_cluster(self.path, self.name)
             print 'Current cluster is now: %s' % self.name
 
         if self.nodes is not None:
             try:
+                cluster.set_log_level("DEBUG")
                 cluster.populate(self.nodes)
                 if self.options.start_nodes:
                     cluster.start(verbose=self.options.debug)
