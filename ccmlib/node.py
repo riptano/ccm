@@ -654,7 +654,7 @@ class Node():
         conf_file = os.path.join(self.get_conf_dir(), common.CASSANDRA_ENV)
         common.replace_in_file(conf_file, jmx_port_pattern, jmx_port_pattern + self.jmx_port)
         if self.remote_debug_port != '0':
-            common.replace_in_file(conf_file, remote_debug_port_pattern, 'JVM_OPTS="$JVM_OPTS -Xdebug -Xnoagent -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=' + self.remote_debug_port + '"')
+            common.replace_in_file(conf_file, remote_debug_port_pattern, 'JVM_OPTS="$JVM_OPTS -Xdebug -Xnoagent -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=' + str(self.remote_debug_port) + '"')
 
     def __update_status(self):
         if self.pid is None:
