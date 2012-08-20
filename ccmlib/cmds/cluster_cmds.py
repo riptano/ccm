@@ -421,7 +421,6 @@ class ClusterUpdateconfCmd(Cmd):
 
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, load_cluster=True)
-        args = args[1:]
         try:
             self.setting = common.parse_settings(args)
         except common.ArgumentError as e:
