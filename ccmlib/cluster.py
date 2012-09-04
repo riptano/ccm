@@ -133,7 +133,7 @@ class Cluster():
                 raise common.ArgumentError('Cannot create existing node node%s' % i)
 
         if tokens is None:
-            tokens = Cluster.balanced_tokens(node_count)
+            tokens = Cluster.balanced_tokens(node_count, domain_size=64 if self.version() >= '1.2' else 128)
 
         for i in xrange(1, node_count + 1):
             tk = None
@@ -158,8 +158,8 @@ class Cluster():
         return self
 
     @staticmethod
-    def balanced_tokens(node_count):
-        return [ (i*(2**127/node_count)) for i in range(0, node_count) ]
+    def balanced_tokens(node_count, domain_size=128):
+        return [ (i*(2**(domain_size-1)/node_count)) for i in range(0, node_count) ]
 
     def remove(self, node=None):
         if node is not None:
