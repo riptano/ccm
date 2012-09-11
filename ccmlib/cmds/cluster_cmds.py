@@ -89,7 +89,8 @@ class ClusterCreateCmd(Cmd):
 
         if self.nodes is not None:
             try:
-                cluster.set_log_level("DEBUG")
+                if self.options.debug_log:
+                    cluster.set_log_level("DEBUG")
                 cluster.populate(self.nodes)
                 if self.options.start_nodes:
                     cluster.start(verbose=self.options.debug)
