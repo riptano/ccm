@@ -110,11 +110,13 @@ class ClusterAddCmd(Cmd):
         parser.add_option('-s', '--seeds', action="store_true", dest="is_seed",
             help="Configure this node as a seed", default=False)
         parser.add_option('-i', '--itf', type="string", dest="itfs",
-            help="Set host and port for both thrift and storage (format: host[:port])")
+            help="Set host and port for thrift, the binary protocol and storage (format: host[:port])")
         parser.add_option('-t', '--thrift-itf', type="string", dest="thrift_itf",
             help="Set the thrift host and port for the node (format: host[:port])")
         parser.add_option('-l', '--storage-itf', type="string", dest="storage_itf",
             help="Set the storage (cassandra internal) host and port for the node (format: host[:port])")
+        parser.add_option('--binary-itf', type="string", dest="binary_itf",
+            help="Set the binary protocol host and port for the node (format: host[:port])")
         parser.add_option('-j', '--jmx-port', type="string", dest="jmx_port",
             help="JMX port for the node", default="7199")
         parser.add_option('-r', '--remote-debug-port', type="string", dest="remote_debug_port",
@@ -128,8 +130,8 @@ class ClusterAddCmd(Cmd):
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True, load_node=False)
 
-        if options.itfs is None and (options.thrift_itf is None or options.storage_itf is None):
-            print >> sys.stderr, 'Missing thrift and/or storage interfaces or jmx port'
+        if options.itfs is None and (options.thrift_itf is None or options.storage_itf is None or options.binary_itf is None):
+            print >> sys.stderr, 'Missing thrift and/or storage and/or binary protocol interfaces or jmx port'
             parser.print_help()
             exit(1)
 
@@ -137,16 +139,20 @@ class ClusterAddCmd(Cmd):
             options.thrift_itf = options.itfs
         if options.storage_itf is None:
             options.storage_itf = options.itfs
+        if options.binary_itf is None:
+            options.binary_itf = options.itfs
 
         self.thrift = common.parse_interface(options.thrift_itf, 9160)
         self.storage = common.parse_interface(options.storage_itf, 7000)
+        self.binary = common.parse_interface(options.binary_itf, 8000)
         self.jmx_port = options.jmx_port
         self.remote_debug_port = options.remote_debug_port
         self.initial_token = options.initial_token
 
+
     def run(self):
         try:
-            node = Node(self.name, self.cluster, self.options.boostrap, self.thrift, self.storage, self.jmx_port, self.remote_debug_port, self.initial_token)
+            node = Node(self.name, self.cluster, self.options.boostrap, self.thrift, self.storage, self.jmx_port, self.remote_debug_port, self.initial_token, binary_interface=self.binary)
             self.cluster.add(node, self.options.is_seed, self.options.data_center)
         except common.ArgumentError as e:
             print >> sys.stderr, str(e)
