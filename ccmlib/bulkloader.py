@@ -13,14 +13,15 @@ class BulkLoader(Node):
         # It should problably be fixed, but will be good enough for now.
         addr = '127.0.0.%d' % (len(cluster.nodes) + 1)
         self.path = tempfile.mkdtemp(prefix='bulkloader-')
-        Node.__init__(self, 'bulkloader', cluster, False, (addr, 9160), (addr, 7000), str(8000), None)
+        Node.__init__(self, 'bulkloader', cluster, False, (addr, 9160), (addr, 7000), str(8000), 2000, None)
 
     def get_path(self):
         return os.path.join(self.path, self.name)
 
     def load(self, options):
         for itf in self.network_interfaces.values():
-            common.check_socket_available(itf)
+            if itf:
+                common.check_socket_available(itf)
 
         cdir = self.get_cassandra_dir()
         loader_bin = os.path.join(cdir, 'bin', 'sstableloader')
@@ -28,5 +29,5 @@ class BulkLoader(Node):
         if not "-d" in options:
             l = [ node.network_interfaces['storage'][0] for node in self.cluster.nodes.values() if node.is_live() ]
             options = [ "-d",  ",".join(l) ] + options
-        print "Executing with", options
+        #print "Executing with", options
         os.execve(loader_bin, [ 'sstableloader' ] + options, env)
