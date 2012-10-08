@@ -63,6 +63,8 @@ class ClusterCreateCmd(Cmd):
             help="Enable the binary protocol", default=False)
         parser.add_option('-D', "--debug-log", action="store_true", dest="debug_log",
             help="With -n, sets debug logging on the new nodes", default=False)
+        parser.add_option("--vnodes", action="store_true", dest="vnodes",
+            help="Use vnodes (256 tokens)", default=False)
         return parser
 
     def validate(self, parser, options, args):
@@ -83,6 +85,9 @@ class ClusterCreateCmd(Cmd):
         if cluster.version() >= "1.2" and self.options.binary_protocol:
             cluster.set_configuration_options({ 'start_native_transport' : True })
 
+        if cluster.version() >= "1.2" and self.options.vnodes:
+            cluster.set_configuration_options({ 'num_tokens' : 256 })
+
         if not self.options.no_switch:
             common.switch_cluster(self.path, self.name)
             print 'Current cluster is now: %s' % self.name
@@ -91,7 +96,7 @@ class ClusterCreateCmd(Cmd):
             try:
                 if self.options.debug_log:
                     cluster.set_log_level("DEBUG")
-                cluster.populate(self.nodes)
+                cluster.populate(self.nodes, use_vnodes=self.options.vnodes)
                 if self.options.start_nodes:
                     cluster.start(verbose=self.options.debug)
             except common.ArgumentError as e:
@@ -116,7 +121,7 @@ class ClusterAddCmd(Cmd):
         parser.add_option('-l', '--storage-itf', type="string", dest="storage_itf",
             help="Set the storage (cassandra internal) host and port for the node (format: host[:port])")
         parser.add_option('--binary-itf', type="string", dest="binary_itf",
-            help="Set the binary protocol host and port for the node (format: host[:port])")
+            help="Set the binary protocol host and port for the node (format: host[:port]).")
         parser.add_option('-j', '--jmx-port', type="string", dest="jmx_port",
             help="JMX port for the node", default="7199")
         parser.add_option('-r', '--remote-debug-port', type="string", dest="remote_debug_port",
@@ -144,7 +149,13 @@ class ClusterAddCmd(Cmd):
 
         self.thrift = common.parse_interface(options.thrift_itf, 9160)
         self.storage = common.parse_interface(options.storage_itf, 7000)
-        self.binary = common.parse_interface(options.binary_itf, 8000)
+        self.binary = common.parse_interface(options.binary_itf, 9042)
+
+        if self.binary[0] != self.thrift[0]:
+            print >> sys.stderr, 'Cannot set a binary address different from the thrift one'
+            exit(1)
+
+
         self.jmx_port = options.jmx_port
         self.remote_debug_port = options.remote_debug_port
         self.initial_token = options.initial_token

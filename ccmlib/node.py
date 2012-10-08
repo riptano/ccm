@@ -69,7 +69,7 @@ class Node():
         with open(filename, 'r') as f:
             data = yaml.load(f)
         try:
-            itf = data['interfaces'];
+            itf = data['interfaces']
             initial_token = None
             if 'initial_token' in data:
                 initial_token = data['initial_token']
@@ -613,7 +613,7 @@ class Node():
         data['listen_address'], data['storage_port'] = self.network_interfaces['storage']
         data['rpc_address'], data['rpc_port'] = self.network_interfaces['thrift']
         if self.network_interfaces['binary'] is not None:
-            data['native_transport_address'], data['native_transport_port'] = self.network_interfaces['binary']
+            _, data['native_transport_port'] = self.network_interfaces['binary']
 
         data['data_file_directories'] = [ os.path.join(self.get_path(), 'data') ]
         data['commitlog_directory'] = os.path.join(self.get_path(), 'commitlogs')

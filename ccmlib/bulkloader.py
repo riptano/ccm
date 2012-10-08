@@ -13,7 +13,7 @@ class BulkLoader(Node):
         # It should problably be fixed, but will be good enough for now.
         addr = '127.0.0.%d' % (len(cluster.nodes) + 1)
         self.path = tempfile.mkdtemp(prefix='bulkloader-')
-        Node.__init__(self, 'bulkloader', cluster, False, (addr, 9160), (addr, 7000), str(8000), 2000, None)
+        Node.__init__(self, 'bulkloader', cluster, False, (addr, 9160), (addr, 7000), str(9042), 2000, None)
 
     def get_path(self):
         return os.path.join(self.path, self.name)

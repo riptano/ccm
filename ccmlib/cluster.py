@@ -112,7 +112,7 @@ class Cluster():
             self.__update_topology_files()
         return self
 
-    def populate(self, nodes, debug=False, tokens=None):
+    def populate(self, nodes, debug=False, tokens=None, use_vnodes=False):
         node_count = nodes
         dcs = []
         if isinstance(nodes, list):
@@ -132,18 +132,18 @@ class Cluster():
             if 'node%s' % i in self.nodes.values():
                 raise common.ArgumentError('Cannot create existing node node%s' % i)
 
-        if tokens is None:
+        if tokens is None and not use_vnodes:
             tokens = Cluster.balanced_tokens(node_count, domain_size=64 if self.version() >= '1.2' else 128)
 
         for i in xrange(1, node_count + 1):
             tk = None
-            if i-1 < len(tokens):
+            if tokens is not None and i-1 < len(tokens):
                 tk = tokens[i-1]
             dc = dcs[i-1] if i-1 < len(dcs) else None
 
             binary = None
             if self.version() >= '1.2':
-                binary = ('127.0.0.%s' % i, 8000)
+                binary = ('127.0.0.%s' % i, 9042)
             node = Node('node%s' % i,
                         self,
                         False,
