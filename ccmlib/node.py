@@ -420,6 +420,32 @@ class Node():
                         print log,
                     i = i + 1
 
+    def run_cqlsh(self, cmds=None, show_output=False, cqlsh_options=[]):
+        cdir = self.get_cassandra_dir()
+        cli = os.path.join(cdir, 'bin', 'cqlsh')
+        env = common.make_cassandra_env(cdir, self.get_path())
+        host = self.network_interfaces['thrift'][0]
+        port = self.network_interfaces['thrift'][1]
+        args = cqlsh_options + [ host, str(port) ]
+        sys.stdout.flush()
+        if cmds is None:
+            os.execve(cli, [ 'cqlsh' ] + args, env)
+        else:
+            p = subprocess.Popen([ cli ] + args, env=env, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+            for cmd in cmds.split(';'):
+                p.stdin.write(cmd + ';\n')
+            p.stdin.write("quit;\n")
+            p.wait()
+            for err in p.stderr:
+                print "(EE) " + err,
+            if show_output:
+                i = 0
+                for log in p.stdout:
+                    # first four lines are not interesting
+                    if i >= 4:
+                        print log,
+                    i = i + 1
+
     def cli(self):
         cdir = self.get_cassandra_dir()
         cli = os.path.join(cdir, 'bin', 'cassandra-cli')

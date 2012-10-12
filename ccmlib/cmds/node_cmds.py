@@ -24,6 +24,7 @@ def node_cmds():
         "updateconf",
         "stress",
         "cli",
+        "cqlsh",
         "scrub",
     ]
 
@@ -246,6 +247,26 @@ class NodeCliCmd(Cmd):
 
     def run(self):
         self.node.run_cli(self.options.cmds, self.options.verbose, self.cli_options)
+
+class NodeCqlshCmd(Cmd):
+    def description(self):
+        return "Launch a cqlsh session connected to this node"
+
+    def get_parser(self):
+        usage = "usage: ccm node_name cqlsh [options] [cli_options]"
+        parser = self._get_default_parser(usage, self.description(), ignore_unknown_options=True)
+        parser.add_option('-x', '--exec', type="string", dest="cmds", default=None,
+            help="Execute the specified commands and exit")
+        parser.add_option('-v', '--verbose', action="store_true", dest="verbose",
+            help="With --exec, show cli output after completion", default=False)
+        return parser
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
+        self.cqlsh_options = parser.get_ignored() + args[1:]
+
+    def run(self):
+        self.node.run_cqlsh(self.options.cmds, self.options.verbose, self.cqlsh_options)
 
 class NodeScrubCmd(Cmd):
     def description(self):
