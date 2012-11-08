@@ -207,6 +207,10 @@ class Cluster():
             if not node.is_running():
                 p = node.start(update_pid=False)
                 started.append((node, p))
+                # ugly? indeed!
+                while not os.path.exists(node.logfilename()):
+                    time.sleep(.01)
+                marks.append((node, node.mark_log()))
 
         if no_wait and not verbose:
             time.sleep(2) # waiting 2 seconds to check for early errors and for the pid to be set
@@ -220,12 +224,6 @@ class Cluster():
                         print "[%s ERROR] %s" % (node.name, line.rstrip('\n'))
                 if verbose:
                     print "----"
-
-        for node, p in started:
-            # ugly? indeed!
-            while not os.path.exists(node.logfilename()):
-                time.sleep(.01)
-            marks.append((node, node.mark_log()))
 
         self.__update_pids(started)
 
