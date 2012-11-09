@@ -224,10 +224,7 @@ class Node():
         """
         with open(self.logfilename()) as f:
             f.seek(0, os.SEEK_END)
-            mark = f.tell() - 1024
-            if mark < 0:
-                mark = 0
-            return mark
+            return f.tell()
 
     # This will return when exprs are found or it timeouts
     def watch_log_for(self, exprs, from_mark=None, timeout=60):
