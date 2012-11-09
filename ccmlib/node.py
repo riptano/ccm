@@ -289,7 +289,7 @@ class Node():
         tofind = [ "%s is now UP" % node.address() for node in tofind ]
         self.watch_log_for(tofind, from_mark=from_mark, timeout=timeout)
 
-    def start(self, join_ring=True, no_wait=False, verbose=False, update_pid=True, wait_other_notice=False, replace_token=None, jvm_args=[]):
+    def start(self, join_ring=True, no_wait=False, verbose=False, update_pid=True, wait_other_notice=False, replace_token=None, jvm_args=[], wait_for_binary_proto=False):
         """
         Start the node. Options includes:
           - join_ring: if false, start the node with -Dcassandra.join_ring=False
@@ -335,6 +335,12 @@ class Node():
         if wait_other_notice:
             for node, mark in marks:
                 node.watch_log_for_alive(self, from_mark=mark)
+
+        if wait_for_binary_proto:
+            self.watch_log_for("Starting listening for CQL clients")
+            # we're probably fine at that point but just wait some tiny bit more because
+            # the msg is logged just before starting the binary protocol server
+            time.sleep(0.2)
 
         return process
 
@@ -638,7 +644,7 @@ class Node():
             data['seed_provider'][0]['parameters'][0]['seeds'] = ','.join(self.cluster.get_seeds())
         data['listen_address'], data['storage_port'] = self.network_interfaces['storage']
         data['rpc_address'], data['rpc_port'] = self.network_interfaces['thrift']
-        if self.network_interfaces['binary'] is not None:
+        if self.network_interfaces['binary'] is not None and self.cluster.version() >= "1.2":
             _, data['native_transport_port'] = self.network_interfaces['binary']
 
         data['data_file_directories'] = [ os.path.join(self.get_path(), 'data') ]
@@ -670,11 +676,7 @@ class Node():
         common.replace_in_file(conf_file, append_pattern, append_pattern + log_file)
 
         # Setting the right log level
-        append_pattern='log4j.rootLogger='
-        l = self.__log_level + ",stdout,R"
-        common.replace_in_file(conf_file, append_pattern, append_pattern + l)
-
-        append_pattern='.*\.Threshold='
+        append_pattern='log4j.appender.R.Threshold='
         l = self.__log_level
         common.replace_in_file(conf_file, append_pattern, append_pattern + l)
 

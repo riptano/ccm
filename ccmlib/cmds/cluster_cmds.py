@@ -63,6 +63,8 @@ class ClusterCreateCmd(Cmd):
             help="Enable the binary protocol", default=False)
         parser.add_option('-D', "--debug-log", action="store_true", dest="debug_log",
             help="With -n, sets debug logging on the new nodes", default=False)
+        parser.add_option('-T', "--trace-log", action="store_true", dest="trace_log",
+            help="With -n, sets trace logging on the new nodes", default=False)
         parser.add_option("--vnodes", action="store_true", dest="vnodes",
             help="Use vnodes (256 tokens)", default=False)
         return parser
@@ -96,9 +98,11 @@ class ClusterCreateCmd(Cmd):
             try:
                 if self.options.debug_log:
                     cluster.set_log_level("DEBUG")
+                if self.options.trace_log:
+                    cluster.set_log_level("TRACE")
                 cluster.populate(self.nodes, use_vnodes=self.options.vnodes)
                 if self.options.start_nodes:
-                    cluster.start(verbose=self.options.debug)
+                    cluster.start(verbose=self.options.debug, wait_for_binary_proto=self.options.binary_protocol)
             except common.ArgumentError as e:
                 print >> sys.stderr, str(e)
                 exit(1)

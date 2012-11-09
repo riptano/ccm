@@ -198,7 +198,7 @@ class Cluster():
             else:
                 node.show(only_status=True)
 
-    def start(self, no_wait=False, verbose=False):
+    def start(self, no_wait=False, verbose=False, wait_for_binary_proto=False):
         started = []
         marks = []
         for node in self.nodes.values():
@@ -238,6 +238,11 @@ class Cluster():
                 for other_node, _ in marks:
                     if other_node is not node:
                         node.watch_log_for_alive(other_node, from_mark=mark)
+
+        if wait_for_binary_proto:
+            for node, _ in started:
+                node.watch_log_for("Starting listening for CQL clients")
+            time.sleep(0.2)
 
         return started
 
