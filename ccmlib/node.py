@@ -673,9 +673,9 @@ class Node():
         common.replace_in_file(conf_file, append_pattern, append_pattern + log_file)
 
         # Setting the right log level
-        append_pattern='log4j.appender.R.Threshold='
+        append_pattern='log4j.rootLogger='
         l = self.__log_level
-        common.replace_in_file(conf_file, append_pattern, append_pattern + l)
+        common.replace_in_file(conf_file, append_pattern, append_pattern + l + ',sdout,R')
 
     def __update_envfile(self):
         jmx_port_pattern='JMX_PORT='
