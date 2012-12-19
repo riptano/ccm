@@ -91,7 +91,8 @@ def make_cassandra_env(cassandra_dir, node_path):
     ]
     common.replaces_in_file(dst, replacements)
     env = os.environ.copy()
-    env['CASSANDRA_INCLUDE'] = os.path.join(dst)
+    if 'CASSANDRA_INCLUDE' not in env:
+        env['CASSANDRA_INCLUDE'] = os.path.join(dst)
     return env
 
 def get_stress_bin(cassandra_dir):
