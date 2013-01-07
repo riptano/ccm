@@ -303,6 +303,7 @@ class Cluster():
                 self._config_options["commitlog_sync_period_in_ms"] = 10000
                 self._config_options["commitlog_sync_batch_window_in_ms"] = None
 
+        self.__update_config()
         for node in self.nodes.values():
             node.import_config_files()
         return self

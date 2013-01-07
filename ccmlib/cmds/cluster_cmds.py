@@ -184,6 +184,8 @@ class ClusterPopulateCmd(Cmd):
             help="Number of nodes to populate with (a single int or a colon-separate list of ints for multi-dc setups)")
         parser.add_option('-d', '--debug', action="store_true", dest="debug",
             help="Enable remote debugging options", default=False)
+        parser.add_option('--vnodes', action="store_true", dest="vnodes",
+            help="Populate using vnodes", default=False)
         return parser
 
     def validate(self, parser, options, args):
@@ -192,7 +194,7 @@ class ClusterPopulateCmd(Cmd):
 
     def run(self):
         try:
-            self.cluster.populate(self.nodes, self.options.debug)
+            self.cluster.populate(self.nodes, self.options.debug, use_vnodes=self.options.vnodes)
         except common.ArgumentError as e:
             print >> sys.stderr, str(e)
             exit(1)
