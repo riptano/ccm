@@ -90,6 +90,17 @@ def make_cassandra_env(cassandra_dir, node_path):
         ('CASSANDRA_CONF=', '\tCASSANDRA_CONF=%s' % os.path.join(node_path, 'conf'))
     ]
     common.replaces_in_file(dst, replacements)
+
+    # If a cluster-wide cassandra.in.sh file exists in the parent
+    # directory, append it to the node specific one:
+    cluster_sh_file = os.path.join(node_path, os.path.pardir, 'cassandra.in.sh')
+    if os.path.exists(cluster_sh_file):
+        append = open(cluster_sh_file).read()
+        with open(dst, 'a') as f:
+            f.write('\n\n### Start Cluster wide config ###\n')
+            f.write(append)
+            f.write('\n### End Cluster wide config ###\n\n')
+
     env = os.environ.copy()
     env['CASSANDRA_INCLUDE'] = os.path.join(dst)
     return env
