@@ -26,6 +26,7 @@ def node_cmds():
         "cli",
         "cqlsh",
         "scrub",
+        "status",
     ]
 
 class NodeShowCmd(Cmd):
@@ -188,6 +189,11 @@ class NodeRingCmd(_NodeToolCmd):
     usage = "usage: ccm node_name ring [options]"
     nodetool_cmd = 'ring'
     descr_text = "Print ring (connecting to node name)"
+
+class NodeStatusCmd(_NodeToolCmd):
+    usage = "usage: ccm node_name status [options]"
+    nodetool_cmd = 'status'
+    descr_text = "Print status (connecting to node name)"
 
 class NodeFlushCmd(_NodeToolCmd):
     usage = "usage: ccm node_name flush [options]"
