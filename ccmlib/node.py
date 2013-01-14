@@ -341,13 +341,15 @@ class Node():
 
         return process
 
-    def stop(self, wait=True, wait_other_notice=False, gently=False):
+    def stop(self, wait=True, wait_other_notice=False, gently=True):
         """
         Stop the node.
           - wait: if True (the default), wait for the Cassandra process to be
             really dead. Otherwise return after having sent the kill signal.
           - wait_other_notice: return only when the other live nodes of the
             cluster have marked this node has dead.
+          - gently: Let Cassandra clean up and shut down properly. Otherwise do
+            a 'kill -9' which shuts down faster.
         """
         if self.is_running():
             if wait_other_notice:
