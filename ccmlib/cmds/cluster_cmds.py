@@ -378,7 +378,9 @@ class ClusterStopCmd(Cmd):
         parser.add_option('--no-wait', action="store_true", dest="no_wait",
             help="Do not wait for the node to be stopped", default=False)
         parser.add_option('-g', '--gently', action="store_true", dest="gently",
-            help="Ask gently", default=False)
+            help="Shut down gently (default)", default=True)
+        parser.add_option('--not-gently', action="store_false", dest="gently",
+            help="Shut down immediately (kill -9)", default=True)
         return parser
 
     def validate(self, parser, options, args):

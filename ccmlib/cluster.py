@@ -246,7 +246,7 @@ class Cluster():
 
         return started
 
-    def stop(self, wait=True, gently=False):
+    def stop(self, wait=True, gently=True):
         not_running = []
         for node in self.nodes.values():
             if not node.stop(wait, gently=gently):
