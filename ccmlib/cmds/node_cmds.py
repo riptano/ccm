@@ -27,6 +27,7 @@ def node_cmds():
         "cqlsh",
         "scrub",
         "status",
+        "setdir",
     ]
 
 class NodeShowCmd(Cmd):
@@ -378,3 +379,29 @@ class NodeStressCmd(Cmd):
             self.node.stress(self.stress_options)
         except OSError:
             print >> sys.stderr, "Could not find stress binary (you may need to build it)"
+
+class NodeSetdirCmd(Cmd):
+    def description(self):
+        return "Set the cassandra directory to use"
+
+    def get_parser(self):
+        usage = "usage: ccm node_name setdir [options]"
+        parser =  self._get_default_parser(usage, self.description())
+        parser.add_option('-v', "--cassandra-version", type="string", dest="cassandra_version",
+            help="Download and use provided cassandra version. If version is of the form 'git:<branch name>', then the specified branch will be downloaded from the git repo and compiled. (takes precedence over --cassandra-dir)", default=None)
+        parser.add_option("--cassandra-dir", type="string", dest="cassandra_dir",
+            help="Path to the cassandra directory to use [default %default]", default="./")
+        return parser
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
+
+    def run(self):
+        try:
+            self.node.set_cassandra_dir(cassandra_dir=self.options.cassandra_dir, cassandra_version=self.options.cassandra_version, verbose=True)
+        except common.ArgumentError as e:
+            print >> sys.stderr, str(e)
+            exit(1)
+
+
+
