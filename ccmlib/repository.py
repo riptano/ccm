@@ -5,7 +5,8 @@ import os, shutil, urllib2, tarfile, tempfile, subprocess, stat, time
 import common
 
 ARCHIVE="http://archive.apache.org/dist/cassandra"
-GIT_REPO="http://git-wip-us.apache.org/repos/asf/cassandra.git"
+#GIT_REPO="http://git-wip-us.apache.org/repos/asf/cassandra.git"
+GIT_REPO="https://github.com/tpatterson/cassandra.git"
 
 def setup(version, verbose=False):
     if version.startswith('git:'):
@@ -28,27 +29,41 @@ def clone_development(version, verbose=False):
     git_branch = version[4:] # the part of the version after the 'git:'
     logfile = os.path.join(__get_dir(), "last.log")
     with open(logfile, 'w') as lf:
-        if not os.path.exists(target_dir):
-            # development branch doesn't exist. Check it out.
-            if verbose:
-                print "Cloning Cassandra"
-            subprocess.call(['git', 'clone', GIT_REPO, target_dir], cwd=__get_dir(), stdout=lf, stderr=lf)
-        else: # branch is already checked out. Do a fetch.
-            out = subprocess.call(['git', 'fetch', 'origin'], cwd=target_dir, stdout=lf, stderr=lf)
-        # now check out the right version
-        if verbose:
-            print "Checking out requested branch (%s)" % git_branch
-        out = subprocess.call(['git', 'checkout', git_branch], cwd=target_dir, stdout=lf, stderr=lf)
-        if int(out) != 0:
-            shutil.rmtree(target_dir)
-            raise Exception("Could not check out git branch %s. Is this a valid branch name? (see last.log for details)" % git_branch)
-        # do a git pull to make sure the branch stays up to date.
-        # this could throw an error if the requested branch is a tag.
-        # such an error should be safe to ignore.
-        out = subprocess.call(['git', 'pull'], cwd=target_dir, stdout=lf, stderr=lf)
-
-        # now compile
-        compile_version(git_branch, target_dir, verbose)
+        try:
+            if not os.path.exists(target_dir):
+                # development branch doesn't exist. Check it out.
+                if verbose:
+                    print "Cloning Cassandra"
+                subprocess.call(['git', 'clone', GIT_REPO, target_dir], cwd=__get_dir(), stdout=lf, stderr=lf)
+                # now check out the right version
+                if verbose:
+                    print "Checking out requested branch (%s)" % git_branch
+                out = subprocess.call(['git', 'checkout', git_branch], cwd=target_dir, stdout=lf, stderr=lf)
+                if int(out) != 0:
+                    raise common.CCMError("Could not check out git branch %s. Is this a valid branch name? (see last.log for details)" % git_branch)
+                # now compile
+                compile_version(git_branch, target_dir, verbose)
+            else: # branch is already checked out. See if it is behind and recompile if needed.
+                out = subprocess.call(['git', 'fetch', 'origin'], cwd=target_dir, stdout=lf, stderr=lf)
+                assert out == 0, "Could not do a git fetch"
+                status = subprocess.Popen(['git', 'status', '-sb'], cwd=target_dir, stdout=subprocess.PIPE, stderr=lf).communicate()[0]
+                if status.find('[behind') > -1:
+                    if verbose:
+                        print "Branch is behind, recompiling"
+                    out = subprocess.call(['git', 'pull'], cwd=target_dir, stdout=lf, stderr=lf)
+                    assert out == 0, "Could not do a git pull"
+                    out = subprocess.call(['ant', 'realclean'], cwd=target_dir, stdout=lf, stderr=lf)
+                    assert out == 0, "Could not run 'ant realclean'"
+                    
+                    # now compile
+                    compile_version(git_branch, target_dir, verbose)
+        except:
+            # wipe out the directory if anything goes wrong. Otherwise we will assume it has been compiled the next time it runs.
+            try:
+                shutil.rmtree(target_dir)
+            except: pass
+            raise
+                
 
 def download_version(version, url=None, verbose=False):
     u = "%s/%s/apache-cassandra-%s-src.tar.gz" % (ARCHIVE, version.split('-')[0], version) if url is None else url
@@ -82,8 +97,11 @@ def compile_version(version, target_dir, verbose=False):
         print "Compiling Cassandra %s ..." % version
     with open(logfile, 'w') as lf:
         lf.write("--- Cassandra build -------------------\n")
-        if subprocess.call(['ant', 'jar'], cwd=target_dir, stdout=lf, stderr=lf) is not 0:
-            raise common.CCMError("Error compiling Cassandra. See %s for details" % logfile)
+        try:
+            if subprocess.call(['ant', 'jar'], cwd=target_dir, stdout=lf, stderr=lf) is not 0:
+                raise common.CCMError("Error compiling Cassandra. See %s for details" % logfile)
+        except OSError, e:
+            raise common.CCMError("Error compiling Cassandra. Is ant installed? See %s for details" % logfile)
         
         lf.write("\n\n--- cassandra/stress build ------------\n")
         stress_dir = os.path.join(target_dir, "tools", "stress") if (
