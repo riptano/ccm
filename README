@@ -31,6 +31,8 @@ Installation
 ccm uses python distutils so from the source directory:
 sudo ./setup.py install
 
+MacPorts has ccm available as a port:
+sudo port -v sync && sudo port -v install ccm
 
 Usage
 -----
