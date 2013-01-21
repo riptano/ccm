@@ -472,7 +472,15 @@ class ClusterUpdateconfCmd(Cmd):
     def run(self):
         self.setting['hinted_handoff_enabled'] = self.options.hinted_handoff
         if self.options.rpc_timeout is not None:
-            self.setting['rpc_timeout_in_ms'] = self.options.rpc_timeout
+            if self.cluster.version() < "1.2":
+                self.setting['rpc_timeout_in_ms'] = self.options.rpc_timeout
+            else:
+                self.setting['read_request_timeout_in_ms'] = self.options.rpc_timeout
+                self.setting['range_request_timeout_in_ms'] = self.options.rpc_timeout
+                self.setting['write_request_timeout_in_ms'] = self.options.rpc_timeout
+                self.setting['truncate_request_timeout_in_ms'] = self.options.rpc_timeout
+                self.setting['request_timeout_in_ms'] = self.options.rpc_timeout
+
         self.cluster.set_configuration_options(values=self.setting, batch_commitlog=self.options.cl_batch)
 
 class ClusterCliCmd(Cmd):

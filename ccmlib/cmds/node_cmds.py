@@ -357,7 +357,14 @@ class NodeUpdateconfCmd(Cmd):
     def run(self):
         self.setting['hinted_handoff_enabled'] = self.options.hinted_handoff
         if self.options.rpc_timeout is not None:
-            self.setting['rpc_timeout_in_ms'] = self.options.rpc_timeout
+            if self.node.cluster.version() < "1.2":
+                self.setting['rpc_timeout_in_ms'] = self.options.rpc_timeout
+            else:
+                self.setting['read_request_timeout_in_ms'] = self.options.rpc_timeout
+                self.setting['range_request_timeout_in_ms'] = self.options.rpc_timeout
+                self.setting['write_request_timeout_in_ms'] = self.options.rpc_timeout
+                self.setting['truncate_request_timeout_in_ms'] = self.options.rpc_timeout
+                self.setting['request_timeout_in_ms'] = self.options.rpc_timeout
         self.node.set_configuration_options(values=self.setting, batch_commitlog=self.options.cl_batch)
 
 
@@ -382,7 +389,7 @@ class NodeStressCmd(Cmd):
 
 class NodeSetdirCmd(Cmd):
     def description(self):
-        return "Set the cassandra directory to use"
+        return "Set the cassandra directory to use for the node"
 
     def get_parser(self):
         usage = "usage: ccm node_name setdir [options]"
@@ -402,6 +409,3 @@ class NodeSetdirCmd(Cmd):
         except common.ArgumentError as e:
             print >> sys.stderr, str(e)
             exit(1)
-
-
-
