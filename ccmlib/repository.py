@@ -5,8 +5,7 @@ import os, shutil, urllib2, tarfile, tempfile, subprocess, stat, time
 import common
 
 ARCHIVE="http://archive.apache.org/dist/cassandra"
-#GIT_REPO="http://git-wip-us.apache.org/repos/asf/cassandra.git"
-GIT_REPO="https://github.com/tpatterson/cassandra.git"
+GIT_REPO="http://git-wip-us.apache.org/repos/asf/cassandra.git"
 
 def setup(version, verbose=False):
     if version.startswith('git:'):
