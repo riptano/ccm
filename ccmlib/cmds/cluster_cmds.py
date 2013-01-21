@@ -78,7 +78,8 @@ class ClusterCreateCmd(Cmd):
             cluster = Cluster(self.path, self.name, cassandra_dir=self.options.cassandra_dir, cassandra_version=self.options.cassandra_version, verbose=True)
         except OSError as e:
             cluster_dir = os.path.join(self.path, self.name)
-            print >> sys.stderr, 'Cannot create cluster: %s' % str(e)
+            import traceback
+            print >> sys.stderr, 'Cannot create cluster: %s\n%s' % (str(e), traceback.format_exc())
             exit(1)
 
         if self.options.partitioner:
