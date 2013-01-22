@@ -55,6 +55,8 @@ class ClusterCreateCmd(Cmd):
             help="Path to the cassandra directory to use [default %default]", default="./")
         parser.add_option('-n', '--nodes', type="string", dest="nodes",
             help="Populate the new cluster with that number of nodes (a single int or a colon-separate list of ints for multi-dc setups)")
+        parser.add_option('-i', '--ipprefix', type="string", dest="ipprefix", default="127.0.0.",
+            help="Ipprefix to use to create the ip of a node while populating")
         parser.add_option('-s', "--start", action="store_true", dest="start_nodes",
             help="Start nodes added through -s", default=False)
         parser.add_option('-d', "--debug", action="store_true", dest="debug",
@@ -101,7 +103,7 @@ class ClusterCreateCmd(Cmd):
                     cluster.set_log_level("DEBUG")
                 if self.options.trace_log:
                     cluster.set_log_level("TRACE")
-                cluster.populate(self.nodes, use_vnodes=self.options.vnodes)
+                cluster.populate(self.nodes, use_vnodes=self.options.vnodes, ipprefix=self.options.ipprefix)
                 if self.options.start_nodes:
                     cluster.start(verbose=self.options.debug, wait_for_binary_proto=self.options.binary_protocol)
             except common.ArgumentError as e:
@@ -187,6 +189,8 @@ class ClusterPopulateCmd(Cmd):
             help="Enable remote debugging options", default=False)
         parser.add_option('--vnodes', action="store_true", dest="vnodes",
             help="Populate using vnodes", default=False)
+        parser.add_option('-i', '--ipprefix', type="string", dest="ipprefix", default="127.0.0.",
+            help="Ipprefix to use to create the ip of a node")
         return parser
 
     def validate(self, parser, options, args):
@@ -195,7 +199,7 @@ class ClusterPopulateCmd(Cmd):
 
     def run(self):
         try:
-            self.cluster.populate(self.nodes, self.options.debug, use_vnodes=self.options.vnodes)
+            self.cluster.populate(self.nodes, self.options.debug, use_vnodes=self.options.vnodes, ipprefix=self.options.ipprefix)
         except common.ArgumentError as e:
             print >> sys.stderr, str(e)
             exit(1)
