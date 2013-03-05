@@ -45,7 +45,7 @@ class CliSession():
     def has_errors(self):
         self.__read_errors()
         for err in self.__errors:
-            if err != '':
+            if 'WARNING' not in err and err != '': 
                 return True
         return False
 
