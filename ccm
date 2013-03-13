@@ -26,6 +26,8 @@ def print_global_usage():
         if not cmd:
             print "Internal error, unknown command {0}".format(cmd_name)
             exit(1)
+        if cmd.is_hidden():
+            continue #Don't show hidden/aliased commands
         print "  {0:14} {1}".format(cmd_name, cmd.description())
     print "or <node_name> is the name of a node of the current cluster and <node_cmd> is one of"
     for cmd_name in node_cmds.node_cmds():
@@ -33,6 +35,8 @@ def print_global_usage():
         if not cmd:
             print "Internal error, unknown command {0}".format(cmd_name)
             exit(1)
+        if cmd.is_hidden():
+            continue #Don't show hidden/aliased commands
         print "  {0:14} {1}".format(cmd_name, cmd.description())
     exit(1)
 
