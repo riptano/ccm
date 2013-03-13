@@ -1,4 +1,5 @@
 import os, sys, shutil
+import command
 from command import Cmd
 
 from ccmlib import common, repository
@@ -17,7 +18,9 @@ def cluster_cmds():
         "clear",
         "liveset",
         "start",
+        "up",
         "stop",
+        "down",
         "flush",
         "compact",
         "stress",
@@ -346,7 +349,7 @@ class ClusterClearrepoCmd(Cmd):
 
 class ClusterStartCmd(Cmd):
     def description(self):
-        return "Start all the non started nodes of the current cluster"
+        return "Start all the non started nodes of the current cluster (alias: 'up')"
 
     def get_parser(self):
         usage = "usage: ccm cluter start [options]"
@@ -371,9 +374,14 @@ class ClusterStartCmd(Cmd):
                 print >> sys.stderr, line.rstrip('\n')
             exit(1)
 
+@command.hidden
+class ClusterUpCmd(ClusterStartCmd):
+    """Alias for ClusterStartCmd"""
+    pass
+
 class ClusterStopCmd(Cmd):
     def description(self):
-        return "Stop all the nodes of the cluster"
+        return "Stop all the nodes of the cluster (alias: 'down')"
 
     def get_parser(self):
         usage = "usage: ccm cluster stop [options] name"
@@ -402,6 +410,11 @@ class ClusterStopCmd(Cmd):
         except NodeError as e:
             print >> sys.stderr, str(e)
             exit(1)
+
+@command.hidden
+class ClusterDownCmd(ClusterStopCmd):
+    """Alias for ClusterStopCmd"""
+    pass
 
 class _ClusterNodetoolCmd(Cmd):
     def get_parser(self):

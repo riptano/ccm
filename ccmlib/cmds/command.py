@@ -78,5 +78,16 @@ class Cmd(object):
             help="Directory for the cluster files [default to ~/.ccm]")
         return parser
 
+    def is_hidden(self):
+        return False
+
     def description():
         return ""
+
+def hidden(klass):
+    """Decorator to hide a command from the help system, useful for
+    aliases of other commands"""
+    def is_hidden(cls):
+        return True
+    klass.is_hidden = is_hidden
+    return klass

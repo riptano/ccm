@@ -1,4 +1,5 @@
 import os, sys
+import command
 from command import Cmd
 
 from ccmlib import common
@@ -11,7 +12,9 @@ def node_cmds():
         "showlog",
         "setlog",
         "start",
+        "up",
         "stop",
+        "down",
         "ring",
         "flush",
         "compact",
@@ -116,7 +119,7 @@ class NodeClearCmd(Cmd):
 
 class NodeStartCmd(Cmd):
     def description(self):
-        return "Start a node"
+        return "Start a node (alias: 'up')"
 
     def get_parser(self):
         usage = "usage: ccm node start [options] name"
@@ -146,10 +149,15 @@ class NodeStartCmd(Cmd):
             for line in e.process.stderr:
                 print >> sys.stderr, line.rstrip('\n')
             exit(1)
+    
+@command.hidden
+class NodeUpCmd(NodeStartCmd):
+    """Alias for NodeStartCmd"""
+    pass
 
 class NodeStopCmd(Cmd):
     def description(self):
-        return "Stop a node"
+        return "Stop a node (alias: 'down')"
 
     def get_parser(self):
         usage = "usage: ccm node stop [options] name"
@@ -173,6 +181,11 @@ class NodeStopCmd(Cmd):
         except NodeError as e:
             print >> sys.stderr, str(e)
             exit(1)
+
+@command.hidden
+class NodeDownCmd(NodeStopCmd):
+    """Alias for NodeStopCmd"""
+    pass
 
 class _NodeToolCmd(Cmd):
     def get_parser(self):
