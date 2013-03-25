@@ -291,7 +291,7 @@ class ClusterRemoveCmd(Cmd):
             cluster = Cluster.load(self.path, self.other_cluster)
             cluster.remove()
             # Remove CURRENT flag if the specified cluster is the current cluster:
-            if hasattr(self, 'cluster') and self.cluster.name == self.other_cluster:
+            if self.other_cluster == common.current_cluster_name(self.path):
                 os.remove(os.path.join(self.path, 'CURRENT'))
         else:
             # Remove the current cluster:
