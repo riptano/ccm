@@ -261,19 +261,42 @@ class ClusterStatusCmd(Cmd):
 
 class ClusterRemoveCmd(Cmd):
     def description(self):
-        return "Remove the current cluster (delete all data)"
+        return "Remove the current or specified cluster (delete all data)"
 
     def get_parser(self):
-        usage = "usage: ccm remove [options]"
+        usage = "usage: ccm remove [options] [cluster_name]"
         parser =  self._get_default_parser(usage, self.description())
         return parser
 
     def validate(self, parser, options, args):
-        Cmd.validate(self, parser, options, args, load_cluster=True)
+        self.other_cluster = None
+        if len(args) > 0:
+            # Setup to remove the specified cluster:
+            Cmd.validate(self, parser, options, args)
+            self.other_cluster = args[0]
+            if not os.path.exists(os.path.join(
+                    self.path, self.other_cluster, 'cluster.conf')):
+                print >> sys.stderr, "%s does not appear to be a valid cluster" \
+                    " (use ccm cluster list to view valid cluster)" \
+                    % self.other_cluster
+                exit(1)
+        else:
+            # Setup to remove the current cluster:
+            Cmd.validate(self, parser, options, args, load_cluster=True)
+
 
     def run(self):
-        self.cluster.remove()
-        os.remove(os.path.join(self.path, 'CURRENT'))
+        if self.other_cluster:
+            # Remove the specified cluster:
+            cluster = Cluster.load(self.path, self.other_cluster)
+            cluster.remove()
+            # Remove CURRENT flag if the specified cluster is the current cluster:
+            if hasattr(self, 'cluster') and self.cluster.name == self.other_cluster:
+                os.remove(os.path.join(self.path, 'CURRENT'))
+        else:
+            # Remove the current cluster:
+            self.cluster.remove()
+            os.remove(os.path.join(self.path, 'CURRENT'))
 
 class ClusterClearCmd(Cmd):
     def description(self):
