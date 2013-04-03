@@ -24,16 +24,34 @@ def validate(path):
         setup(version)
 
 def clone_development(version, verbose=False):
+    local_git_cache = os.path.join(__get_dir(), '_git_cache')
     target_dir = os.path.join(__get_dir(), version.replace(':', '_')) # handle git branches like 'git:trunk'.
     git_branch = version[4:] # the part of the version after the 'git:'
     logfile = os.path.join(__get_dir(), "last.log")
     with open(logfile, 'w') as lf:
         try:
+            #Checkout/fetch a local repository cache to reduce the number of
+            #remote fetches we need to perform:
+            if not os.path.exists(local_git_cache):
+                if verbose:
+                    print "Cloning Cassandra..."
+                out = subprocess.call(
+                    ['git', 'clone', '--bare', GIT_REPO, local_git_cache], 
+                    cwd=__get_dir(), stdout=lf, stderr=lf)
+                assert out == 0, "Could not do a git clone"
+            else: 
+                if verbose:
+                    print "Fetching Cassandra updates..."
+                out = subprocess.call(
+                    ['git', 'fetch', '--all'],
+                    cwd=local_git_cache, stdout=lf, stderr=lf)
+
+            #Checkout the version we want from the local cache:
             if not os.path.exists(target_dir):
                 # development branch doesn't exist. Check it out.
                 if verbose:
-                    print "Cloning Cassandra"
-                subprocess.call(['git', 'clone', GIT_REPO, target_dir], cwd=__get_dir(), stdout=lf, stderr=lf)
+                    print "Cloning Cassandra (from local cache)"
+                subprocess.call(['git', 'clone', local_git_cache, target_dir], cwd=__get_dir(), stdout=lf, stderr=lf)
                 # now check out the right version
                 if verbose:
                     print "Checking out requested branch (%s)" % git_branch
