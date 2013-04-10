@@ -274,7 +274,9 @@ class Node():
         the log is watched from the beginning.
         """
         tofind = nodes if isinstance(nodes, list) else [nodes]
-        tofind = [ "%s is now dead" % node.address() for node in tofind ]
+        version = self.cluster.version()
+        deadstr = "DOWN" if version >= '1.2.4' else "dead"
+        tofind = [ "%s is now %s" % (node.address(), deadstr) for node in tofind ]
         self.watch_log_for(tofind, from_mark=from_mark, timeout=timeout)
 
     def watch_log_for_alive(self, nodes, from_mark=None, timeout=60):
