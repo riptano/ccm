@@ -43,7 +43,13 @@ def clone_development(version, verbose=False):
                 if verbose:
                     print "Fetching Cassandra updates..."
                 out = subprocess.call(
-                    ['git', 'fetch', '--all'],
+                    ['git', 'fetch', '-t', '--all'],
+                    cwd=local_git_cache, stdout=lf, stderr=lf)
+                # Even though this is a bare repository, git still
+                # maintains a local trunk branch, we need to update
+                # this each time:
+                out = subprocess.call(
+                    ['git', 'fetch', 'origin', 'trunk:trunk'],
                     cwd=local_git_cache, stdout=lf, stderr=lf)
 
             #Checkout the version we want from the local cache:
