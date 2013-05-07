@@ -57,6 +57,7 @@ class Node():
         self.__log_level = "INFO"
         if save:
             self.import_config_files()
+            self.import_bin_files()
 
     @staticmethod
     def load(path, name, cluster):
@@ -98,6 +99,12 @@ class Node():
         Returns the path to this node top level directory (where config/data is stored)
         """
         return os.path.join(self.cluster.get_path(), self.name)
+
+    def get_bin_dir(self):
+        """
+        Returns the path to the directory where Cassandra scripts are located
+        """
+        return os.path.join(self.get_path(), 'bin')
 
     def get_conf_dir(self):
         """
@@ -592,6 +599,13 @@ class Node():
         self.__update_yaml()
         self.__update_log4j()
         self.__update_envfile()
+
+    def import_bin_files(self):
+        bin_dir = os.path.join(self.get_cassandra_dir(), 'bin')
+        for name in os.listdir(bin_dir):
+            filename = os.path.join(bin_dir, name)
+            if os.path.isfile(filename):
+                shutil.copy(filename, self.get_bin_dir())
 
     def _save(self):
         self.__update_yaml()
