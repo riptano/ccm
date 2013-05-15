@@ -2,7 +2,7 @@
 # Cassandra Cluster Management lib
 #
 
-import os, common, shutil, re, sys, cluster, node, socket
+import os, common, shutil, re, cluster, socket, stat
 
 USER_HOME = os.path.expanduser('~')
 
@@ -106,23 +106,28 @@ def make_cassandra_env(cassandra_dir, node_path):
     return env
 
 def get_stress_bin(cassandra_dir):
-    stress = os.path.join(cassandra_dir, 'contrib', 'stress', 'bin', 'stress')
-    if os.path.exists(stress):
-        return stress
+    candidates = [
+        os.path.join(cassandra_dir, 'contrib', 'stress', 'bin', 'stress'),
+        os.path.join(cassandra_dir, 'tools', 'stress', 'bin', 'stress'),
+        os.path.join(cassandra_dir, 'tools', 'bin', 'stress'),
+        os.path.join(cassandra_dir, 'tools', 'bin', 'cassandra-stress')
+    ]
+    for candidate in candidates:
+        if os.path.exists(candidate):
+            stress = candidate
+            break
+    else:
+        raise Exception("Cannot find stress binary (maybe it isn't compiled)")
 
-    stress = os.path.join(cassandra_dir, 'tools', 'stress', 'bin', 'stress')
-    if os.path.exists(stress):
-        return stress
+    # make sure it's executable
+    if not os.access(stress, os.X_OK):
+        try:
+            # try to add user execute permissions
+            os.chmod(stress, os.stat(stress).st_mode | stat.S_IXUSR)
+        except:
+            raise Exception("stress binary is not executable: %s" % (stress,))
 
-    stress = os.path.join(cassandra_dir, 'tools', 'bin', 'stress')
-    if os.path.exists(stress):
-        return stress
-
-    stress = os.path.join(cassandra_dir, 'tools', 'bin', 'cassandra-stress')
-    if os.path.exists(stress):
-        return stress
-
-    raise Exception("Cannot find stress binary (maybe it isn't compiled)")
+    return stress
 
 def validate_cassandra_dir(cassandra_dir):
     if cassandra_dir is None:

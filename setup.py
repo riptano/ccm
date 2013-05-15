@@ -5,7 +5,7 @@ from os.path import abspath, join, dirname
 
 setup(
     name='ccm',
-    version='0.9',
+    version='1.0dev',
     description='Cassandra Cluster Manager',
     long_description=open(abspath(join(dirname(__file__), 'README'))).read(),
     author='Sylvain Lebresne',
