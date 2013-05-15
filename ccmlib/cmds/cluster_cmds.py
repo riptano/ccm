@@ -22,6 +22,7 @@ def cluster_cmds():
         "compact",
         "stress",
         "updateconf",
+        "updatelog4jconf",
         "cli",
         "setdir",
         "bulkload",
@@ -510,6 +511,41 @@ class ClusterUpdateconfCmd(Cmd):
                 self.setting['request_timeout_in_ms'] = self.options.rpc_timeout
 
         self.cluster.set_configuration_options(values=self.setting, batch_commitlog=self.options.cl_batch)
+
+##
+## Class implementens the functionality of updating log4j-server.properties of
+## Cassandra instance (inder CASSANDRA_CONF_DIR)
+##
+class ClusterUpdatelog4jconfCmd(Cmd):
+    def description(self):
+        return "Update the Cassandra log4j-server.properties configuration file"
+
+    def get_parser(self):
+        usage = "usage: ccm updatelog4jconf -p <log4j config>"
+        parser = self._get_default_parser(usage, self.description(), ignore_unknown_options=True)
+        parser.add_option('-p', '--path', type="string", dest="log4jpath",
+            help="Path to new Cassandra log4j configuration file")
+        return parser
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, load_cluster=True)
+        try:
+            self.log4jpath = options.log4jpath
+            if self.log4jpath is None:
+                raise KeyError("[Errno] -p or --path <path of new log4j congiguration file> is not provided") 
+        except common.ArgumentError as e:
+            print >> sys.stderr, str(e)
+            exit(1)
+        except KeyError as e:
+            print >> sys.stderr, str(e)
+            exit(1)
+
+    def run(self):
+        try:
+            self.cluster.copy_log4j_config(self.log4jpath)
+        except common.ArgumentError as e:
+            print >> sys.stderr, str(e)
+            exit(1)
 
 class ClusterCliCmd(Cmd):
     def description(self):

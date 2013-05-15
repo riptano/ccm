@@ -1,6 +1,6 @@
 # ccm clusters
 
-import common, yaml, os, subprocess, shutil, repository, time, re
+import common, yaml, os, subprocess, shutil, repository, time, re, sys
 from node import Node, NodeError
 from bulkloader import BulkLoader
 
@@ -339,6 +339,14 @@ class Cluster():
         for node in self.nodes.values():
             node.scrub(options)
 
+    ##
+    ## Copy new log4j-server.properties into CASSANDRA_BASE/conf/log4j-server.properties
+    ##
+    def copy_log4j_config(self, new_log4j_config):
+            cass_log4j_path = ''.join([self.get_cassandra_dir(), '/', 'conf', '/', 'log4j-server.properties'])
+    	    self.__copy_file(new_log4j_config, cass_log4j_path)
+
+
     def __get_version_from_build(self):
         cassandra_dir = self.get_cassandra_dir()
         build = os.path.join(cassandra_dir, 'build.xml')
@@ -348,6 +356,17 @@ class Cluster():
                 if match:
                     return match.group(1)
         raise common.CCMError("Cannot find version")
+
+    ##
+    ## Copy file from source to destination with reasonable error handling
+    ## 
+    def __copy_file(self, src_file, dst_file):
+        try:
+            shutil.copy2(src_file, dst_file)
+        except (IOError, shutil.Error) as e:
+            print >> sys.stderr, str(e)
+            exit(1)
+
 
     def __update_config(self):
         node_list = [ node.name for node in self.nodes.values() ]
