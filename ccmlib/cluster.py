@@ -224,6 +224,7 @@ class Cluster():
                         print "[%s ERROR] %s" % (node.name, line.rstrip('\n'))
                 if verbose:
                     print "----"
+                node.watch_log_for("Listening for thrift clients...")
 
         self.__update_pids(started)
 
