@@ -253,7 +253,7 @@ class Cluster():
                 not_running.append(node)
         return not_running
 
-    def set_log_level(self, new_level):
+    def set_log_level(self, new_level, class_name):
         known_level = [ 'TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR' ]
         if new_level not in known_level:
             raise common.ArgumentError("Unknown log level %s (use one of %s)" % (new_level, " ".join(known_level)))
@@ -262,7 +262,7 @@ class Cluster():
         self.__update_config()
 
         for node in self.nodelist():
-            node.set_log_level(new_level)
+            node.set_log_level(new_level, class_name)
 
     def nodetool(self, nodetool_cmd):
         for node in self.nodes.values():
@@ -339,12 +339,10 @@ class Cluster():
         for node in self.nodes.values():
             node.scrub(options)
 
-    ##
-    ## Copy new log4j-server.properties into CASSANDRA_BASE/conf/log4j-server.properties
-    ##
-    def copy_log4j_config(self, new_log4j_config):
-            cass_log4j_path = ''.join([self.get_cassandra_dir(), '/', 'conf', '/', 'log4j-server.properties'])
-    	    self.__copy_file(new_log4j_config, cass_log4j_path)
+    def update_log4j(self, new_log4j_config):
+        ## iterate over all nodes
+        for node in self.nodelist():
+            node.update_log4j(new_log4j_config)
 
 
     def __get_version_from_build(self):
@@ -356,17 +354,6 @@ class Cluster():
                 if match:
                     return match.group(1)
         raise common.CCMError("Cannot find version")
-
-    ##
-    ## Copy file from source to destination with reasonable error handling
-    ## 
-    def __copy_file(self, src_file, dst_file):
-        try:
-            shutil.copy2(src_file, dst_file)
-        except (IOError, shutil.Error) as e:
-            print >> sys.stderr, str(e)
-            exit(1)
-
 
     def __update_config(self):
         node_list = [ node.name for node in self.nodes.values() ]

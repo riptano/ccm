@@ -64,6 +64,8 @@ def switch_cluster(path, new_name):
     with open(os.path.join(path, 'CURRENT'), 'w') as f:
         f.write(new_name + '\n')
 
+################################################################################
+
 def replace_in_file(file, regexp, replace):
     replaces_in_file(file, [(regexp, replace)])
 
@@ -79,6 +81,32 @@ def replaces_in_file(file, replacement_list):
                         line = replace + "\n"
                 f_tmp.write(line)
     shutil.move(file_tmp, file)
+
+################################################################################
+
+def replace_or_add_into_file_tail(file, regexp, replace):
+    replaces_or_add_into_file_tail(file, [(regexp, replace)])
+
+def replaces_or_add_into_file_tail(file, replacement_list):
+    rs = [ (re.compile(regexp), repl) for (regexp, repl) in replacement_list]
+    is_line_found = False 
+    file_tmp = file + ".tmp"
+    with open(file, 'r') as f:
+        with open(file_tmp, 'w') as f_tmp:
+            for line in f:
+                for r, replace in rs:
+                    match = r.search(line)
+                    if match:
+                        line = replace + "\n"
+                        is_line_found = True
+                f_tmp.write(line)
+            ## In case, entry is not found, and need to be added
+            if is_line_found == False:
+                f_tmp.write('\n'+ replace + "\n")
+
+    shutil.move(file_tmp, file)
+
+################################################################################
 
 def make_cassandra_env(cassandra_dir, node_path):
     sh_file = os.path.join(CASSANDRA_BIN_DIR, CASSANDRA_SH)
@@ -171,3 +199,14 @@ def parse_settings(args):
             pass
         settings[splitted[0].strip()] = val
     return settings
+
+##
+## Copy file from source to destination with reasonable error handling
+## 
+def copy_file(src_file, dst_file):
+    try:
+        shutil.copy2(src_file, dst_file)
+    except (IOError, shutil.Error) as e:
+        print >> sys.stderr, str(e)
+        exit(1)
+

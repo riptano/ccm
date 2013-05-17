@@ -22,7 +22,7 @@ def cluster_cmds():
         "compact",
         "stress",
         "updateconf",
-        "updatelog4jconf",
+        "updatelog4j",
         "cli",
         "setdir",
         "bulkload",
@@ -513,15 +513,16 @@ class ClusterUpdateconfCmd(Cmd):
         self.cluster.set_configuration_options(values=self.setting, batch_commitlog=self.options.cl_batch)
 
 ##
-## Class implementens the functionality of updating log4j-server.properties of
-## Cassandra instance (inder CASSANDRA_CONF_DIR)
+## Class implementens the functionality of updating log4j-server.properties 
+## on ALL nodes by copying the given config into 
+## ~/.ccm/name-of-cluster/nodeX/conf/log4j-server.properties
 ##
-class ClusterUpdatelog4jconfCmd(Cmd):
+class ClusterUpdatelog4jCmd(Cmd):
     def description(self):
-        return "Update the Cassandra log4j-server.properties configuration file"
+        return "Update the Cassandra log4j-server.properties configuration file on ALL nodes"
 
     def get_parser(self):
-        usage = "usage: ccm updatelog4jconf -p <log4j config>"
+        usage = "usage: ccm updatelog4j -p <log4j config>"
         parser = self._get_default_parser(usage, self.description(), ignore_unknown_options=True)
         parser.add_option('-p', '--path', type="string", dest="log4jpath",
             help="Path to new Cassandra log4j configuration file")
@@ -542,7 +543,7 @@ class ClusterUpdatelog4jconfCmd(Cmd):
 
     def run(self):
         try:
-            self.cluster.copy_log4j_config(self.log4jpath)
+            self.cluster.update_log4j(self.log4jpath)
         except common.ArgumentError as e:
             print >> sys.stderr, str(e)
             exit(1)
@@ -601,11 +602,16 @@ class ClusterScrubCmd(Cmd):
 
 class ClusterSetlogCmd(Cmd):
     def description(self):
-        return "Set log level (INFO, DEBUG, ...) for all node of the cluster - require a node restart"
+        return "Set log level (INFO, DEBUG, ...) with/without Java class for all node of the cluster - require a node restart"
+
 
     def get_parser(self):
-        usage = "usage: ccm setlog [options] level"
-        return self._get_default_parser(usage, self.description())
+        usage = "usage: ccm setlog [options] level or usage: ccm setlog [options] level -c <java class>"
+        parser = self._get_default_parser(usage, self.description(), ignore_unknown_options=True)
+        parser.add_option('-c', '--class', type="string", dest="class_name",
+            help="Java class, added for logging")
+        return parser
+
 
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, load_cluster=True)
@@ -614,9 +620,15 @@ class ClusterSetlogCmd(Cmd):
             parser.print_help()
         self.level = args[0]
 
+        try:
+            self.class_name = options.class_name
+        except common.ArgumentError as e:
+            print >> sys.stderr, str(e)
+            exit(1)
+
     def run(self):
         try:
-            self.cluster.set_log_level(self.level)
+            self.cluster.set_log_level(self.level, self.class_name)
         except common.ArgumentError as e:
             print >> sys.stderr, str(e)
             exit(1)
