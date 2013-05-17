@@ -489,8 +489,9 @@ class Node():
     ## ~/.ccm/name-of-cluster/nodeX/conf/log4j-server.properties
     ##
     def update_log4j(self, new_log4j_config):
-        cassandra_conf_dir = "".join([self.get_conf_dir(), '/', 
-                                            'log4j-server.properties'])
+        cassandra_conf_dir = os.path.join(self.get_conf_dir(), 
+                                           'log4j-server.properties')
+        print 'os.path.join: ' + cassandra_conf_dir
         common.copy_file(new_log4j_config, cassandra_conf_dir)        
 
 
