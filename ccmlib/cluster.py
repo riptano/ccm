@@ -253,7 +253,7 @@ class Cluster():
                 not_running.append(node)
         return not_running
 
-    def set_log_level(self, new_level, class_name):
+    def set_log_level(self, new_level, class_name=None):
         known_level = [ 'TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR' ]
         if new_level not in known_level:
             raise common.ArgumentError("Unknown log level %s (use one of %s)" % (new_level, " ".join(known_level)))
@@ -340,7 +340,7 @@ class Cluster():
             node.scrub(options)
 
     def update_log4j(self, new_log4j_config):
-        ## iterate over all nodes
+        # iterate over all nodes
         for node in self.nodelist():
             node.update_log4j(new_log4j_config)
 

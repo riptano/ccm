@@ -468,30 +468,23 @@ class Node():
         args = [ '-h', host, '-p', str(port) , '--jmxport', str(self.jmx_port) ]
         return CliSession(subprocess.Popen([ cli ] + args, env=env, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE))
 
-    def set_log_level(self, new_level, *options):
+    def set_log_level(self, new_level, class_name=None):
         known_level = [ 'TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR' ]
         if new_level not in known_level:
             raise common.ArgumentError("Unknown log level %s (use one of %s)" % (new_level, " ".join(known_level)))
 
         self.__log_level = new_level
-        #
-        # That is used to differentiate old usage of set_log_level()  
-        # and its new usage with replacing log level for the given class name
-        # added by @azarutin
-        # 
-        if len(options) != 0:
-            self.__class_name = options[0]
+        self.__class_name = class_name
         self.__update_log4j()
         return self
 
-    ##
-    ## Update log4j config: copy new log4j-server.properties into 
-    ## ~/.ccm/name-of-cluster/nodeX/conf/log4j-server.properties
-    ##
+    #
+    # Update log4j config: copy new log4j-server.properties into 
+    # ~/.ccm/name-of-cluster/nodeX/conf/log4j-server.properties
+    #
     def update_log4j(self, new_log4j_config):
         cassandra_conf_dir = os.path.join(self.get_conf_dir(), 
                                            'log4j-server.properties')
-        print 'os.path.join: ' + cassandra_conf_dir
         common.copy_file(new_log4j_config, cassandra_conf_dir)        
 
 

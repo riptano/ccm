@@ -80,12 +80,11 @@ class NodeSetlogCmd(Cmd):
         return "Set node name log level (INFO, DEBUG, ...) with/without Java class - require a node restart"
 
     def get_parser(self):
-        usage = "usage: ccm node_name setlog [options] level or usage: ccm node_name setlog [options] level -c <java class>"
-        parser = self._get_default_parser(usage, self.description(), ignore_unknown_options=True)
-        parser.add_option('-c', '--class', type="string", dest="class_name",
-            help="Java class, added for logging")
+        usage = "usage: ccm node_name setlog [options] level"
+        parser = self._get_default_parser(usage, self.description())
+        parser.add_option('-c', '--class', type="string", dest="class_name", default=None,
+            help="Optional java class/package. Logging will be set for only this class/package if set")
         return parser
-        ### return self._get_default_parser(usage, self.description())
 
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
@@ -380,11 +379,11 @@ class NodeUpdateconfCmd(Cmd):
         self.node.set_configuration_options(values=self.setting, batch_commitlog=self.options.cl_batch)
 
 
-##
-## Class implementens the functionality of updating log4j-server.properties 
-## on the given node by copying the given config into 
-## ~/.ccm/name-of-cluster/nodeX/conf/log4j-server.properties 
-##
+#
+# Class implementens the functionality of updating log4j-server.properties 
+# on the given node by copying the given config into 
+# ~/.ccm/name-of-cluster/nodeX/conf/log4j-server.properties 
+#
 
 class NodeUpdatelog4jCmd(Cmd):
     def description(self):
@@ -392,7 +391,7 @@ class NodeUpdatelog4jCmd(Cmd):
 
     def get_parser(self):
         usage = "usage: ccm node_name updatelog4j -p <log4j config>"
-        parser = self._get_default_parser(usage, self.description(), ignore_unknown_options=True)
+        parser = self._get_default_parser(usage, self.description())
         parser.add_option('-p', '--path', type="string", dest="log4jpath",
             help="Path to new Cassandra log4j configuration file")
         return parser

@@ -512,14 +512,14 @@ class ClusterUpdateconfCmd(Cmd):
 
         self.cluster.set_configuration_options(values=self.setting, batch_commitlog=self.options.cl_batch)
 
-##
-## Class implementens the functionality of updating log4j-server.properties 
-## on ALL nodes by copying the given config into 
-## ~/.ccm/name-of-cluster/nodeX/conf/log4j-server.properties
-##
+#
+# Class implementens the functionality of updating log4j-server.properties 
+# on ALL nodes by copying the given config into 
+# ~/.ccm/name-of-cluster/nodeX/conf/log4j-server.properties
+#
 class ClusterUpdatelog4jCmd(Cmd):
     def description(self):
-        return "Update the Cassandra log4j-server.properties configuration file on ALL nodes"
+        return "Update the Cassandra log4j-server.properties configuration file on all nodes"
 
     def get_parser(self):
         usage = "usage: ccm updatelog4j -p <log4j config>"
@@ -606,10 +606,10 @@ class ClusterSetlogCmd(Cmd):
 
 
     def get_parser(self):
-        usage = "usage: ccm setlog [options] level or usage: ccm setlog [options] level -c <java class>"
-        parser = self._get_default_parser(usage, self.description(), ignore_unknown_options=True)
-        parser.add_option('-c', '--class', type="string", dest="class_name",
-            help="Java class, added for logging")
+        usage = "usage: ccm setlog [options] level"
+        parser = self._get_default_parser(usage, self.description())
+        parser.add_option('-c', '--class', type="string", dest="class_name", default=None,
+            help="Optional java class/package. Logging will be set for only this class/package if set")
         return parser
 
 
@@ -618,17 +618,12 @@ class ClusterSetlogCmd(Cmd):
         if len(args) == 0:
             print >> sys.stderr, 'Missing log level'
             parser.print_help()
-        self.level = args[0]
-
-        try:
-            self.class_name = options.class_name
-        except common.ArgumentError as e:
-            print >> sys.stderr, str(e)
             exit(1)
+        self.level = args[0]
 
     def run(self):
         try:
-            self.cluster.set_log_level(self.level, self.class_name)
+            self.cluster.set_log_level(self.level, self.options.class_name)
         except common.ArgumentError as e:
             print >> sys.stderr, str(e)
             exit(1)
