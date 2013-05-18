@@ -22,6 +22,7 @@ def node_cmds():
         "decommission",
         "json",
         "updateconf",
+        "updatelog4j",
         "stress",
         "cli",
         "cqlsh",
@@ -76,11 +77,14 @@ class NodeShowlogCmd(Cmd):
 
 class NodeSetlogCmd(Cmd):
     def description(self):
-        return "Set node name log level (INFO, DEBUG, ...) - require a node restart"
+        return "Set node name log level (INFO, DEBUG, ...) with/without Java class - require a node restart"
 
     def get_parser(self):
         usage = "usage: ccm node_name setlog [options] level"
-        return self._get_default_parser(usage, self.description())
+        parser = self._get_default_parser(usage, self.description())
+        parser.add_option('-c', '--class', type="string", dest="class_name", default=None,
+            help="Optional java class/package. Logging will be set for only this class/package if set")
+        return parser
 
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
@@ -89,9 +93,16 @@ class NodeSetlogCmd(Cmd):
             parser.print_help()
         self.level = args[1]
 
+        try:
+            self.class_name = options.class_name
+        except common.ArgumentError as e:
+            print >> sys.stderr, str(e)
+            exit(1)
+
     def run(self):
         try:
-            self.node.set_log_level(self.level)
+            self.node.set_log_level(self.level, self.class_name)
+
         except common.ArgumentError as e:
             print >> sys.stderr, str(e)
             exit(1)
@@ -366,6 +377,44 @@ class NodeUpdateconfCmd(Cmd):
                 self.setting['truncate_request_timeout_in_ms'] = self.options.rpc_timeout
                 self.setting['request_timeout_in_ms'] = self.options.rpc_timeout
         self.node.set_configuration_options(values=self.setting, batch_commitlog=self.options.cl_batch)
+
+
+#
+# Class implementens the functionality of updating log4j-server.properties 
+# on the given node by copying the given config into 
+# ~/.ccm/name-of-cluster/nodeX/conf/log4j-server.properties 
+#
+
+class NodeUpdatelog4jCmd(Cmd):
+    def description(self):
+        return "Update the Cassandra log4j-server.properties configuration file under given node"
+
+    def get_parser(self):
+        usage = "usage: ccm node_name updatelog4j -p <log4j config>"
+        parser = self._get_default_parser(usage, self.description())
+        parser.add_option('-p', '--path', type="string", dest="log4jpath",
+            help="Path to new Cassandra log4j configuration file")
+        return parser
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
+        try:
+            self.log4jpath = options.log4jpath
+            if self.log4jpath is None:
+                raise KeyError("[Errno] -p or --path <path of new log4j congiguration file> is not provided") 
+        except common.ArgumentError as e:
+            print >> sys.stderr, str(e)
+            exit(1)
+        except KeyError as e:
+            print >> sys.stderr, str(e)
+            exit(1)
+
+    def run(self):
+        try:
+            self.node.update_log4j(self.log4jpath)
+        except common.ArgumentError as e:
+            print >> sys.stderr, str(e)
+            exit(1)
 
 
 class NodeStressCmd(Cmd):
