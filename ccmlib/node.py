@@ -55,6 +55,7 @@ class Node():
         self.__config_options = {}
         self.__cassandra_dir = None
         self.__log_level = "INFO"
+        self.__class_name = None
         if save:
             self.import_config_files()
             self.import_bin_files()
@@ -467,14 +468,25 @@ class Node():
         args = [ '-h', host, '-p', str(port) , '--jmxport', str(self.jmx_port) ]
         return CliSession(subprocess.Popen([ cli ] + args, env=env, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE))
 
-    def set_log_level(self, new_level):
+    def set_log_level(self, new_level, class_name=None):
         known_level = [ 'TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR' ]
         if new_level not in known_level:
             raise common.ArgumentError("Unknown log level %s (use one of %s)" % (new_level, " ".join(known_level)))
 
         self.__log_level = new_level
+        self.__class_name = class_name
         self.__update_log4j()
         return self
+
+    #
+    # Update log4j config: copy new log4j-server.properties into 
+    # ~/.ccm/name-of-cluster/nodeX/conf/log4j-server.properties
+    #
+    def update_log4j(self, new_log4j_config):
+        cassandra_conf_dir = os.path.join(self.get_conf_dir(), 
+                                           'log4j-server.properties')
+        common.copy_file(new_log4j_config, cassandra_conf_dir)        
+
 
     def clear(self, clear_all = False, only_data = False):
         data_dirs = [ 'data' ]
@@ -690,8 +702,16 @@ class Node():
 
         # Setting the right log level
         append_pattern='log4j.rootLogger='
+        logger_pattern='log4j.logger' 
         l = self.__log_level
-        common.replace_in_file(conf_file, append_pattern, append_pattern + l + ',stdout,R')
+        c = self.__class_name
+        if c is None:
+            # Replace the existing root logger with new log level
+            common.replace_in_file(conf_file, append_pattern, append_pattern + l + ',stdout,R')
+        else:
+            # Adding custom logger with log level or replace the existing custom logger
+            full_logger_pattern = logger_pattern + '.' + c + '='
+            common.replace_or_add_into_file_tail(conf_file, full_logger_pattern, full_logger_pattern + l)
 
     def __update_envfile(self):
         jmx_port_pattern='JMX_PORT='
