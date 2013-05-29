@@ -29,6 +29,7 @@ def node_cmds():
         "scrub",
         "status",
         "setdir",
+        "version",
     ]
 
 class NodeShowCmd(Cmd):
@@ -233,6 +234,11 @@ class NodeRepairCmd(_NodeToolCmd):
     usage = "usage: ccm node_name repair [options]"
     nodetool_cmd = 'repair'
     descr_text = "Run repair on node name"
+
+class NodeVersionCmd(_NodeToolCmd):
+    usage = "usage: ccm node_name version"
+    nodetool_cmd = 'version'
+    descr_text = "Get the cassandra version of node"
 
 class NodeDecommissionCmd(_NodeToolCmd):
     usage = "usage: ccm node_name decommission [options]"
