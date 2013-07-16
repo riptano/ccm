@@ -281,7 +281,7 @@ class Node():
         the log is watched from the beginning.
         """
         tofind = nodes if isinstance(nodes, list) else [nodes]
-        tofind = [ "%s is now dead" % node.address() for node in tofind ]
+        tofind = [ "%s is now [dead|DOWN]" % node.address() for node in tofind ]
         self.watch_log_for(tofind, from_mark=from_mark, timeout=timeout)
 
     def watch_log_for_alive(self, nodes, from_mark=None, timeout=60):
@@ -290,7 +290,7 @@ class Node():
         nodes are marked UP. This method works similarily to watch_log_for_death.
         """
         tofind = nodes if isinstance(nodes, list) else [nodes]
-        tofind = [ "%s is now UP" % node.address() for node in tofind ]
+        tofind = [ "%s.* now UP" % node.address() for node in tofind ]
         self.watch_log_for(tofind, from_mark=from_mark, timeout=timeout)
 
     def start(self, join_ring=True, no_wait=False, verbose=False, update_pid=True, wait_other_notice=False, replace_token=None, jvm_args=[], wait_for_binary_proto=False):
