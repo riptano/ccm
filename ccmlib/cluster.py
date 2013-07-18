@@ -1,6 +1,6 @@
 # ccm clusters
 
-import common, yaml, os, subprocess, shutil, repository, time, re
+import common, yaml, os, subprocess, shutil, repository, time, re, sys
 from node import Node, NodeError
 from bulkloader import BulkLoader
 
@@ -224,6 +224,7 @@ class Cluster():
                         print "[%s ERROR] %s" % (node.name, line.rstrip('\n'))
                 if verbose:
                     print "----"
+                node.watch_log_for("Listening for thrift clients...")
 
         self.__update_pids(started)
 
@@ -253,7 +254,7 @@ class Cluster():
                 not_running.append(node)
         return not_running
 
-    def set_log_level(self, new_level):
+    def set_log_level(self, new_level, class_name=None):
         known_level = [ 'TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR' ]
         if new_level not in known_level:
             raise common.ArgumentError("Unknown log level %s (use one of %s)" % (new_level, " ".join(known_level)))
@@ -262,7 +263,7 @@ class Cluster():
         self.__update_config()
 
         for node in self.nodelist():
-            node.set_log_level(new_level)
+            node.set_log_level(new_level, class_name)
 
     def nodetool(self, nodetool_cmd):
         for node in self.nodes.values():
@@ -338,6 +339,12 @@ class Cluster():
     def scrub(self, options):
         for node in self.nodes.values():
             node.scrub(options)
+
+    def update_log4j(self, new_log4j_config):
+        # iterate over all nodes
+        for node in self.nodelist():
+            node.update_log4j(new_log4j_config)
+
 
     def __get_version_from_build(self):
         cassandra_dir = self.get_cassandra_dir()

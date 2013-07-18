@@ -54,9 +54,11 @@ class Node():
         self.data_center = None
         self.__config_options = {}
         self.__cassandra_dir = None
-        self.__log_level = "INFO"
+        self.__global_log_level = None
+        self.__classes_log_level = {}
         if save:
             self.import_config_files()
+            self.import_bin_files()
 
     @staticmethod
     def load(path, name, cluster):
@@ -98,6 +100,12 @@ class Node():
         Returns the path to this node top level directory (where config/data is stored)
         """
         return os.path.join(self.cluster.get_path(), self.name)
+
+    def get_bin_dir(self):
+        """
+        Returns the path to the directory where Cassandra scripts are located
+        """
+        return os.path.join(self.get_path(), 'bin')
 
     def get_conf_dir(self):
         """
@@ -274,9 +282,7 @@ class Node():
         the log is watched from the beginning.
         """
         tofind = nodes if isinstance(nodes, list) else [nodes]
-        version = self.cluster.version()
-        deadstr = "DOWN" if version >= '1.2.4' else "dead"
-        tofind = [ "%s is now %s" % (node.address(), deadstr) for node in tofind ]
+        tofind = [ "%s is now [dead|DOWN]" % node.address() for node in tofind ]
         self.watch_log_for(tofind, from_mark=from_mark, timeout=timeout)
 
     def watch_log_for_alive(self, nodes, from_mark=None, timeout=60):
@@ -285,7 +291,7 @@ class Node():
         nodes are marked UP. This method works similarily to watch_log_for_death.
         """
         tofind = nodes if isinstance(nodes, list) else [nodes]
-        tofind = [ "%s is now UP" % node.address() for node in tofind ]
+        tofind = [ "%s.* now UP" % node.address() for node in tofind ]
         self.watch_log_for(tofind, from_mark=from_mark, timeout=timeout)
 
     def start(self, join_ring=True, no_wait=False, verbose=False, update_pid=True, wait_other_notice=False, replace_token=None, jvm_args=[], wait_for_binary_proto=False):
@@ -462,14 +468,27 @@ class Node():
         args = [ '-h', host, '-p', str(port) , '--jmxport', str(self.jmx_port) ]
         return CliSession(subprocess.Popen([ cli ] + args, env=env, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE))
 
-    def set_log_level(self, new_level):
+    def set_log_level(self, new_level, class_name=None):
         known_level = [ 'TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR' ]
         if new_level not in known_level:
             raise common.ArgumentError("Unknown log level %s (use one of %s)" % (new_level, " ".join(known_level)))
 
-        self.__log_level = new_level
+        if class_name:
+            self.__classes_log_level[class_name] = new_level
+        else:
+            self.__global_log_level = new_level
         self.__update_log4j()
         return self
+
+    #
+    # Update log4j config: copy new log4j-server.properties into 
+    # ~/.ccm/name-of-cluster/nodeX/conf/log4j-server.properties
+    #
+    def update_log4j(self, new_log4j_config):
+        cassandra_conf_dir = os.path.join(self.get_conf_dir(), 
+                                           'log4j-server.properties')
+        common.copy_file(new_log4j_config, cassandra_conf_dir)        
+
 
     def clear(self, clear_all = False, only_data = False):
         data_dirs = [ 'data' ]
@@ -574,6 +593,9 @@ class Node():
     def cleanup(self):
         self.nodetool("cleanup")
 
+    def version(self):
+        self.nodetool("version");
+
     def decommission(self):
         self.nodetool("decommission")
         self.status = Status.DECOMMISIONNED
@@ -594,6 +616,13 @@ class Node():
         self.__update_yaml()
         self.__update_log4j()
         self.__update_envfile()
+
+    def import_bin_files(self):
+        bin_dir = os.path.join(self.get_cassandra_dir(), 'bin')
+        for name in os.listdir(bin_dir):
+            filename = os.path.join(bin_dir, name)
+            if os.path.isfile(filename):
+                shutil.copy(filename, self.get_bin_dir())
 
     def _save(self):
         self.__update_yaml()
@@ -677,9 +706,17 @@ class Node():
         common.replace_in_file(conf_file, append_pattern, append_pattern + log_file)
 
         # Setting the right log level
-        append_pattern='log4j.rootLogger='
-        l = self.__log_level
-        common.replace_in_file(conf_file, append_pattern, append_pattern + l + ',stdout,R')
+
+        # Replace the global log level
+        if self.__global_log_level is not None:
+            append_pattern='log4j.rootLogger='
+            common.replace_in_file(conf_file, append_pattern, append_pattern + self.__global_log_level + ',stdout,R')
+
+        # Class specific log levels
+        for class_name in self.__classes_log_level:
+            logger_pattern='log4j.logger'
+            full_logger_pattern = logger_pattern + '.' + class_name + '='
+            common.replace_or_add_into_file_tail(conf_file, full_logger_pattern, full_logger_pattern + self.__classes_log_level[class_name])
 
     def __update_envfile(self):
         jmx_port_pattern='JMX_PORT='

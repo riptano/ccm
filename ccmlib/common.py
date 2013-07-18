@@ -2,7 +2,7 @@
 # Cassandra Cluster Management lib
 #
 
-import os, common, shutil, re, sys, cluster, node, socket
+import os, common, shutil, re, cluster, socket, stat
 
 USER_HOME = os.path.expanduser('~')
 
@@ -80,6 +80,28 @@ def replaces_in_file(file, replacement_list):
                 f_tmp.write(line)
     shutil.move(file_tmp, file)
 
+def replace_or_add_into_file_tail(file, regexp, replace):
+    replaces_or_add_into_file_tail(file, [(regexp, replace)])
+
+def replaces_or_add_into_file_tail(file, replacement_list):
+    rs = [ (re.compile(regexp), repl) for (regexp, repl) in replacement_list]
+    is_line_found = False 
+    file_tmp = file + ".tmp"
+    with open(file, 'r') as f:
+        with open(file_tmp, 'w') as f_tmp:
+            for line in f:
+                for r, replace in rs:
+                    match = r.search(line)
+                    if match:
+                        line = replace + "\n"
+                        is_line_found = True
+                f_tmp.write(line)
+            # In case, entry is not found, and need to be added
+            if is_line_found == False:
+                f_tmp.write('\n'+ replace + "\n")
+
+    shutil.move(file_tmp, file)
+
 def make_cassandra_env(cassandra_dir, node_path):
     sh_file = os.path.join(CASSANDRA_BIN_DIR, CASSANDRA_SH)
     orig = os.path.join(cassandra_dir, sh_file)
@@ -106,23 +128,28 @@ def make_cassandra_env(cassandra_dir, node_path):
     return env
 
 def get_stress_bin(cassandra_dir):
-    stress = os.path.join(cassandra_dir, 'contrib', 'stress', 'bin', 'stress')
-    if os.path.exists(stress):
-        return stress
+    candidates = [
+        os.path.join(cassandra_dir, 'contrib', 'stress', 'bin', 'stress'),
+        os.path.join(cassandra_dir, 'tools', 'stress', 'bin', 'stress'),
+        os.path.join(cassandra_dir, 'tools', 'bin', 'stress'),
+        os.path.join(cassandra_dir, 'tools', 'bin', 'cassandra-stress')
+    ]
+    for candidate in candidates:
+        if os.path.exists(candidate):
+            stress = candidate
+            break
+    else:
+        raise Exception("Cannot find stress binary (maybe it isn't compiled)")
 
-    stress = os.path.join(cassandra_dir, 'tools', 'stress', 'bin', 'stress')
-    if os.path.exists(stress):
-        return stress
+    # make sure it's executable
+    if not os.access(stress, os.X_OK):
+        try:
+            # try to add user execute permissions
+            os.chmod(stress, os.stat(stress).st_mode | stat.S_IXUSR)
+        except:
+            raise Exception("stress binary is not executable: %s" % (stress,))
 
-    stress = os.path.join(cassandra_dir, 'tools', 'bin', 'stress')
-    if os.path.exists(stress):
-        return stress
-
-    stress = os.path.join(cassandra_dir, 'tools', 'bin', 'cassandra-stress')
-    if os.path.exists(stress):
-        return stress
-
-    raise Exception("Cannot find stress binary (maybe it isn't compiled)")
+    return stress
 
 def validate_cassandra_dir(cassandra_dir):
     if cassandra_dir is None:
@@ -166,3 +193,14 @@ def parse_settings(args):
             pass
         settings[splitted[0].strip()] = val
     return settings
+
+#
+# Copy file from source to destination with reasonable error handling
+# 
+def copy_file(src_file, dst_file):
+    try:
+        shutil.copy2(src_file, dst_file)
+    except (IOError, shutil.Error) as e:
+        print >> sys.stderr, str(e)
+        exit(1)
+
