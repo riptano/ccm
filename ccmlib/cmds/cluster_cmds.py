@@ -200,6 +200,9 @@ class ClusterPopulateCmd(Cmd):
 
     def run(self):
         try:
+            if self.cluster.version() >= "1.2" and self.options.vnodes:
+                self.cluster.set_configuration_options({ 'num_tokens' : 256 })
+
             self.cluster.populate(self.nodes, self.options.debug, use_vnodes=self.options.vnodes, ipprefix=self.options.ipprefix)
         except common.ArgumentError as e:
             print >> sys.stderr, str(e)
