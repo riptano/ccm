@@ -102,7 +102,7 @@ def replaces_or_add_into_file_tail(file, replacement_list):
 
     shutil.move(file_tmp, file)
 
-def make_cassandra_env(cassandra_dir, node_path):
+def make_cassandra_env(cassandra_dir, node_path, env_dict=None):
     sh_file = os.path.join(CASSANDRA_BIN_DIR, CASSANDRA_SH)
     orig = os.path.join(cassandra_dir, sh_file)
     dst = os.path.join(node_path, sh_file)
@@ -125,6 +125,10 @@ def make_cassandra_env(cassandra_dir, node_path):
 
     env = os.environ.copy()
     env['CASSANDRA_INCLUDE'] = os.path.join(dst)
+
+    if env_dict is not None:
+        env.update(env_dict)
+
     return env
 
 def get_stress_bin(cassandra_dir):
