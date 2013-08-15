@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 from distutils.core import setup
 from os.path import abspath, join, dirname
