@@ -28,7 +28,7 @@ class Node():
     Provides interactions to a Cassandra node.
     """
 
-    def __init__(self, name, cluster, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save=True, binary_interface=None):
+    def __init__(self, name, cluster, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save=True, binary_interface=None, env_dict=None):
         """
         Create a new Node.
           - name: the name for that node
@@ -41,6 +41,7 @@ class Node():
           - initial_token: the token for this node. If None, use Cassandra token auto-assigment
           - save: copy all data useful for this node to the right position.  Leaving this true
             is almost always the right choice.
+          - env_dict: a dict of additional env params to set before launching cassandra
         """
         self.name = name
         self.cluster = cluster
@@ -56,6 +57,7 @@ class Node():
         self.__cassandra_dir = None
         self.__global_log_level = None
         self.__classes_log_level = {}
+        self.__env_dict = env_dict
         if save:
             self.import_config_files()
             self.import_bin_files()
@@ -81,7 +83,10 @@ class Node():
             binary_interface = None
             if 'binary' in itf and itf['binary'] is not None:
                 binary_interface = tuple(itf['binary'])
-            node = Node(data['name'], cluster, data['auto_bootstrap'], tuple(itf['thrift']), tuple(itf['storage']), data['jmx_port'], remote_debug_port, initial_token, save=False, binary_interface=binary_interface)
+            env_dict = None
+            if 'env_dict' in data:
+                env_dict = data['env_dict']
+            node = Node(data['name'], cluster, data['auto_bootstrap'], tuple(itf['thrift']), tuple(itf['storage']), data['jmx_port'], remote_debug_port, initial_token, save=False, binary_interface=binary_interface, env_dict=env_dict)
             node.status = data['status']
             if 'pid' in data:
                 node.pid = int(data['pid'])
@@ -316,7 +321,7 @@ class Node():
 
         cdir = self.get_cassandra_dir()
         cass_bin = os.path.join(cdir, 'bin', 'cassandra')
-        env = common.make_cassandra_env(cdir, self.get_path())
+        env = common.make_cassandra_env(cdir, self.get_path(), self.__env_dict)
         pidfile = os.path.join(self.get_path(), 'cassandra.pid')
         args = [ cass_bin, '-p', pidfile, '-Dcassandra.join_ring=%s' % str(join_ring) ]
         if replace_token is not None:
@@ -395,7 +400,7 @@ class Node():
     def nodetool(self, cmd):
         cdir = self.get_cassandra_dir()
         nodetool = os.path.join(cdir, 'bin', 'nodetool')
-        env = common.make_cassandra_env(cdir, self.get_path())
+        env = common.make_cassandra_env(cdir, self.get_path(), self.__env_dict)
         host = self.address()
         args = [ nodetool, '-h', host, '-p', str(self.jmx_port), cmd ]
         p = subprocess.Popen(args, env=env)
@@ -404,13 +409,13 @@ class Node():
     def scrub(self, options):
         cdir = self.get_cassandra_dir()
         scrub_bin = os.path.join(cdir, 'bin', 'sstablescrub')
-        env = common.make_cassandra_env(cdir, self.get_path())
+        env = common.make_cassandra_env(cdir, self.get_path(), self.__env_dict)
         os.execve(scrub_bin, [ 'sstablescrub' ] + options, env)
 
     def run_cli(self, cmds=None, show_output=False, cli_options=[]):
         cdir = self.get_cassandra_dir()
         cli = os.path.join(cdir, 'bin', 'cassandra-cli')
-        env = common.make_cassandra_env(cdir, self.get_path())
+        env = common.make_cassandra_env(cdir, self.get_path(), self.__env_dict)
         host = self.network_interfaces['thrift'][0]
         port = self.network_interfaces['thrift'][1]
         args = [ '-h', host, '-p', str(port) , '--jmxport', str(self.jmx_port) ] + cli_options
@@ -436,7 +441,7 @@ class Node():
     def run_cqlsh(self, cmds=None, show_output=False, cqlsh_options=[]):
         cdir = self.get_cassandra_dir()
         cli = os.path.join(cdir, 'bin', 'cqlsh')
-        env = common.make_cassandra_env(cdir, self.get_path())
+        env = common.make_cassandra_env(cdir, self.get_path(), self.__env_dict)
         host = self.network_interfaces['thrift'][0]
         port = self.network_interfaces['thrift'][1]
         args = cqlsh_options + [ host, str(port) ]
@@ -462,7 +467,7 @@ class Node():
     def cli(self):
         cdir = self.get_cassandra_dir()
         cli = os.path.join(cdir, 'bin', 'cassandra-cli')
-        env = common.make_cassandra_env(cdir, self.get_path())
+        env = common.make_cassandra_env(cdir, self.get_path(), self.__env_dict)
         host = self.network_interfaces['thrift'][0]
         port = self.network_interfaces['thrift'][1]
         args = [ '-h', host, '-p', str(port) , '--jmxport', str(self.jmx_port) ]
@@ -513,7 +518,7 @@ class Node():
     def run_sstable2json(self, keyspace=None, datafile=None, column_families=None, enumerate_keys=False):
         cdir = self.get_cassandra_dir()
         sstable2json = os.path.join(cdir, 'bin', 'sstable2json')
-        env = common.make_cassandra_env(cdir, self.get_path())
+        env = common.make_cassandra_env(cdir, self.get_path(), self.__env_dict)
         datafiles = []
         if keyspace is None:
             for k in self.list_keyspaces():
@@ -644,6 +649,7 @@ class Node():
             'interfaces' : self.network_interfaces,
             'jmx_port' : self.jmx_port,
             'config_options' : self.__config_options,
+            'env_dict' : self.__env_dict
         }
         if self.pid:
             values['pid'] = self.pid

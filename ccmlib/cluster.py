@@ -5,7 +5,7 @@ from node import Node, NodeError
 from bulkloader import BulkLoader
 
 class Cluster():
-    def __init__(self, path, name, partitioner=None, cassandra_dir=None, create_directory=True, cassandra_version=None, verbose=False):
+    def __init__(self, path, name, partitioner=None, cassandra_dir=None, create_directory=True, cassandra_version=None, verbose=False, env_dict=None):
         self.name = name
         self.nodes = {}
         self.seeds = []
@@ -14,6 +14,7 @@ class Cluster():
         self.__log_level = "INFO"
         self.__path = path
         self.__version = None
+        self.__env_dict = env_dict
         if create_directory:
             # we create the dir before potentially downloading to throw an error sooner if need be
             os.mkdir(self.get_path())
@@ -79,7 +80,11 @@ class Cluster():
                 cassandra_dir = data['cassandra_dir']
                 repository.validate(cassandra_dir)
 
-            cluster = Cluster(path, data['name'], cassandra_dir=cassandra_dir, create_directory=False)
+            env_dict = None
+            if 'env_dict' in data:
+                env_dict = data['env_dict']
+
+            cluster = Cluster(path, data['name'], cassandra_dir=cassandra_dir, create_directory=False, env_dict=env_dict)
             node_list = data['nodes']
             seed_list = data['seeds']
             if 'partitioner' in data:
@@ -152,7 +157,8 @@ class Cluster():
                         str(7000 + i * 100),
                         (str(0),  str(2000 + i * 100))[debug == True],
                         tk,
-                        binary_interface=binary)
+                        binary_interface=binary,
+                        env_dict=self.__env_dict)
             self.add(node, True, dc)
             self.__update_config()
         return self
@@ -368,7 +374,8 @@ class Cluster():
                 'partitioner' : self.partitioner,
                 'cassandra_dir' : self.__cassandra_dir,
                 'config_options' : self._config_options,
-                'log_level' : self.__log_level
+                'log_level' : self.__log_level,
+                'env_dict' : self.__env_dict
             }, f)
 
     def __update_pids(self, started):
