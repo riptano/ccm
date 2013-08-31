@@ -12,6 +12,7 @@ CASSANDRA_CONF_DIR= "conf"
 CASSANDRA_CONF = "cassandra.yaml"
 LOG4J_CONF = "log4j-server.properties"
 LOG4J_TOOL_CONF = "log4j-tools.properties"
+LOGBACK_CONF = "logback.xml"
 CASSANDRA_ENV = "cassandra-env.sh"
 CASSANDRA_SH = "cassandra.in.sh"
 
@@ -160,7 +161,6 @@ def validate_cassandra_dir(cassandra_dir):
     cnd = os.path.exists(bin_dir)
     cnd = cnd and os.path.exists(conf_dir)
     cnd = cnd and os.path.exists(os.path.join(conf_dir, CASSANDRA_CONF))
-    cnd = cnd and os.path.exists(os.path.join(conf_dir, LOG4J_CONF))
     if not cnd:
         raise ArgumentError('%s does not appear to be a cassandra source directory' % cassandra_dir)
 
