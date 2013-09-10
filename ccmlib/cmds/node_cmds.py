@@ -19,6 +19,7 @@ def node_cmds():
         "cleanup",
         "repair",
         "scrub",
+        "shuffle",
         "decommission",
         "json",
         "updateconf",
@@ -441,6 +442,22 @@ class NodeStressCmd(Cmd):
             self.node.stress(self.stress_options)
         except OSError:
             print >> sys.stderr, "Could not find stress binary (you may need to build it)"
+
+class NodeShuffleCmd(Cmd):
+    def description(self):
+        return "Run shuffle on a node"
+
+    def get_parser(self):
+        usage = "usage: ccm node_name shuffle [options] [shuffle_cmds]"
+        parser = self._get_default_parser(usage, self.description(), ignore_unknown_options=True)
+        return parser
+        
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
+        self.shuffle_cmd =  args[1]
+
+    def run(self):
+        self.node.shuffle( self.shuffle_cmd )
 
 class NodeSetdirCmd(Cmd):
     def description(self):
