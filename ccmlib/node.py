@@ -577,6 +577,16 @@ class Node():
         except KeyboardInterrupt:
             pass
 
+    def shuffle(self, cmd):
+        cdir = self.get_cassandra_dir()
+        shuffle = os.path.join(cdir, 'bin', 'cassandra-shuffle')
+        host = self.address()
+        args = [ shuffle, '-h', host, '-p', str(self.jmx_port) ] + [ cmd ]
+        try:
+            subprocess.call(args)
+        except KeyboardInterrupt:
+            pass
+
     def data_size(self, live_data=True):
         size = 0
         if live_data:
