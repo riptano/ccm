@@ -397,7 +397,8 @@ class Node():
         nodetool = os.path.join(cdir, 'bin', 'nodetool')
         env = common.make_cassandra_env(cdir, self.get_path())
         host = self.address()
-        args = [ nodetool, '-h', host, '-p', str(self.jmx_port), cmd ]
+        args = [ nodetool, '-h', host, '-p', str(self.jmx_port)]
+        args += cmd.split()
         p = subprocess.Popen(args, env=env)
         p.wait()
 
