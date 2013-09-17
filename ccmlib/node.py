@@ -397,7 +397,8 @@ class Node():
         nodetool = os.path.join(cdir, 'bin', 'nodetool')
         env = common.make_cassandra_env(cdir, self.get_path())
         host = self.address()
-        args = [ nodetool, '-h', host, '-p', str(self.jmx_port), cmd ]
+        args = [ nodetool, '-h', host, '-p', str(self.jmx_port)]
+        args += cmd.split()
         p = subprocess.Popen(args, env=env)
         p.wait()
 
@@ -477,7 +478,12 @@ class Node():
             self.__classes_log_level[class_name] = new_level
         else:
             self.__global_log_level = new_level
-        self.__update_log4j()
+        version = self.cluster.version()
+        #loggers changed > 2.1
+        if float(version[:version.index('.')+2]) < 2.1:
+            self.__update_log4j()
+        else:
+            self.__update_logback()
         return self
 
     #
@@ -489,6 +495,14 @@ class Node():
                                            'log4j-server.properties')
         common.copy_file(new_log4j_config, cassandra_conf_dir)        
 
+    #
+    # Update logback config: copy new logback.xml into
+    # ~/.ccm/name-of-cluster/nodeX/conf/logback.xml
+    #
+    def update_logback(self, new_logback_config):
+        cassandra_conf_dir = os.path.join(self.get_conf_dir(),
+                                           'logback.xml')
+        common.copy_file(new_logback_config, cassandra_conf_dir)
 
     def clear(self, clear_all = False, only_data = False):
         data_dirs = [ 'data' ]
@@ -564,6 +578,16 @@ class Node():
         except KeyboardInterrupt:
             pass
 
+    def shuffle(self, cmd):
+        cdir = self.get_cassandra_dir()
+        shuffle = os.path.join(cdir, 'bin', 'cassandra-shuffle')
+        host = self.address()
+        args = [ shuffle, '-h', host, '-p', str(self.jmx_port) ] + [ cmd ]
+        try:
+            subprocess.call(args)
+        except KeyboardInterrupt:
+            pass
+
     def data_size(self, live_data=True):
         size = 0
         if live_data:
@@ -614,7 +638,12 @@ class Node():
                 shutil.copy(filename, self.get_conf_dir())
 
         self.__update_yaml()
-        self.__update_log4j()
+        version = self.cluster.version()
+        #loggers changed > 2.1
+        if float(version[:version.index('.')+2]) < 2.1:
+            self.__update_log4j()
+        else:
+            self.__update_logback()
         self.__update_envfile()
 
     def import_bin_files(self):
@@ -626,7 +655,12 @@ class Node():
 
     def _save(self):
         self.__update_yaml()
-        self.__update_log4j()
+        version = self.cluster.version()
+        #loggers changed > 2.1
+        if float(version[:version.index('.')+2]) < 2.1:
+            self.__update_log4j()
+        else:
+            self.__update_logback()
         self.__update_envfile()
 
     def __update_config(self):
@@ -717,6 +751,28 @@ class Node():
             logger_pattern='log4j.logger'
             full_logger_pattern = logger_pattern + '.' + class_name + '='
             common.replace_or_add_into_file_tail(conf_file, full_logger_pattern, full_logger_pattern + self.__classes_log_level[class_name])
+
+    def __update_logback(self):
+        append_pattern='<file>.*</file>'
+        conf_file = os.path.join(self.get_conf_dir(), common.LOGBACK_CONF)
+        log_file = os.path.join(self.get_path(), 'logs', 'system.log')
+        common.replace_in_file(conf_file, append_pattern, '<file>' + log_file + '</file>')
+
+        append_pattern='<fileNamePattern>.*</fileNamePattern>'
+        common.replace_in_file(conf_file, append_pattern, '<fileNamePattern>' + log_file + '.%i.zip</fileNamePattern>')
+
+        # Setting the right log level
+
+        # Replace the global log level
+        if self.__global_log_level is not None:
+            append_pattern='<root level=".*">'
+            common.replace_in_file(conf_file, append_pattern, '<root level="' + self.__global_log_level + '">')
+
+        # Class specific log levels
+        for class_name in self.__classes_log_level:
+            logger_pattern='\t<logger name="'
+            full_logger_pattern = logger_pattern + class_name + '" level=".*"/>'
+            common.replace_or_add_into_file_tail(conf_file, full_logger_pattern, logger_pattern + class_name + '" level="' + self.__classes_log_level[class_name] + '"/>')
 
     def __update_envfile(self):
         jmx_port_pattern='JMX_PORT='

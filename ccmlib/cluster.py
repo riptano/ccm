@@ -352,6 +352,10 @@ class Cluster():
         for node in self.nodelist():
             node.update_log4j(new_log4j_config)
 
+    def update_logback(self, new_logback_config):
+        # iterate over all nodes
+        for node in self.nodelist():
+            node.update_logback(new_logback_config)
 
     def __get_version_from_build(self):
         cassandra_dir = self.get_cassandra_dir()
