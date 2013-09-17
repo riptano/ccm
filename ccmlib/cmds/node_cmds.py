@@ -20,6 +20,7 @@ def node_cmds():
         "repair",
         "scrub",
         "shuffle",
+        "sstablesplit",
         "decommission",
         "json",
         "updateconf",
@@ -347,6 +348,43 @@ class NodeJsonCmd(Cmd):
             self.node.run_sstable2json(self.keyspace, self.datafile, self.column_families, self.options.enumerate_keys)
         except common.ArgumentError as e:
             print >> sys.stderr, e
+
+class NodeSstablesplitCmd(Cmd):
+    def description(self):
+        return "Run sstablesplit on the sstables of this node"
+
+    def get_parser(self):
+        usage = "usage: ccm node_name sstablesplit [options] [file]"
+        parser = self._get_default_parser(usage, self.description())
+        parser.add_option('-k', '--keyspace', type="string", dest="keyspace", default=None,
+                          help="The keyspace to use [use all keyspaces by default]")
+        parser.add_option('-c', '--column-families', type="string", dest='cfs', default=None,
+                          help="Comma seperated list of column families ut use (requires -k to be set)")
+        parser.add_option('-s', '--size', type='int', dest="size", default=None,
+                          help="Maximum size in MB for the output sstables (default: 50 MB)")
+        return parser
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
+        self.keyspace = options.keyspace
+        self.size = options.size
+        self.column_families = None
+        self.datafile = None
+
+        if len(args) > 1:
+            self.datafile = args[1]
+        else:
+            if options.cfs is not None:
+                if self.keyspace is None:
+                    print >> sys.stderr, "You need a keyspace (option -k) if you specify column families"
+                    exit(1)
+                    self.column_families = options.cfs.split(',')
+
+    def run(self):
+        if self.datafile is not None:
+            self.node.run_sstablesplit(datafile=self.datafile, size=self.size)
+        else:
+            self.node.run_sstablesplit(keyspace=self.keyspace, column_families=self.column_families, size=self.size)
 
 class NodeUpdateconfCmd(Cmd):
     def description(self):

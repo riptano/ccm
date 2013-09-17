@@ -548,6 +548,34 @@ class Node():
             subprocess.call(args, env=env)
             print ""
 
+    def run_sstablesplit(self, datafile=None,  size=None, keyspace=None, column_families=None):
+        cdir = self.get_cassandra_dir()
+        sstablesplit = os.path.join(cdir, 'bin', 'sstablesplit')
+        env = common.make_cassandra_env(cdir, self.get_path())
+
+        def do_split(f):
+            print "-- {0}-----".format(os.path.basename(f))
+            if size is not None:
+                subprocess.call( [sstablesplit, '-s', str(size), f], env=env )
+            else:
+                subprocess.call( [sstablesplit, f], env=env )
+            
+        if datafile is not None:
+            do_split(datafile)
+        else:
+            datafiles = []
+            if keyspace is None:
+                for k in self.list_keyspaces():
+                    datafiles = datafiles + self.get_sstables(k,"")
+            elif column_families is None:
+                datafiles = self.get_sstables(keyspace,"")
+            else:
+                for cf in column_families:
+                    datafiles = datafiles + self.get_sstables(keyspace, cf)
+                        
+            for datafile in datafiles:
+                do_split(datafile)
+
     def list_keyspaces(self):
         keyspaces = os.listdir(os.path.join(self.get_path(), 'data'))
         keyspaces.remove('system')
