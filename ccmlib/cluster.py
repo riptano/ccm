@@ -209,6 +209,11 @@ class Cluster():
                 started.append((node, p))
                 # ugly? indeed!
                 while not os.path.exists(node.logfilename()):
+                    if not no_wait:
+                        self.print_process_output(node.name, p, verbose)
+                        p.poll()
+                        if p.returncode is not None:
+                            return None
                     time.sleep(.01)
                 marks.append((node, node.mark_log()))
 
@@ -216,12 +221,7 @@ class Cluster():
             time.sleep(2) # waiting 2 seconds to check for early errors and for the pid to be set
         else:
             for node, p in started:
-                for line in p.stdout:
-                    if verbose:
-                        print "[%s] %s" % (node.name, line.rstrip('\n'))
-                for line in p.stderr:
-                    if verbose:
-                        print "[%s ERROR] %s" % (node.name, line.rstrip('\n'))
+                self.print_process_output(node.name, p, verbose)
                 if verbose:
                     print "----"
                 node.watch_log_for("Listening for thrift clients...")
@@ -246,6 +246,13 @@ class Cluster():
             time.sleep(0.2)
 
         return started
+
+    def print_process_output(sef, name, proc, verbose=False):
+        if verbose:
+            for line in proc.stdout:
+                print "[%s] %s" % (name, line.rstrip('\n'))
+        for line in proc.stderr:
+            print "[%s ERROR] %s" % (name, line.rstrip('\n'))
 
     def stop(self, wait=True, gently=True):
         not_running = []

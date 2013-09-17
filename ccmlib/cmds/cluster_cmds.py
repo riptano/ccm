@@ -63,7 +63,7 @@ class ClusterCreateCmd(Cmd):
         parser.add_option('-d', "--debug", action="store_true", dest="debug",
             help="If -s is used, show the standard output when starting the nodes", default=False)
         parser.add_option('-b', "--binary-protocol", action="store_true", dest="binary_protocol",
-            help="Enable the binary protocol", default=False)
+            help="Enable the binary protocol (starting from C* 1.2.5 the binary protocol is started by default and this option is a no-op)", default=False)
         parser.add_option('-D', "--debug-log", action="store_true", dest="debug_log",
             help="With -n, sets debug logging on the new nodes", default=False)
         parser.add_option('-T', "--trace-log", action="store_true", dest="trace_log",
@@ -88,7 +88,9 @@ class ClusterCreateCmd(Cmd):
         if self.options.partitioner:
             cluster.set_partitioner(self.options.partitioner)
 
-        if cluster.version() >= "1.2" and self.options.binary_protocol:
+        if cluster.version() >= "1.2.5":
+            self.options.binary_protocol = True
+        if self.options.binary_protocol:
             cluster.set_configuration_options({ 'start_native_transport' : True })
 
         if cluster.version() >= "1.2" and self.options.vnodes:
@@ -106,7 +108,11 @@ class ClusterCreateCmd(Cmd):
                     cluster.set_log_level("TRACE")
                 cluster.populate(self.nodes, use_vnodes=self.options.vnodes, ipprefix=self.options.ipprefix)
                 if self.options.start_nodes:
-                    cluster.start(verbose=self.options.debug, wait_for_binary_proto=self.options.binary_protocol)
+                    if cluster.start(verbose=self.options.debug, wait_for_binary_proto=self.options.binary_protocol) is None:
+                        details = ""
+                        if not self.options.debug:
+                            details = " (you can use --debug for more information)"
+                        print >> sys.stderr, "Error starting nodes, see above for details%s" % details
             except common.ArgumentError as e:
                 print >> sys.stderr, str(e)
                 exit(1)
@@ -389,8 +395,11 @@ class ClusterStartCmd(Cmd):
 
     def run(self):
         try:
-            self.cluster.start(no_wait=self.options.no_wait,
-                               verbose=self.options.verbose)
+            if self.cluster.start(no_wait=self.options.no_wait, verbose=self.options.verbose) is None:
+                details = ""
+                if not self.options.debug:
+                    details = " (you can use --debug for more information)"
+                print >> sys.stderr, "Error starting nodes, see above for details%s" % details
         except NodeError as e:
             print >> sys.stderr, str(e)
             print >> sys.stderr, "Standard error output is:"
