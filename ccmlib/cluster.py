@@ -200,19 +200,19 @@ class Cluster():
             else:
                 node.show(only_status=True)
 
-    def start(self, no_wait=False, verbose=False, wait_for_binary_proto=False):
+    def start(self, no_wait=False, verbose=False, wait_for_binary_proto=False, jvm_args=[]):
         started = []
         marks = []
         for node in self.nodes.values():
             if not node.is_running():
-                p = node.start(update_pid=False)
+                p = node.start(update_pid=False, jvm_args=jvm_args)
                 started.append((node, p))
                 # ugly? indeed!
                 while not os.path.exists(node.logfilename()):
                     if not no_wait:
                         self.print_process_output(node.name, p, verbose)
                         p.poll()
-                        if p.returncode is not None:
+                        if p.returncode is not None and p.returncode != 0:
                             return None
                     time.sleep(.01)
                 marks.append((node, node.mark_log()))

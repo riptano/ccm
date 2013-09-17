@@ -782,6 +782,9 @@ class Node():
         if self.remote_debug_port != '0':
             common.replace_in_file(conf_file, remote_debug_port_pattern, 'JVM_OPTS="$JVM_OPTS -Xdebug -Xnoagent -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=' + str(self.remote_debug_port) + '"')
 
+        if self.cluster.version() < '2.0.1':
+            common.replace_in_file(conf_file, "-Xss", '    JVM_OPTS="$JVM_OPTS -Xss228k"')
+
     def __update_status(self):
         if self.pid is None:
             if self.status == Status.UP or self.status == Status.DECOMMISIONNED:
