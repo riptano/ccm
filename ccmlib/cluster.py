@@ -172,10 +172,10 @@ class Cluster():
             if node in self.seeds:
                 self.seeds.remove(node)
             self.__update_config()
-            node.stop()
+            node.stop(gently=False)
             shutil.rmtree(node.get_path())
         else:
-            self.stop()
+            self.stop(gently=False)
             shutil.rmtree(self.get_path())
 
     def clear(self):
