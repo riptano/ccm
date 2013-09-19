@@ -115,7 +115,16 @@ def compile_version(version, target_dir, verbose=False):
     with open(logfile, 'w') as lf:
         lf.write("--- Cassandra build -------------------\n")
         try:
-            if subprocess.call(['ant', 'jar'], cwd=target_dir, stdout=lf, stderr=lf) is not 0:
+            # Patch for pending Cassandra issue: https://issues.apache.org/jira/browse/CASSANDRA-5543
+            # Similar patch seen with buildbot
+            attempt = 0
+            ret_val = 1
+            while attempt < 3 and ret_val is not 0:
+                if attempt > 0:
+                    lf.write("\n\n`ant jar` failed. Retry #%s...\n\n" % attempt)
+                ret_val = subprocess.call(['ant', 'jar'], cwd=target_dir, stdout=lf, stderr=lf)
+                attempt += 1
+            if ret_val is not 0:
                 raise common.CCMError("Error compiling Cassandra. See %s for details" % logfile)
         except OSError, e:
             raise common.CCMError("Error compiling Cassandra. Is ant installed? See %s for details" % logfile)
