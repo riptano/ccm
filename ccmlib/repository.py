@@ -117,11 +117,13 @@ def compile_version(version, target_dir, verbose=False):
         try:
             # Patch for pending Cassandra issue: https://issues.apache.org/jira/browse/CASSANDRA-5543
             # Similar patch seen with buildbot
-            attempts = 0
+            attempt = 0
             ret_val = 1
-            while attempts < 3 and ret_val is not 0:
+            while attempt < 3 and ret_val is not 0:
+                if attempt > 0:
+                    print "`ant jar` failed. Retry #%s..." % attempt
                 ret_val = subprocess.call(['ant', 'jar'], cwd=target_dir, stdout=lf, stderr=lf)
-                attempts += 1
+                attempt += 1
             if ret_val is not 0:
                 raise common.CCMError("Error compiling Cassandra. See %s for details" % logfile)
         except OSError, e:
