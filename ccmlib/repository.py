@@ -121,7 +121,7 @@ def compile_version(version, target_dir, verbose=False):
             ret_val = 1
             while attempt < 3 and ret_val is not 0:
                 if attempt > 0:
-                    print "`ant jar` failed. Retry #%s..." % attempt
+                    lf.write("\n\n`ant jar` failed. Retry #%s...\n\n" % attempt)
                 ret_val = subprocess.call(['ant', 'jar'], cwd=target_dir, stdout=lf, stderr=lf)
                 attempt += 1
             if ret_val is not 0:
