@@ -527,19 +527,8 @@ class Node():
         cdir = self.get_cassandra_dir()
         sstable2json = os.path.join(cdir, 'bin', 'sstable2json')
         env = common.make_cassandra_env(cdir, self.get_path())
-        datafiles = []
-        if keyspace is None:
-            for k in self.list_keyspaces():
-                datafiles = datafiles + self.get_sstables(k, "")
-        elif datafile is None:
-            if column_families is None:
-                datafiles = datafiles + self.get_sstables(keyspace, "")
-            else:
-                for cf in column_families:
-                    datafiles = datafiles + self.get_sstables(keyspace, cf)
-        else:
-            keyspace_dir = os.path.join(self.get_path(), 'data', keyspace)
-            datafiles = [ os.path.join(keyspace_dir, datafile) ]
+        datafiles = self.__gather_sstables(datafile,keyspace,column_families)
+
         for file in datafiles:
             print "-- {0} -----".format(os.path.basename(file))
             args = [ sstable2json , file ]
@@ -552,6 +541,7 @@ class Node():
         cdir = self.get_cassandra_dir()
         sstablesplit = os.path.join(cdir, 'bin', 'sstablesplit')
         env = common.make_cassandra_env(cdir, self.get_path())
+        datafiles = self.__gather_sstables(datafile, keyspace, column_families)
 
         def do_split(f):
             print "-- {0}-----".format(os.path.basename(f))
@@ -559,22 +549,9 @@ class Node():
                 subprocess.call( [sstablesplit, '-s', str(size), f], env=env )
             else:
                 subprocess.call( [sstablesplit, f], env=env )
-            
-        if datafile is not None:
+
+        for datafile in datafiles:
             do_split(datafile)
-        else:
-            datafiles = []
-            if keyspace is None:
-                for k in self.list_keyspaces():
-                    datafiles = datafiles + self.get_sstables(k,"")
-            elif column_families is None:
-                datafiles = self.get_sstables(keyspace,"")
-            else:
-                for cf in column_families:
-                    datafiles = datafiles + self.get_sstables(keyspace, cf)
-                        
-            for datafile in datafiles:
-                do_split(datafile)
 
     def list_keyspaces(self):
         keyspaces = os.listdir(os.path.join(self.get_path(), 'data'))
@@ -859,3 +836,20 @@ class Node():
         except IOError:
             raise NodeError('Problem starting node %s' % self.name, process)
         self.__update_status()
+
+    def __gather_sstables(self, datafile=None, keyspace=None, columnfamilies=None):
+        datafiles = []
+        if keyspace is None:
+            for k in self.list_keyspaces():
+                datafiles = datafiles + self.get_sstables(k, "")
+        elif datafile is None:
+            if columnfamilies is None:
+                datafiles = datafiles + self.get_sstables(keyspace, "")
+            else:
+                for cf in columnfamilies:
+                    datafiles = datafiles + self.get_sstables(keyspace, cf)
+        else:
+            keyspace_dir = os.path.join(self.get_path(), 'data', keyspace)
+            datafiles = [ os.path.join(keyspace_dir, datafile) ]
+
+        return datafiles
