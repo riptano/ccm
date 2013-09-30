@@ -205,23 +205,22 @@ class Cluster():
         marks = []
         for node in self.nodes.values():
             if not node.is_running():
+                if os.path.exists(node.logfilename()):
+                    marks.append((node, node.mark_log()))
+                else:
+                    marks.append((node, 0))
+
                 p = node.start(update_pid=False, jvm_args=jvm_args)
                 started.append((node, p))
-                # ugly? indeed!
-                while not os.path.exists(node.logfilename()):
-                    if not no_wait:
-                        self.print_process_output(node.name, p, verbose)
-                        p.poll()
-                        if p.returncode is not None and p.returncode != 0:
-                            return None
-                    time.sleep(.01)
-                marks.append((node, node.mark_log()))
 
         if no_wait and not verbose:
             time.sleep(2) # waiting 2 seconds to check for early errors and for the pid to be set
         else:
             for node, p in started:
                 self.print_process_output(node.name, p, verbose)
+                p.poll()
+                if p.returncode is not None and p.returncode != 0:
+                    return None
                 if verbose:
                     print "----"
                 node.watch_log_for("Listening for thrift clients...")

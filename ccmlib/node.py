@@ -285,7 +285,7 @@ class Node():
         tofind = [ "%s is now [dead|DOWN]" % node.address() for node in tofind ]
         self.watch_log_for(tofind, from_mark=from_mark, timeout=timeout)
 
-    def watch_log_for_alive(self, nodes, from_mark=None, timeout=60):
+    def watch_log_for_alive(self, nodes, from_mark=None, timeout=120):
         """
         Watch the log of this node until it detects that the provided other
         nodes are marked UP. This method works similarily to watch_log_for_death.
