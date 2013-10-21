@@ -235,10 +235,9 @@ class Cluster():
             # 0.7 gossip messages seems less predictible that from 0.8 onwards and
             # I don't care enough
             for node, mark in marks:
-                for other_node, other_mark in marks:
+                for other_node, _ in marks:
                     if other_node is not node:
-                        node.watch_log_for_alive(other_node,
-                                                 from_mark=other_mark)
+                        node.watch_log_for_alive(other_node, from_mark=mark)
 
         if wait_for_binary_proto:
             for node, _ in started:
