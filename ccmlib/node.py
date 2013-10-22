@@ -235,7 +235,7 @@ class Node():
             return f.tell()
 
     # This will return when exprs are found or it timeouts
-    def watch_log_for(self, exprs, from_mark=None, timeout=60):
+    def watch_log_for(self, exprs, from_mark=None, timeout=600):
         """
         Watch the log until one or more (regular) expression are found.
         This methods when all the expressions have been found or the method
@@ -266,8 +266,8 @@ class Node():
                                 return matchings[0] if isinstance(exprs, basestring) else matchings
                 else:
                     # yep, it's ugly
-                    time.sleep(.3)
-                    elapsed = elapsed + .3
+                    time.sleep(1)
+                    elapsed = elapsed + 1
                     if elapsed > timeout:
                         raise TimeoutError(time.strftime("%d %b %Y %H:%M:%S", time.gmtime()) + " [" + self.name + "] Missing: " + str([e.pattern for e in tofind]) + ":\n" + reads)
 

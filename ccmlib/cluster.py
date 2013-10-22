@@ -217,9 +217,20 @@ class Cluster():
             time.sleep(2) # waiting 2 seconds to check for early errors and for the pid to be set
         else:
             for node, p in started:
-                self.print_process_output(node.name, p, verbose)
+                # We want to wait until the process is ready (listening on thrift) and the
+                # only way to do that currently is to watch the log. However, if there is
+                # an error starting the node, we don't want to block on watching the log forever.
+                # So for now, wait 3 seconds to see if the process exits (in which case we print
+                # the output) and it hasn't by then, do watch the log. Definitively not perfect
+                # though, we should do something more fancy someday
+                tests = 0
                 p.poll()
+                while p.returncode is None and tests < 3:
+                    time.sleep(1)
+                    tests = tests + 1
+                    p.poll()
                 if p.returncode is not None and p.returncode != 0:
+                    self.print_process_output(node.name, p, verbose)
                     return None
                 if verbose:
                     print "----"
