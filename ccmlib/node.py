@@ -249,6 +249,10 @@ class Node():
         reads = ""
         if len(tofind) == 0:
             return None
+        start_time = time.time()
+        while time.time() - start_time < 10:
+            if os.path.isfile(self.logfilename()):
+                break
         with open(self.logfilename()) as f:
             if from_mark:
                 f.seek(from_mark)
