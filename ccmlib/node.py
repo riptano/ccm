@@ -1,7 +1,7 @@
 # ccm node
 from __future__ import with_statement
 
-import common, yaml, os, errno, signal, time, subprocess, shutil, sys, glob, re
+import common, yaml, os, errno, signal, time, subprocess, shutil, sys, glob, re, stat
 import repository
 from cli_session import CliSession
 
@@ -230,12 +230,22 @@ class Node():
         This is for use with the from_mark parameter of watch_log_for_* methods,
         allowing to watch the log from the position when this method was called.
         """
+        if not os.path.exists(self.logfilename()):
+            return 0
         with open(self.logfilename()) as f:
             f.seek(0, os.SEEK_END)
             return f.tell()
 
+    def print_process_output(self, name, proc, verbose=False):
+        if verbose:
+            for line in proc.stdout:
+                print "[%s] %s" % (name, line.rstrip('\n'))
+        for line in proc.stderr:
+            print "[%s ERROR] %s" % (name, line.rstrip('\n'))
+
+
     # This will return when exprs are found or it timeouts
-    def watch_log_for(self, exprs, from_mark=None, timeout=600):
+    def watch_log_for(self, exprs, from_mark=None, timeout=600, process=None, verbose=False):
         """
         Watch the log until one or more (regular) expression are found.
         This methods when all the expressions have been found or the method
@@ -249,11 +259,29 @@ class Node():
         reads = ""
         if len(tofind) == 0:
             return None
+
+        while not os.path.exists(self.logfilename()):
+            time.sleep(.5)
+            if process:
+                process.poll()
+                if process.returncode is not None:
+                    self.print_process_output(self.name, process, verbose)
+                    if process.returncode != 0:
+                        raise RuntimeError() # Shouldn't reuse RuntimeError but I'm lazy
+
         with open(self.logfilename()) as f:
             if from_mark:
                 f.seek(from_mark)
 
             while True:
+                # First, if we have a process to check, then check it
+                if process:
+                    process.poll()
+                    if process.returncode is not None:
+                        self.print_process_output(self.name, process, verbose)
+                        if process.returncode != 0:
+                            raise RuntimeError() # Shouldn't reuse RuntimeError but I'm lazy
+
                 line = f.readline()
                 if line:
                     reads = reads + line
@@ -270,6 +298,11 @@ class Node():
                     elapsed = elapsed + 1
                     if elapsed > timeout:
                         raise TimeoutError(time.strftime("%d %b %Y %H:%M:%S", time.gmtime()) + " [" + self.name + "] Missing: " + str([e.pattern for e in tofind]) + ":\n" + reads)
+
+                if process:
+                    process.poll()
+                    if process.returncode is not None and process.returncode == 0:
+                        return None
 
     def watch_log_for_death(self, nodes, from_mark=None, timeout=600):
         """
@@ -294,7 +327,16 @@ class Node():
         tofind = [ "%s.* now UP" % node.address() for node in tofind ]
         self.watch_log_for(tofind, from_mark=from_mark, timeout=timeout)
 
-    def start(self, join_ring=True, no_wait=False, verbose=False, update_pid=True, wait_other_notice=False, replace_token=None, jvm_args=[], wait_for_binary_proto=False):
+    def start(self,
+              join_ring=True,
+              no_wait=False,
+              verbose=False,
+              update_pid=True,
+              wait_other_notice=False,
+              replace_token=None,
+              jvm_args=[],
+              wait_for_binary_proto=False,
+              profile_options=None):
         """
         Start the node. Options includes:
           - join_ring: if false, start the node with -Dcassandra.join_ring=False
@@ -316,12 +358,32 @@ class Node():
 
         cdir = self.get_cassandra_dir()
         cass_bin = os.path.join(cdir, 'bin', 'cassandra')
+
+        # Copy back the cassandra script since profiling may have modified it the previous time
+        shutil.copy(cass_bin, self.get_bin_dir())
+        cass_bin = os.path.join(self.get_bin_dir(), 'cassandra')
+
+        if profile_options is not None:
+            config = common.get_config()
+            if not 'yourkit_agent' in config:
+                raise NodeError("Cannot enable profile. You need to set 'yourkit_agent' to the path of your agent in a ~/.ccm/config")
+            cmd = '-agentpath:%s' % config['yourkit_agent']
+            if 'options' in profile_options:
+                cmd = cmd + '=' + profile_options['options']
+            print cmd
+            # Yes, it's fragile as shit
+            pattern=r'cassandra_parms="-Dlog4j.configuration=log4j-server.properties -Dlog4j.defaultInitOverride=true'
+            common.replace_in_file(cass_bin, pattern, '    ' + pattern + ' ' + cmd + '"')
+
+        os.chmod(cass_bin, os.stat(cass_bin).st_mode | stat.S_IEXEC)
+
         env = common.make_cassandra_env(cdir, self.get_path())
         pidfile = os.path.join(self.get_path(), 'cassandra.pid')
         args = [ cass_bin, '-p', pidfile, '-Dcassandra.join_ring=%s' % str(join_ring) ]
         if replace_token is not None:
             args = args + [ '-Dcassandra.replace_token=%s' % str(replace_token) ]
         args = args + jvm_args
+
         process = subprocess.Popen(args, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
         if update_pid:

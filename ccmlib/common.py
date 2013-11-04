@@ -2,7 +2,7 @@
 # Cassandra Cluster Management lib
 #
 
-import os, common, shutil, re, cluster, socket, stat
+import os, common, shutil, re, cluster, socket, stat, yaml
 
 USER_HOME = os.path.expanduser('~')
 
@@ -15,6 +15,8 @@ LOG4J_TOOL_CONF = "log4j-tools.properties"
 LOGBACK_CONF = "logback.xml"
 CASSANDRA_ENV = "cassandra-env.sh"
 CASSANDRA_SH = "cassandra.in.sh"
+
+CONFIG_FILE = "config"
 
 class CCMError(Exception):
     pass
@@ -33,6 +35,15 @@ def get_default_path():
     if not os.path.exists(default_path):
         os.mkdir(default_path)
     return default_path
+
+def get_config():
+    config_path = os.path.join(get_default_path(), CONFIG_FILE)
+    if not os.path.exists(config_path):
+        return {}
+
+    with open(config_path, 'r') as f:
+        return yaml.load(f)
+
 
 def parse_interface(itf, default_port):
     i = itf.split(':')

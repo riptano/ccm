@@ -200,7 +200,7 @@ class Cluster():
             else:
                 node.show(only_status=True)
 
-    def start(self, no_wait=False, verbose=False, wait_for_binary_proto=False, jvm_args=[]):
+    def start(self, no_wait=False, verbose=False, wait_for_binary_proto=False, jvm_args=[], profile_options=None):
         started = []
         marks = []
         for node in self.nodes.values():
@@ -210,31 +210,18 @@ class Cluster():
                 else:
                     marks.append((node, 0))
 
-                p = node.start(update_pid=False, jvm_args=jvm_args)
+                p = node.start(update_pid=False, jvm_args=jvm_args, profile_options=profile_options)
                 started.append((node, p))
 
         if no_wait and not verbose:
             time.sleep(2) # waiting 2 seconds to check for early errors and for the pid to be set
         else:
             for node, p in started:
-                # We want to wait until the process is ready (listening on thrift) and the
-                # only way to do that currently is to watch the log. However, if there is
-                # an error starting the node, we don't want to block on watching the log forever.
-                # So for now, wait 3 seconds to see if the process exits (in which case we print
-                # the output) and it hasn't by then, do watch the log. Definitively not perfect
-                # though, we should do something more fancy someday
-                tests = 0
-                p.poll()
-                while p.returncode is None and tests < 3:
-                    time.sleep(1)
-                    tests = tests + 1
-                    p.poll()
-                if p.returncode is not None and p.returncode != 0:
-                    self.print_process_output(node.name, p, verbose)
+                marks.append((node, node.mark_log()))
+                try:
+                    node.watch_log_for("Listening for thrift clients...", process=p, verbose=verbose)
+                except RuntimeError:
                     return None
-                if verbose:
-                    print "----"
-                node.watch_log_for("Listening for thrift clients...")
 
         self.__update_pids(started)
 
@@ -256,13 +243,6 @@ class Cluster():
             time.sleep(0.2)
 
         return started
-
-    def print_process_output(sef, name, proc, verbose=False):
-        if verbose:
-            for line in proc.stdout:
-                print "[%s] %s" % (name, line.rstrip('\n'))
-        for line in proc.stderr:
-            print "[%s ERROR] %s" % (name, line.rstrip('\n'))
 
     def stop(self, wait=True, gently=True):
         not_running = []
