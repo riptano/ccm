@@ -217,7 +217,6 @@ class Cluster():
             time.sleep(2) # waiting 2 seconds to check for early errors and for the pid to be set
         else:
             for node, p in started:
-                marks.append((node, node.mark_log()))
                 try:
                     node.watch_log_for("Listening for thrift clients...", process=p, verbose=verbose)
                 except RuntimeError:
