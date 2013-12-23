@@ -1,8 +1,10 @@
 # ccm clusters
 
-import common, yaml, os, subprocess, shutil, repository, time, re, sys
-from node import Node, NodeError
-from bulkloader import BulkLoader
+import yaml, os, subprocess, shutil, time, re, sys
+from . import common
+from . import repository
+from .node import Node, NodeError
+from .bulkloader import BulkLoader
 
 class Cluster():
     def __init__(self, path, name, partitioner=None, cassandra_dir=None, create_directory=True, cassandra_version=None, verbose=False):
@@ -53,7 +55,7 @@ class Cluster():
             self.__cassandra_dir = dir
             self.__version = v if v is not None else self.__get_version_from_build()
         self.__update_config()
-        for node in self.nodes.values():
+        for node in list(self.nodes.values()):
             node.import_config_files()
         return self
 
@@ -122,20 +124,20 @@ class Cluster():
             for c in nodes:
                 i = i + 1
                 node_count = node_count + c
-                for x in xrange(0, c):
+                for x in range(0, c):
                     dcs.append('dc%d' % i)
 
         if node_count < 1:
             raise common.ArgumentError('invalid node count %s' % nodes)
 
-        for i in xrange(1, node_count + 1):
-            if 'node%s' % i in self.nodes.values():
+        for i in range(1, node_count + 1):
+            if 'node%s' % i in list(self.nodes.values()):
                 raise common.ArgumentError('Cannot create existing node node%s' % i)
 
         if tokens is None and not use_vnodes:
             tokens = self.balanced_tokens(node_count)
 
-        for i in xrange(1, node_count + 1):
+        for i in range(1, node_count + 1):
             tk = None
             if tokens is not None and i-1 < len(tokens):
                 tk = tokens[i-1]
@@ -159,9 +161,9 @@ class Cluster():
 
     def balanced_tokens(self, node_count):
         if self.version() >= '1.2' and not self.partitioner:
-            ptokens = [(i*(2**64/node_count)) for i in xrange(0, node_count)]
+            ptokens = [(i*(2**64//node_count)) for i in range(0, node_count)]
             return [t - 2**63 for t in ptokens]
-        return [ (i*(2**127/node_count)) for i in range(0, node_count) ]
+        return [ (i*(2**127//node_count)) for i in range(0, node_count) ]
 
     def remove(self, node=None):
         if node is not None:
@@ -180,7 +182,7 @@ class Cluster():
 
     def clear(self):
         self.stop()
-        for node in self.nodes.values():
+        for node in list(self.nodes.values()):
             node.clear()
 
     def get_path(self):
@@ -190,19 +192,19 @@ class Cluster():
         return [ s.network_interfaces['storage'][0] for s in self.seeds ]
 
     def show(self, verbose):
-        if len(self.nodes.values()) == 0:
-            print "No node in this cluster yet"
+        if len(list(self.nodes.values())) == 0:
+            print("No node in this cluster yet")
             return
-        for node in self.nodes.values():
+        for node in list(self.nodes.values()):
             if (verbose):
                 node.show(show_cluster=False)
-                print ""
+                print("")
             else:
                 node.show(only_status=True)
 
     def start(self, no_wait=False, verbose=False, wait_for_binary_proto=False, jvm_args=[], profile_options=None):
         started = []
-        for node in self.nodes.values():
+        for node in list(self.nodes.values()):
             if not node.is_running():
                 mark = 0
                 if os.path.exists(node.logfilename()):
@@ -243,7 +245,7 @@ class Cluster():
 
     def stop(self, wait=True, gently=True):
         not_running = []
-        for node in self.nodes.values():
+        for node in list(self.nodes.values()):
             if not node.stop(wait, gently=gently):
                 not_running.append(node)
         return not_running
@@ -260,16 +262,16 @@ class Cluster():
             node.set_log_level(new_level, class_name)
 
     def nodetool(self, nodetool_cmd):
-        for node in self.nodes.values():
+        for node in list(self.nodes.values()):
             if node.is_running():
                 node.nodetool(nodetool_cmd)
         return self
 
     def stress(self, stress_options):
         stress = common.get_stress_bin(self.get_cassandra_dir())
-        livenodes = [ node.network_interfaces['storage'][0] for node in self.nodes.values() if node.is_live() ]
+        livenodes = [ node.network_interfaces['storage'][0] for node in list(self.nodes.values()) if node.is_live() ]
         if len(livenodes) == 0:
-            print "No live node"
+            print("No live node")
             return
         args = [ stress, '-d', ",".join(livenodes) ] + stress_options
         try:
@@ -279,14 +281,14 @@ class Cluster():
         return self
 
     def run_cli(self, cmds=None, show_output=False, cli_options=[]):
-        livenodes = [ node for node in self.nodes.values() if node.is_live() ]
+        livenodes = [ node for node in list(self.nodes.values()) if node.is_live() ]
         if len(livenodes) == 0:
             raise common.ArgumentError("No live node")
         livenodes[0].run_cli(cmds, show_output, cli_options)
 
     def set_configuration_options(self, values=None, batch_commitlog=None):
         if values is not None:
-            for k, v in values.iteritems():
+            for k, v in values.items():
                 self._config_options[k] = v
         if batch_commitlog is not None:
             if batch_commitlog:
@@ -299,7 +301,7 @@ class Cluster():
                 self._config_options["commitlog_sync_batch_window_in_ms"] = None
 
         self.__update_config()
-        for node in self.nodes.values():
+        for node in list(self.nodes.values()):
             node.import_config_files()
         return self
 
@@ -319,7 +321,7 @@ class Cluster():
         self.nodetool("cleanup")
 
     def decommission(self):
-        for node in self.nodes.values():
+        for node in list(self.nodes.values()):
             if node.is_running():
                 node.decommission()
 
@@ -331,7 +333,7 @@ class Cluster():
         loader.load(options)
 
     def scrub(self, options):
-        for node in self.nodes.values():
+        for node in list(self.nodes.values()):
             node.scrub(options)
 
     def update_log4j(self, new_log4j_config):
@@ -355,7 +357,7 @@ class Cluster():
         raise common.CCMError("Cannot find version")
 
     def __update_config(self):
-        node_list = [ node.name for node in self.nodes.values() ]
+        node_list = [ node.name for node in list(self.nodes.values()) ]
         seed_list = [ node.name for node in self.seeds ]
         filename = os.path.join(self.__path, self.name, 'cluster.conf')
         with open(filename, 'w') as f:
