@@ -248,7 +248,6 @@ class NodeDecommissionCmd(_NodeToolCmd):
     descr_text = "Run decommission on node name"
 
     def run(self):
-        _NodeToolCmd.run(self)
         self.node.decommission()
 
 class NodeScrubCmd(_NodeToolCmd):
