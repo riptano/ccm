@@ -1,8 +1,9 @@
 #
 # Cassandra Cluster Management lib
 #
+from __future__ import print_function
 
-import os, common, shutil, re, cluster, socket, stat, yaml
+import os, shutil, re, socket, stat, yaml, sys
 
 USER_HOME = os.path.expanduser('~')
 
@@ -62,14 +63,15 @@ def current_cluster_name(path):
         return None
 
 def load_current_cluster(path):
+    from . import cluster
     name = current_cluster_name(path)
     if name is None:
-        print 'No currently active cluster (use ccm cluster switch)'
+        print('No currently active cluster (use ccm cluster switch)')
         exit(1)
     try:
         return cluster.Cluster.load(path, name)
-    except common.LoadError as e:
-        print str(e)
+    except LoadError as e:
+        print(str(e))
         exit(1)
 
 def switch_cluster(path, new_name):
@@ -97,7 +99,7 @@ def replace_or_add_into_file_tail(file, regexp, replace):
 
 def replaces_or_add_into_file_tail(file, replacement_list):
     rs = [ (re.compile(regexp), repl) for (regexp, repl) in replacement_list]
-    is_line_found = False 
+    is_line_found = False
     file_tmp = file + ".tmp"
     with open(file, 'r') as f:
         with open(file_tmp, 'w') as f_tmp:
@@ -123,7 +125,7 @@ def make_cassandra_env(cassandra_dir, node_path):
         ('CASSANDRA_HOME=', '\tCASSANDRA_HOME=%s' % cassandra_dir),
         ('CASSANDRA_CONF=', '\tCASSANDRA_CONF=%s' % os.path.join(node_path, 'conf'))
     ]
-    common.replaces_in_file(dst, replacements)
+    replaces_in_file(dst, replacements)
 
     # If a cluster-wide cassandra.in.sh file exists in the parent
     # directory, append it to the node specific one:
@@ -181,7 +183,7 @@ def check_socket_available(itf):
     try:
         s.bind(itf)
         s.close()
-    except socket.error, msg:
+    except socket.error as msg:
         s.close()
         addr, port = itf
         raise UnavailableSocketError("Inet address %s:%s is not available: %s" % (addr, port, msg))
@@ -207,11 +209,11 @@ def parse_settings(args):
 
 #
 # Copy file from source to destination with reasonable error handling
-# 
+#
 def copy_file(src_file, dst_file):
     try:
         shutil.copy2(src_file, dst_file)
     except (IOError, shutil.Error) as e:
-        print >> sys.stderr, str(e)
+        print(str(e), file=sys.stderr)
         exit(1)
 

@@ -1,3 +1,4 @@
+from __future__ import print_function
 import os, sys, shutil
 from optparse import OptionParser, BadOptionError, Option
 
@@ -46,13 +47,13 @@ class Cmd(object):
 
         if cluster_name:
           if len(args) == 0:
-              print >> sys.stderr, 'Missing cluster name'
+              print('Missing cluster name', file=sys.stderr)
               parser.print_help()
               exit(1)
           self.name = args[0]
         if node_name:
           if len(args) == 0:
-              print >> sys.stderr, 'Missing node name'
+              print('Missing node name', file=sys.stderr)
               parser.print_help()
               exit(1)
           self.name = args[0]
@@ -63,7 +64,7 @@ class Cmd(object):
                 try:
                     self.node = self.cluster.nodes[self.name]
                 except KeyError:
-                    print >> sys.stderr, 'Unknown node %s in cluster %s' % (self.name, self.cluster.name)
+                    print('Unknown node %s in cluster %s' % (self.name, self.cluster.name), file=sys.stderr)
                     exit(1)
 
     def run(self):
