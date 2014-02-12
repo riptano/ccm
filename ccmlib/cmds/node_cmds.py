@@ -141,6 +141,8 @@ class NodeStartCmd(Cmd):
             help="Do not wait for cassandra node to be ready", default=False)
         parser.add_option('-j', '--dont-join-ring', action="store_true", dest="no_join_ring",
             help="Launch the instance without joining the ring", default=False)
+        parser.add_option('--replace-address', type="string", dest="replace_address", default=None,
+            help="Replace a node in the ring through the cassandra.replace_address option")
         parser.add_option('--jvm_arg', action="append", dest="jvm_args",
             help="Specify a JVM argument", default=[])
         return parser
@@ -153,6 +155,7 @@ class NodeStartCmd(Cmd):
             self.node.start(not self.options.no_join_ring,
                             no_wait=self.options.no_wait,
                             verbose=self.options.verbose,
+                            replace_address=self.options.replace_address,
                             jvm_args=self.options.jvm_args)
         except NodeError as e:
             print >> sys.stderr, str(e)

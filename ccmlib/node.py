@@ -334,6 +334,7 @@ class Node():
               update_pid=True,
               wait_other_notice=False,
               replace_token=None,
+              replace_address=None,
               jvm_args=[],
               wait_for_binary_proto=False,
               profile_options=None):
@@ -345,6 +346,7 @@ class Node():
           - wait_other_notice: if True, this method returns only when all other live node of the cluster
             have marked this node UP.
           - replace_token: start the node with the -Dcassandra.replace_token option.
+          - replace_address: start the node with the -Dcassandra.replace_address option.
         """
         if self.is_running():
             raise NodeError("%s is already running" % self.name)
@@ -381,7 +383,9 @@ class Node():
         pidfile = os.path.join(self.get_path(), 'cassandra.pid')
         args = [ cass_bin, '-p', pidfile, '-Dcassandra.join_ring=%s' % str(join_ring) ]
         if replace_token is not None:
-            args = args + [ '-Dcassandra.replace_token=%s' % str(replace_token) ]
+            args.append('-Dcassandra.replace_token=%s' % str(replace_token))
+        if replace_address is not None:
+            args.append('-Dcassandra.replace_address=%s' % str(replace_address))
         args = args + jvm_args
 
         process = subprocess.Popen(args, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
