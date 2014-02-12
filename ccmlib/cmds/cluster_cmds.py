@@ -393,7 +393,7 @@ class ClusterStartCmd(Cmd):
         return "Start all the non started nodes of the current cluster"
 
     def get_parser(self):
-        usage = "usage: ccm cluter start [options]"
+        usage = "usage: ccm cluster start [options]"
         parser =  self._get_default_parser(usage, self.description())
         parser.add_option('-v', '--verbose', action="store_true", dest="verbose",
             help="Print standard output of cassandra process", default=False)
@@ -419,8 +419,8 @@ class ClusterStartCmd(Cmd):
                     profile_options['options'] = self.options.profile_options
             if self.cluster.start(no_wait=self.options.no_wait, verbose=self.options.verbose, jvm_args=self.options.jvm_args, profile_options=profile_options) is None:
                 details = ""
-                if not self.options.debug:
-                    details = " (you can use --debug for more information)"
+                if not self.options.verbose:
+                    details = " (you can use --verbose for more information)"
                 print >> sys.stderr, "Error starting nodes, see above for details%s" % details
         except NodeError as e:
             print >> sys.stderr, str(e)
