@@ -72,6 +72,10 @@ class ClusterCreateCmd(Cmd):
             help="Use vnodes (256 tokens)", default=False)
         parser.add_option('--jvm_arg', action="append", dest="jvm_args",
             help="Specify a JVM argument", default=[])
+        parser.add_option('--profile', action="store_true", dest="profile",
+            help="Start the nodes with yourkit agent (only valid with -s)", default=False)
+        parser.add_option('--profile-opts', type="string", action="store", dest="profile_options",
+            help="Yourkit options when profiling", default=None)
         return parser
 
     def validate(self, parser, options, args):
@@ -110,7 +114,12 @@ class ClusterCreateCmd(Cmd):
                     cluster.set_log_level("TRACE")
                 cluster.populate(self.nodes, use_vnodes=self.options.vnodes, ipprefix=self.options.ipprefix)
                 if self.options.start_nodes:
-                    if cluster.start(verbose=self.options.debug, wait_for_binary_proto=self.options.binary_protocol, jvm_args=self.options.jvm_args) is None:
+                    profile_options = None
+                    if self.options.profile:
+                        profile_options = {}
+                        if self.options.profile_options:
+                            profile_options['options'] = self.options.profile_options
+                    if cluster.start(verbose=self.options.debug, wait_for_binary_proto=self.options.binary_protocol, jvm_args=self.options.jvm_args, profile_options=profile_options) is None:
                         details = ""
                         if not self.options.debug:
                             details = " (you can use --debug for more information)"
@@ -392,6 +401,10 @@ class ClusterStartCmd(Cmd):
             help="Do not wait for cassandra node to be ready", default=False)
         parser.add_option('--jvm_arg', action="append", dest="jvm_args",
             help="Specify a JVM argument", default=[])
+        parser.add_option('--profile', action="store_true", dest="profile",
+            help="Start the nodes with yourkit agent (only valid with -s)", default=False)
+        parser.add_option('--profile-opts', type="string", action="store", dest="profile_options",
+            help="Yourkit options when profiling", default=None)
         return parser
 
     def validate(self, parser, options, args):
@@ -399,7 +412,12 @@ class ClusterStartCmd(Cmd):
 
     def run(self):
         try:
-            if self.cluster.start(no_wait=self.options.no_wait, verbose=self.options.verbose, jvm_args=self.options.jvm_args) is None:
+            profile_options = None
+            if self.options.profile:
+                profile_options = {}
+                if self.options.profile_options:
+                    profile_options['options'] = self.options.profile_options
+            if self.cluster.start(no_wait=self.options.no_wait, verbose=self.options.verbose, jvm_args=self.options.jvm_args, profile_options=profile_options) is None:
                 details = ""
                 if not self.options.debug:
                     details = " (you can use --debug for more information)"
