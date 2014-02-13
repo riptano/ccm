@@ -352,7 +352,7 @@ class Node():
             raise NodeError("%s is already running" % self.name)
 
         for itf in self.network_interfaces.values():
-            if itf is not None:
+            if itf is not None and replace_address is None:
                 common.check_socket_available(itf)
 
         if wait_other_notice:
