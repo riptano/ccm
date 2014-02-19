@@ -785,6 +785,7 @@ class Node():
         data['data_file_directories'] = [ os.path.join(self.get_path(), 'data') ]
         data['commitlog_directory'] = os.path.join(self.get_path(), 'commitlogs')
         data['saved_caches_directory'] = os.path.join(self.get_path(), 'saved_caches')
+        data['flush_directory'] = os.path.join(self.get_path(), 'flush')
 
         if self.cluster.partitioner:
             data['partitioner'] = self.cluster.partitioner
