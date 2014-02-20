@@ -337,7 +337,8 @@ class Node():
               replace_address=None,
               jvm_args=[],
               wait_for_binary_proto=False,
-              profile_options=None):
+              profile_options=None,
+              use_jna=False):
         """
         Start the node. Options includes:
           - join_ring: if false, start the node with -Dcassandra.join_ring=False
@@ -386,6 +387,8 @@ class Node():
             args.append('-Dcassandra.replace_token=%s' % str(replace_token))
         if replace_address is not None:
             args.append('-Dcassandra.replace_address=%s' % str(replace_address))
+        if use_jna is False:
+            args.append('-Dcassandra.boot_without_jna=true')
         args = args + jvm_args
 
         process = subprocess.Popen(args, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
