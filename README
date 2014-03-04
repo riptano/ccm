@@ -41,9 +41,7 @@ Let's say you want to fire up a 3 nodes Cassandra cluster.
 
 * Short version *
 
-ccm create test -v 0.8.6
-ccm populate -n 3
-ccm start
+ccm create test -v 2.0.5 -n 3 -s
 
 * Longer version *
 
@@ -55,8 +53,8 @@ tell ccm how to find the sources:
      or, from that source tree directory, simply
         ccm create test
   2. you can ask ccm to use a released version of Cassandra. For instance to
-     use Cassandra 0.8.6, do
-        ccm create test -v 0.8.6
+     use Cassandra 2.0.5, do
+        ccm create test -v 2.0.5
      When doing so, ccm will download the source (from http://archive.apache.org/dist/cassandra),
      compile them and set the new cluster to use those. This means in
      particular that this command can take a few minutes the first time you
@@ -116,7 +114,7 @@ explanatory simple example of use of ccmlib could be:
   import ccmlib
 
   CLUSTER_PATH="."
-  cluster = ccmlib.Cluster(CLUSTER_PATH, 'test', cassandra_version='0.8.6')
+  cluster = ccmlib.Cluster(CLUSTER_PATH, 'test', cassandra_version='2.0.5')
   cluster.populate(3).start()
   [node1, node2, node3] = cluster.nodelist()
 
