@@ -575,10 +575,12 @@ class Node():
 
     def clear(self, clear_all = False, only_data = False):
         data_dirs = [ 'data' ]
+        if self.cluster.version() >= "2.1":
+            data_dirs.append("flush")
         if not only_data:
-            data_dirs = data_dirs + [ 'commitlogs']
+            data_dirs.append("commitlogs")
             if clear_all:
-                data_dirs = data_dirs + [ 'saved_caches', 'logs']
+                data_dirs.extend(['saved_caches', 'logs'])
         for d in data_dirs:
             full_dir = os.path.join(self.get_path(), d)
             if only_data:
