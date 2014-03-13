@@ -2,9 +2,7 @@
 # Cassandra Cluster Management lib
 #
 
-import os, common, shutil, re, cluster, socket, stat, yaml
-
-USER_HOME = os.path.expanduser('~')
+import os, common, shutil, re, cluster, socket, stat, subprocess, sys, yaml
 
 CASSANDRA_BIN_DIR= "bin"
 CASSANDRA_CONF_DIR= "conf"
@@ -31,10 +29,21 @@ class UnavailableSocketError(CCMError):
     pass
 
 def get_default_path():
-    default_path = os.path.join(USER_HOME, '.ccm')
+    default_path = os.path.join(get_user_home(), '.ccm')
     if not os.path.exists(default_path):
         os.mkdir(default_path)
     return default_path
+
+def get_user_home():
+    if is_win():
+        if sys.platform == "cygwin":
+            # Need the fully qualified directory
+            output = subprocess.Popen(["cygpath", "-m", os.path.expanduser('~')], stdout = subprocess.PIPE, stderr = subprocess.STDOUT).communicate()[0].rstrip()
+            return output
+        else:
+            return os.environ['USERPROFILE']
+    else:
+        return os.path.expanduser('~')
 
 def get_config():
     config_path = os.path.join(get_default_path(), CONFIG_FILE)
@@ -97,7 +106,7 @@ def replace_or_add_into_file_tail(file, regexp, replace):
 
 def replaces_or_add_into_file_tail(file, replacement_list):
     rs = [ (re.compile(regexp), repl) for (regexp, repl) in replacement_list]
-    is_line_found = False 
+    is_line_found = False
     file_tmp = file + ".tmp"
     with open(file, 'r') as f:
         with open(file_tmp, 'w') as f_tmp:
@@ -139,6 +148,46 @@ def make_cassandra_env(cassandra_dir, node_path):
     env['CASSANDRA_INCLUDE'] = os.path.join(dst)
     return env
 
+def check_win_requirements():
+    if common.is_win():
+        # Make sure ant.bat is in the path and executable before continuing
+        try:
+            process = subprocess.Popen('ant.bat', stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        except Exception as e:
+            sys.exit("ERROR!  Could not find or execute ant.bat.  Please fix this before attempting to run ccm on Windows.")
+
+def is_win():
+    return True if sys.platform == "cygwin" or sys.platform == "win32" else False
+
+def join_bin(root, dir, executable):
+    return os.path.join(root, dir, platform_binary(executable))
+
+def platform_binary(input):
+    return input + ".bat" if is_win() else input
+
+def platform_pager():
+    return "more" if sys.platform == "win32" else "less"
+
+def add_exec_permission(path, executable):
+    # 1) os.chmod on Windows can't add executable permissions
+    # 2) chmod from other folders doesn't work in cygwin, so we have to navigate the shell
+    # to the folder with the executable with it and then chmod it from there
+    if sys.platform == "cygwin":
+        cmd = "cd " + path + "; chmod u+x " + executable
+        os.system(cmd)
+
+def parse_path(executable):
+    sep = os.sep
+    if sys.platform == "win32":
+        sep = "\\\\"
+    tokens = re.split(sep, executable)
+    del tokens[-1]
+    return os.sep.join(tokens)
+
+def parse_bin(executable):
+    tokens = re.split(os.sep, executable)
+    return tokens[-1]
+
 def get_stress_bin(cassandra_dir):
     candidates = [
         os.path.join(cassandra_dir, 'contrib', 'stress', 'bin', 'stress'),
@@ -146,6 +195,8 @@ def get_stress_bin(cassandra_dir):
         os.path.join(cassandra_dir, 'tools', 'bin', 'stress'),
         os.path.join(cassandra_dir, 'tools', 'bin', 'cassandra-stress')
     ]
+    candidates = [common.platform_binary(s) for s in candidates]
+
     for candidate in candidates:
         if os.path.exists(candidate):
             stress = candidate
@@ -153,11 +204,20 @@ def get_stress_bin(cassandra_dir):
     else:
         raise Exception("Cannot find stress binary (maybe it isn't compiled)")
 
-    # make sure it's executable
-    if not os.access(stress, os.X_OK):
+    # make sure it's executable -> win32 doesn't care
+    if sys.platform == "cygwin":
+        # Yes, we're unwinding the path join from above.
+        path = parse_path(stress)
+        short_bin = parse_bin(stress)
+        add_exec_permission(path, short_bin)
+    elif not os.access(stress, os.X_OK):
         try:
             # try to add user execute permissions
-            os.chmod(stress, os.stat(stress).st_mode | stat.S_IXUSR)
+            # os.chmod doesn't work on Windows and isn't necessary unless in cygwin...
+            if sys.platform == "cygwin":
+                common.add_exec_permission(path, stress)
+            else:
+                os.chmod(stress, os.stat(stress).st_mode | stat.S_IXUSR)
         except:
             raise Exception("stress binary is not executable: %s" % (stress,))
 
@@ -166,6 +226,11 @@ def get_stress_bin(cassandra_dir):
 def validate_cassandra_dir(cassandra_dir):
     if cassandra_dir is None:
         raise ArgumentError('Undefined cassandra directory')
+
+    # Windows requires absolute pathing on cassandra dir - abort if specified cygwin style
+    if common.is_win():
+        if ':' not in cassandra_dir:
+            raise ArgumentError('%s does not appear to be a cassandra source directory.  Please use absolute pathing (e.g. C:/cassandra.' % cassandra_dir)
 
     bin_dir = os.path.join(cassandra_dir, CASSANDRA_BIN_DIR)
     conf_dir = os.path.join(cassandra_dir, CASSANDRA_CONF_DIR)
@@ -207,7 +272,7 @@ def parse_settings(args):
 
 #
 # Copy file from source to destination with reasonable error handling
-# 
+#
 def copy_file(src_file, dst_file):
     try:
         shutil.copy2(src_file, dst_file)
