@@ -2,6 +2,8 @@
 
 import os, sys
 
+from six import print_ as print
+
 from ccmlib import common
 from ccmlib.cmds import command, cluster_cmds, node_cmds
 
@@ -16,30 +18,30 @@ def get_command(kind, cmd):
     return klass()
 
 def print_global_usage():
-    print "Usage:"
-    print "  ccm <cluster_cmd> [options]"
-    print "  ccm <node_name> <node_cmd> [options]"
-    print ""
-    print "Where <cluster_cmd> is one of"
+    print("Usage:")
+    print("  ccm <cluster_cmd> [options]")
+    print("  ccm <node_name> <node_cmd> [options]")
+    print("")
+    print("Where <cluster_cmd> is one of")
     for cmd_name in cluster_cmds.cluster_cmds():
         cmd = get_command("cluster", cmd_name)
         if not cmd:
-            print "Internal error, unknown command {0}".format(cmd_name)
+            print("Internal error, unknown command {0}".format(cmd_name))
             exit(1)
-        print "  {0:14} {1}".format(cmd_name, cmd.description())
-    print "or <node_name> is the name of a node of the current cluster and <node_cmd> is one of"
+        print("  {0:14} {1}".format(cmd_name, cmd.description()))
+    print("or <node_name> is the name of a node of the current cluster and <node_cmd> is one of")
     for cmd_name in node_cmds.node_cmds():
         cmd = get_command("node", cmd_name)
         if not cmd:
-            print "Internal error, unknown command {0}".format(cmd_name)
+            print("Internal error, unknown command {0}".format(cmd_name))
             exit(1)
-        print "  {0:14} {1}".format(cmd_name, cmd.description())
+        print("  {0:14} {1}".format(cmd_name, cmd.description()))
     exit(1)
 
 common.check_win_requirements()
 
 if len(sys.argv) <= 1:
-    print "Missing arguments"
+    print("Missing arguments")
     print_global_usage()
 
 arg1 = sys.argv[1].lower()
@@ -50,7 +52,7 @@ if arg1 in cluster_cmds.cluster_cmds():
     cmd_args = sys.argv[2:]
 else:
     if len(sys.argv) <= 2:
-        print "Missing arguments"
+        print("Missing arguments")
         print_global_usage()
     kind = 'node'
     node = arg1
@@ -59,7 +61,7 @@ else:
 
 cmd = get_command(kind, cmd)
 if not cmd:
-    print "Unknown node or command: {0}".format(arg1)
+    print("Unknown node or command: {0}".format(arg1))
     exit(1)
 
 parser = cmd.get_parser()
