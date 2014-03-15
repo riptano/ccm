@@ -37,14 +37,14 @@ def clone_development(version, verbose=False):
             #remote fetches we need to perform:
             if not os.path.exists(local_git_cache):
                 if verbose:
-                    print("Cloning Cassandra...")
+                    print_("Cloning Cassandra...")
                 out = subprocess.call(
                     ['git', 'clone', '--mirror', GIT_REPO, local_git_cache],
                     cwd=__get_dir(), stdout=lf, stderr=lf)
                 assert out == 0, "Could not do a git clone"
             else:
                 if verbose:
-                    print("Fetching Cassandra updates...")
+                    print_("Fetching Cassandra updates...")
                 out = subprocess.call(
                     ['git', 'fetch', '-fup', 'origin', '+refs/*:refs/*'],
                     cwd=local_git_cache, stdout=lf, stderr=lf)
@@ -53,7 +53,7 @@ def clone_development(version, verbose=False):
             if not os.path.exists(target_dir):
                 # development branch doesn't exist. Check it out.
                 if verbose:
-                    print("Cloning Cassandra (from local cache)")
+                    print_("Cloning Cassandra (from local cache)")
 
                 # git on cygwin appears to be adding `cwd` to the commands which is breaking clone
                 if sys.platform == "cygwin":
@@ -65,8 +65,8 @@ def clone_development(version, verbose=False):
 
                 # now check out the right version
                 if verbose:
-                    print("Checking out requested branch (%s)" % git_branch
-                out = subprocess.call(['git', 'checkout', git_branch], cwd=target_dir, stdout=lf, stderr=lf))
+                    print_("Checking out requested branch (%s)" % git_branch)
+                out = subprocess.call(['git', 'checkout', git_branch], cwd=target_dir, stdout=lf, stderr=lf)
                 if int(out) != 0:
                     raise CCMError("Could not check out git branch %s. Is this a valid branch name? (see last.log for details)" % git_branch)
                 # now compile
@@ -77,7 +77,7 @@ def clone_development(version, verbose=False):
                 status = subprocess.Popen(['git', 'status', '-sb'], cwd=target_dir, stdout=subprocess.PIPE, stderr=lf).communicate()[0]
                 if status.find('[behind') > -1:
                     if verbose:
-                        print("Branch is behind, recompiling")
+                        print_("Branch is behind, recompiling")
                     out = subprocess.call(['git', 'pull'], cwd=target_dir, stdout=lf, stderr=lf)
                     assert out == 0, "Could not do a git pull"
                     out = subprocess.call([platform_binary('ant'), 'realclean'], cwd=target_dir, stdout=lf, stderr=lf)
@@ -99,7 +99,7 @@ def download_version(version, url=None, verbose=False):
     try:
         __download(u, target, show_progress=verbose)
         if verbose:
-            print("Extracting %s as version %s ..." % (target, version))
+            print_("Extracting %s as version %s ..." % (target, version))
         tar = tarfile.open(target)
         dir = tar.next().name.split("/")[0]
         tar.extractall(path=__get_dir())
@@ -122,7 +122,7 @@ def compile_version(version, target_dir, verbose=False):
     # compiling cassandra and the stress tool
     logfile = os.path.join(__get_dir(), "last.log")
     if verbose:
-        print("Compiling Cassandra %s ..." % version)
+        print_("Compiling Cassandra %s ..." % version)
     with open(logfile, 'w') as lf:
         lf.write("--- Cassandra build -------------------\n")
         try:
@@ -185,7 +185,7 @@ def __download(url, target, show_progress=False):
     meta = u.info()
     file_size = int(meta.getheaders("Content-Length")[0])
     if show_progress:
-        print("Downloading %s to %s (%.3fMB)" % (url, target, float(file_size) / (1024 * 1024)))
+        print_("Downloading %s to %s (%.3fMB)" % (url, target, float(file_size) / (1024 * 1024)))
 
     file_size_dl = 0
     block_sz = 8192
@@ -207,10 +207,10 @@ def __download(url, target, show_progress=False):
         if show_progress:
             status = r"%10d  [%3.2f%%]" % (file_size_dl, file_size_dl * 100. / file_size)
             status = chr(8)*(len(status)+1) + status
-            print(status, end='')
+            print_(status, end='')
 
     if show_progress:
-        print("")
+        print_("")
     f.close()
     u.close()
 

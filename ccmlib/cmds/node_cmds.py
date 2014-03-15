@@ -1,7 +1,7 @@
 import os, sys
 from .command import Cmd
 
-from six import print_ as print
+from six import print_
 
 from ccmlib import common
 from ccmlib.node import NodeError
@@ -94,14 +94,14 @@ class NodeSetlogCmd(Cmd):
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
         if len(args) == 1:
-            print('Missing log level', file=sys.stderr)
+            print_('Missing log level', file=sys.stderr)
             parser.print_help()
         self.level = args[1]
 
         try:
             self.class_name = options.class_name
         except common.ArgumentError as e:
-            print(str(e), file=sys.stderr)
+            print_(str(e), file=sys.stderr)
             exit(1)
 
     def run(self):
@@ -109,7 +109,7 @@ class NodeSetlogCmd(Cmd):
             self.node.set_log_level(self.level, self.class_name)
 
         except common.ArgumentError as e:
-            print(str(e), file=sys.stderr)
+            print_(str(e), file=sys.stderr)
             exit(1)
 
 class NodeClearCmd(Cmd):
@@ -160,10 +160,10 @@ class NodeStartCmd(Cmd):
                             replace_address=self.options.replace_address,
                             jvm_args=self.options.jvm_args)
         except NodeError as e:
-            print(str(e), file=sys.stderr)
-            print("Standard error output is:", file=sys.stderr)
+            print_(str(e), file=sys.stderr)
+            print_("Standard error output is:", file=sys.stderr)
             for line in e.process.stderr:
-                print(line.rstrip('\n'), file=sys.stderr)
+                print_(line.rstrip('\n'), file=sys.stderr)
             exit(1)
 
 class NodeStopCmd(Cmd):
@@ -187,10 +187,10 @@ class NodeStopCmd(Cmd):
     def run(self):
         try:
             if not self.node.stop(not self.options.no_wait, gently=self.options.gently):
-                print("%s is not running" % self.name, file=sys.stderr)
+                print_("%s is not running" % self.name, file=sys.stderr)
                 exit(1)
         except NodeError as e:
-            print(str(e), file=sys.stderr)
+            print_(str(e), file=sys.stderr)
             exit(1)
 
 class _NodeToolCmd(Cmd):
@@ -339,11 +339,11 @@ class NodeJsonCmd(Cmd):
         if len(args) > 1:
             self.datafile = args[1]
             if self.keyspace is None:
-                print("You need a keyspace specified (option -k) if you specify a file", file=sys.stderr)
+                print_("You need a keyspace specified (option -k) if you specify a file", file=sys.stderr)
                 exit(1)
         elif options.cfs is not None:
             if self.keyspace is None:
-                print("You need a keyspace specified (option -k) if you specify column families", file=sys.stderr)
+                print_("You need a keyspace specified (option -k) if you specify column families", file=sys.stderr)
                 exit(1)
             self.column_families = options.cfs.split(',')
 
@@ -351,7 +351,7 @@ class NodeJsonCmd(Cmd):
         try:
             self.node.run_sstable2json(self.keyspace, self.datafile, self.column_families, self.options.enumerate_keys)
         except common.ArgumentError as e:
-            print(e, file=sys.stderr)
+            print_(e, file=sys.stderr)
 
 class NodeSstablesplitCmd(Cmd):
     def description(self):
@@ -380,7 +380,7 @@ class NodeSstablesplitCmd(Cmd):
         else:
             if options.cfs is not None:
                 if self.keyspace is None:
-                    print("You need a keyspace (option -k) if you specify column families", file=sys.stderr)
+                    print_("You need a keyspace (option -k) if you specify column families", file=sys.stderr)
                     exit(1)
                     self.column_families = options.cfs.split(',')
 
@@ -411,7 +411,7 @@ class NodeUpdateconfCmd(Cmd):
         try:
             self.setting = common.parse_settings(args)
         except common.ArgumentError as e:
-            print(str(e), file=sys.stderr)
+            print_(str(e), file=sys.stderr)
             exit(1)
 
     def run(self):
@@ -452,17 +452,17 @@ class NodeUpdatelog4jCmd(Cmd):
             if self.log4jpath is None:
                 raise KeyError("[Errno] -p or --path <path of new log4j configuration file> is not provided")
         except common.ArgumentError as e:
-            print(str(e), file=sys.stderr)
+            print_(str(e), file=sys.stderr)
             exit(1)
         except KeyError as e:
-            print(str(e), file=sys.stderr)
+            print_(str(e), file=sys.stderr)
             exit(1)
 
     def run(self):
         try:
             self.node.update_log4j(self.log4jpath)
         except common.ArgumentError as e:
-            print(str(e), file=sys.stderr)
+            print_(str(e), file=sys.stderr)
             exit(1)
 
 class NodeStressCmd(Cmd):
@@ -482,7 +482,7 @@ class NodeStressCmd(Cmd):
         try:
             self.node.stress(self.stress_options)
         except OSError:
-            pprint("Could not find stress binary (you may need to build it)", file=sys.stderr)
+            pprint_("Could not find stress binary (you may need to build it)", file=sys.stderr)
 
 class NodeShuffleCmd(Cmd):
     def description(self):
@@ -520,5 +520,5 @@ class NodeSetdirCmd(Cmd):
         try:
             self.node.set_cassandra_dir(cassandra_dir=self.options.cassandra_dir, cassandra_version=self.options.cassandra_version, verbose=True)
         except common.ArgumentError as e:
-            print(str(e), file=sys.stderr)
+            print_(str(e), file=sys.stderr)
             exit(1)

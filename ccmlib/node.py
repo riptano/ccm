@@ -1,7 +1,7 @@
 # ccm node
 from __future__ import with_statement
 
-from six import print_ as print, iteritems
+from six import print_, iteritems
 from six.moves import xrange
 
 import common, yaml, os, errno, signal, time, subprocess, shutil, sys, glob, re, stat
@@ -180,20 +180,20 @@ class Node():
         """
         self.__update_status()
         indent = ''.join([ " " for i in xrange(0, len(self.name) + 2) ])
-        print("%s: %s" % (self.name, self.__get_status_string()))
+        print_("%s: %s" % (self.name, self.__get_status_string()))
         if not only_status:
             if show_cluster:
-                print("%s%s=%s" % (indent, 'cluster', self.cluster.name))
-            print("%s%s=%s" % (indent, 'auto_bootstrap', self.auto_bootstrap))
-            print("%s%s=%s" % (indent, 'thrift', self.network_interfaces['thrift']))
+                print_("%s%s=%s" % (indent, 'cluster', self.cluster.name))
+            print_("%s%s=%s" % (indent, 'auto_bootstrap', self.auto_bootstrap))
+            print_("%s%s=%s" % (indent, 'thrift', self.network_interfaces['thrift']))
             if self.network_interfaces['binary'] is not None:
-                print("%s%s=%s" % (indent, 'binary', self.network_interfaces['binary']))
-            print("%s%s=%s" % (indent, 'storage', self.network_interfaces['storage']))
-            print("%s%s=%s" % (indent, 'jmx_port', self.jmx_port))
-            print("%s%s=%s" % (indent, 'remote_debug_port', self.remote_debug_port))
-            print("%s%s=%s" % (indent, 'initial_token', self.initial_token))
+                print_("%s%s=%s" % (indent, 'binary', self.network_interfaces['binary']))
+            print_("%s%s=%s" % (indent, 'storage', self.network_interfaces['storage']))
+            print_("%s%s=%s" % (indent, 'jmx_port', self.jmx_port))
+            print_("%s%s=%s" % (indent, 'remote_debug_port', self.remote_debug_port))
+            print_("%s%s=%s" % (indent, 'initial_token', self.initial_token))
             if self.pid:
-                print("%s%s=%s" % (indent, 'pid', self.pid))
+                print_("%s%s=%s" % (indent, 'pid', self.pid))
 
     def is_running(self):
         """
@@ -244,9 +244,9 @@ class Node():
     def print_process_output(self, name, proc, verbose=False):
         if verbose:
             for line in proc.stdout:
-                print("[%s] %s" % (name, line.rstrip('\n')))
+                print_("[%s] %s" % (name, line.rstrip('\n')))
         for line in proc.stderr:
-            print("[%s ERROR] %s" % (name, line.rstrip('\n')))
+            print_("[%s ERROR] %s" % (name, line.rstrip('\n')))
 
 
     # This will return when exprs are found or it timeouts
@@ -384,7 +384,7 @@ class Node():
             cmd = '-agentpath:%s' % config['yourkit_agent']
             if 'options' in profile_options:
                 cmd = cmd + '=' + profile_options['options']
-            print(cmd)
+            print_(cmd)
             # Yes, it's fragile as shit
             pattern=r'cassandra_parms="-Dlog4j.configuration=log4j-server.properties -Dlog4j.defaultInitOverride=true'
             common.replace_in_file(cass_bin, pattern, '    ' + pattern + ' ' + cmd + '"')
@@ -422,7 +422,7 @@ class Node():
             else:
                 for line in process.stdout:
                     if verbose:
-                        print(line.rstrip('\n'))
+                        print_(line.rstrip('\n'))
 
             self._update_pid(process)
 
@@ -524,13 +524,13 @@ class Node():
             p.stdin.write("quit;\n")
             p.wait()
             for err in p.stderr:
-                print("(EE) ", err, end='')
+                print_("(EE) ", err, end='')
             if show_output:
                 i = 0
                 for log in p.stdout:
                     # first four lines are not interesting
                     if i >= 4:
-                        print(log, end='')
+                        print_(log, end='')
                     i = i + 1
 
     def run_cqlsh(self, cmds=None, show_output=False, cqlsh_options=[]):
@@ -550,13 +550,13 @@ class Node():
             p.stdin.write("quit;\n")
             p.wait()
             for err in p.stderr:
-                print("(EE) ", err, end='')
+                print_("(EE) ", err, end='')
             if show_output:
                 i = 0
                 for log in p.stdout:
                     # first four lines are not interesting
                     if i >= 4:
-                        print(log, end='')
+                        print_(log, end='')
                     i = i + 1
 
     def cli(self):
@@ -632,12 +632,12 @@ class Node():
         datafiles = self.__gather_sstables(datafile,keyspace,column_families)
 
         for file in datafiles:
-            print("-- {0} -----".format(os.path.basename(file)))
+            print_("-- {0} -----".format(os.path.basename(file)))
             args = [ sstable2json , file ]
             if enumerate_keys:
                 args = args + ["-e"]
             subprocess.call(args, env=env)
-            print("")
+            print_("")
 
     def run_sstablesplit(self, datafile=None,  size=None, keyspace=None, column_families=None):
         cdir = self.get_cassandra_dir()
@@ -646,7 +646,7 @@ class Node():
         datafiles = self.__gather_sstables(datafile, keyspace, column_families)
 
         def do_split(f):
-            print("-- {0}-----".format(os.path.basename(f)))
+            print_("-- {0}-----".format(os.path.basename(f)))
             if size is not None:
                 subprocess.call( [sstablesplit, '-s', str(size), f], cwd=os.path.join(cdir, 'bin'), env=env )
             else:

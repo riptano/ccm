@@ -2,7 +2,7 @@
 # Cassandra Cluster Management lib
 #
 
-from six import print_ as print
+from six import print_
 
 import os, common, shutil, re, cluster, socket, stat, subprocess, sys, yaml
 
@@ -75,12 +75,12 @@ def current_cluster_name(path):
 def load_current_cluster(path):
     name = current_cluster_name(path)
     if name is None:
-        print('No currently active cluster (use ccm cluster switch)')
+        print_('No currently active cluster (use ccm cluster switch)')
         exit(1)
     try:
         return cluster.Cluster.load(path, name)
     except common.LoadError as e:
-        print(str(e))
+        print_(str(e))
         exit(1)
 
 def switch_cluster(path, new_name):
@@ -279,6 +279,6 @@ def copy_file(src_file, dst_file):
     try:
         shutil.copy2(src_file, dst_file)
     except (IOError, shutil.Error) as e:
-        print(str(e), file=sys.stderr)
+        print_(str(e), file=sys.stderr)
         exit(1)
 

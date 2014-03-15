@@ -1,6 +1,6 @@
 # ccm clusters
 
-from six import print_ as print, iteritems
+from six import print_, iteritems
 from six.moves import xrange
 
 import common, yaml, os, subprocess, shutil, repository, time, re, sys
@@ -197,12 +197,12 @@ class Cluster():
 
     def show(self, verbose):
         if len(list(self.nodes.values())) == 0:
-            print("No node in this cluster yet")
+            print_("No node in this cluster yet")
             return
         for node in list(self.nodes.values()):
             if (verbose):
                 node.show(show_cluster=False)
-                print("")
+                print_("")
             else:
                 node.show(only_status=True)
 
@@ -275,7 +275,7 @@ class Cluster():
         stress = common.get_stress_bin(self.get_cassandra_dir())
         livenodes = [ node.network_interfaces['storage'][0] for node in list(self.nodes.values()) if node.is_live() ]
         if len(livenodes) == 0:
-            print("No live node")
+            print_("No live node")
             return
         args = [ stress, '-d', ",".join(livenodes) ] + stress_options
         try:
