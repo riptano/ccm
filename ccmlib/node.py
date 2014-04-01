@@ -535,7 +535,10 @@ class Node():
         cli = common.join_bin(cdir, 'bin', 'cqlsh')
         env = common.make_cassandra_env(cdir, self.get_path())
         host = self.network_interfaces['thrift'][0]
-        port = self.network_interfaces['thrift'][1]
+        if self.cluster.version() >= "2.1":
+            port = self.network_interfaces['binary'][1]
+        else:
+            port = self.network_interfaces['thrift'][1]
         args = cqlsh_options + [ host, str(port) ]
         sys.stdout.flush()
         if cmds is None:
