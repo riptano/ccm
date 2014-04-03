@@ -1,7 +1,7 @@
 # ccm node
 from __future__ import with_statement
 
-from six import print_, iteritems
+from six import print_, iteritems, string_types
 from six.moves import xrange
 
 import common, yaml, os, errno, signal, time, subprocess, shutil, sys, glob, re, stat
@@ -258,7 +258,7 @@ class Node():
         a list of pair (line matched, match object) is returned.
         """
         elapsed = 0
-        tofind = [exprs] if isinstance(exprs, string_types[0]) else exprs
+        tofind = [exprs] if isinstance(exprs, string_types) else exprs
         tofind = [ re.compile(e) for e in tofind ]
         matchings = []
         reads = ""
@@ -298,7 +298,7 @@ class Node():
                             matchings.append((line, m))
                             tofind.remove(e)
                             if len(tofind) == 0:
-                                return matchings[0] if isinstance(exprs, string_types[0]) else matchings
+                                return matchings[0] if isinstance(exprs, string_types) else matchings
                 else:
                     # yep, it's ugly
                     time.sleep(1)
