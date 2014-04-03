@@ -19,7 +19,7 @@ class BulkLoader(Node):
         return os.path.join(self.path, self.name)
 
     def load(self, options):
-        for itf in list(self.network_interfaces.values()):
+        for itf in self.network_interfaces.values():
             if itf:
                 common.check_socket_available(itf)
 
@@ -27,8 +27,7 @@ class BulkLoader(Node):
         loader_bin = common.join_bin(cdir, 'bin', 'sstableloader')
         env = common.make_cassandra_env(cdir, self.get_path())
         if not "-d" in options:
-            l = [ node.network_interfaces['storage'][0] for node in \
-                list(self.cluster.nodes.values()) if node.is_live() ]
+            l = [ node.network_interfaces['storage'][0] for node in self.cluster.nodes.values() if node.is_live() ]
             options = [ "-d",  ",".join(l) ] + options
         #print "Executing with", options
         os.execve(loader_bin, [ common.platform_binary('sstableloader') ] + options, env)
