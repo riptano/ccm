@@ -160,7 +160,7 @@ class Node():
         commitlog (since it requires setting 2 options and unsetting one).
         """
         if values is not None:
-            for k, v in six.iteritems(values):
+            for k, v in iteritems(values):
                 self.__config_options[k] = v
         if batch_commitlog is not None:
             if batch_commitlog:
