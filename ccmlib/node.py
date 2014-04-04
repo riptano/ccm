@@ -4,9 +4,21 @@ from __future__ import with_statement
 from six import print_, iteritems, string_types
 from six.moves import xrange
 
-import common, yaml, os, errno, signal, time, subprocess, shutil, sys, glob, re, stat
-from .repository import setup
-from .cli_session import CliSession
+import errno
+import glob
+import os
+import re
+import shutil
+import signal
+import stat
+import subprocess
+import sys
+import time
+import yaml
+
+from ccmlib.repository import setup
+from ccmlib.cli_session import CliSession
+from ccmlib import common
 
 class Status():
     UNINITIALIZED = "UNINITIALIZED"
@@ -850,7 +862,7 @@ class Node():
         if self.cluster.partitioner:
             data['partitioner'] = self.cluster.partitioner
 
-        full_options = dict(list(self.cluster._config_options.items()) + self.__config_options.items()) # last win and we want node options to win
+        full_options = dict(list(self.cluster._config_options.items()) + list(self.__config_options.items())) # last win and we want node options to win
         for name in full_options:
             value = full_options[name]
             if value is None:

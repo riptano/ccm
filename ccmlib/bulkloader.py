@@ -1,7 +1,11 @@
 # ccm node
 from __future__ import with_statement
-import tempfile, os, common, subprocess
-from .node import Node
+
+import os
+import tempfile
+
+from ccmlib import common
+from ccmlib.node import Node
 
 # We reuse Node because the bulkloader basically needs all the same files,
 # even though this is not a real node. But truth is, this is an afterthough,

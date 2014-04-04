@@ -2,9 +2,15 @@
 # Cassandra Cluster Management lib
 #
 
+import os
+import shutil
+import socket
+import stat
+import subprocess
+import sys
 from six import print_
-
-import os, common, shutil, re, cluster, socket, stat, subprocess, sys, yaml
+import re
+import yaml
 
 CASSANDRA_BIN_DIR= "bin"
 CASSANDRA_CONF_DIR= "conf"
@@ -72,17 +78,6 @@ def current_cluster_name(path):
     except IOError:
         return None
 
-def load_current_cluster(path):
-    name = current_cluster_name(path)
-    if name is None:
-        print_('No currently active cluster (use ccm cluster switch)')
-        exit(1)
-    try:
-        return cluster.Cluster.load(path, name)
-    except common.LoadError as e:
-        print_(str(e))
-        exit(1)
-
 def switch_cluster(path, new_name):
     with open(os.path.join(path, 'CURRENT'), 'w') as f:
         f.write(new_name + '\n')
@@ -134,7 +129,7 @@ def make_cassandra_env(cassandra_dir, node_path):
         ('CASSANDRA_HOME=', '\tCASSANDRA_HOME=%s' % cassandra_dir),
         ('CASSANDRA_CONF=', '\tCASSANDRA_CONF=%s' % os.path.join(node_path, 'conf'))
     ]
-    common.replaces_in_file(dst, replacements)
+    replaces_in_file(dst, replacements)
 
     # If a cluster-wide cassandra.in.sh file exists in the parent
     # directory, append it to the node specific one:
@@ -151,7 +146,7 @@ def make_cassandra_env(cassandra_dir, node_path):
     return env
 
 def check_win_requirements():
-    if common.is_win():
+    if is_win():
         # Make sure ant.bat is in the path and executable before continuing
         try:
             process = subprocess.Popen('ant.bat', stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -197,7 +192,7 @@ def get_stress_bin(cassandra_dir):
         os.path.join(cassandra_dir, 'tools', 'bin', 'stress'),
         os.path.join(cassandra_dir, 'tools', 'bin', 'cassandra-stress')
     ]
-    candidates = [common.platform_binary(s) for s in candidates]
+    candidates = [platform_binary(s) for s in candidates]
 
     for candidate in candidates:
         if os.path.exists(candidate):
@@ -217,7 +212,7 @@ def get_stress_bin(cassandra_dir):
             # try to add user execute permissions
             # os.chmod doesn't work on Windows and isn't necessary unless in cygwin...
             if sys.platform == "cygwin":
-                common.add_exec_permission(path, stress)
+                add_exec_permission(path, stress)
             else:
                 os.chmod(stress, os.stat(stress).st_mode | stat.S_IXUSR)
         except:
@@ -230,7 +225,7 @@ def validate_cassandra_dir(cassandra_dir):
         raise ArgumentError('Undefined cassandra directory')
 
     # Windows requires absolute pathing on cassandra dir - abort if specified cygwin style
-    if common.is_win():
+    if is_win():
         if ':' not in cassandra_dir:
             raise ArgumentError('%s does not appear to be a cassandra source directory.  Please use absolute pathing (e.g. C:/cassandra.' % cassandra_dir)
 

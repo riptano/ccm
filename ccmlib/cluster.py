@@ -3,9 +3,16 @@
 from six import print_, iteritems
 from six.moves import xrange
 
-import common, yaml, os, subprocess, shutil, repository, time, re, sys
-from .node import Node, NodeError
-from .bulkloader import BulkLoader
+import yaml
+import os
+import re
+import subprocess
+import shutil
+import time
+
+from ccmlib import common, repository
+from ccmlib.node import Node, NodeError
+from ccmlib.bulkloader import BulkLoader
 
 class Cluster():
     def __init__(self, path, name, partitioner=None, cassandra_dir=None, create_directory=True, cassandra_version=None, verbose=False):
@@ -165,9 +172,9 @@ class Cluster():
 
     def balanced_tokens(self, node_count):
         if self.version() >= '1.2' and not self.partitioner:
-            ptokens = [(i*(2**64/node_count)) for i in xrange(0, node_count)]
+            ptokens = [(i*(2**64//node_count)) for i in xrange(0, node_count)]
             return [t - 2**63 for t in ptokens]
-        return [ (i*(2**127/node_count)) for i in range(0, node_count) ]
+        return [ (i*(2**127//node_count)) for i in range(0, node_count) ]
 
     def remove(self, node=None):
         if node is not None:

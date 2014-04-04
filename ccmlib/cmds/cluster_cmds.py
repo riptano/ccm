@@ -1,11 +1,12 @@
-import os, sys, shutil
-from .command import Cmd
+import os
+import sys
 
 from six import print_
 
 from ccmlib import common, repository
 from ccmlib.node import Node, NodeError
 from ccmlib.cluster import Cluster
+from ccmlib.cmds.command import Cmd
 
 def cluster_cmds():
     return [

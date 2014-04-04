@@ -1,10 +1,11 @@
-import os, sys
-from .command import Cmd
+import os
+import sys
 
 from six import print_
 
 from ccmlib import common
 from ccmlib.node import NodeError
+from ccmlib.cmds.command import Cmd
 
 def node_cmds():
     return [
@@ -482,7 +483,7 @@ class NodeStressCmd(Cmd):
         try:
             self.node.stress(self.stress_options)
         except OSError:
-            pprint_("Could not find stress binary (you may need to build it)", file=sys.stderr)
+            print_("Could not find stress binary (you may need to build it)", file=sys.stderr)
 
 class NodeShuffleCmd(Cmd):
     def description(self):

@@ -1,11 +1,20 @@
 # downloaded sources handling
 from __future__ import with_statement
 
+from six import print_
 from six.moves import urllib
 
-import os, shutil, tarfile, tempfile, subprocess, stat, sys, time
-from .common import (ArgumentError, CCMError, get_default_path,
-    platform_binary, validate_cassandra_dir)
+import os
+import shutil
+import subprocess
+import stat
+import sys
+import tarfile
+import tempfile
+import time
+
+from ccmlib.common import (ArgumentError, CCMError, get_default_path,
+                           platform_binary, validate_cassandra_dir)
 
 ARCHIVE="http://archive.apache.org/dist/cassandra"
 GIT_REPO="http://git-wip-us.apache.org/repos/asf/cassandra.git"
@@ -196,11 +205,11 @@ def __download(url, target, show_progress=False):
         if not buffer:
             attempts = attempts + 1
             if attempts >= 5:
-                raise CCMError("Error downloading file (nothing read after %i attemps, downloded only %i of %i bytes)" % (attempts, file_size_dl, file_size))
+                raise CCMError("Error downloading file (nothing read after %i attempts, downloded only %i of %i bytes)" % (attempts, file_size_dl, file_size))
             time.sleep(0.5 * attempts)
             continue;
         else:
-            attemps = 0
+            attempts = 0
 
         file_size_dl += len(buffer)
         f.write(buffer)
