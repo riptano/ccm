@@ -1027,8 +1027,9 @@ class Node():
                     raise Exception('Node: %s  Failed to find pid in ' +
                                     self.get_path() +
                                     '/dirty_pid.tmp. Manually kill it and check logs - ccm will be out of sync.')
-        except:
-            raise Exception('Attempted to find dirty_pid.tmp output from modified cassandra.bat in path: ' + self.get_path() + ' and failed on node: ' + self.name)
+        except Exception as e:
+            print "ERROR: Problem starting " + self.name + " (" + str(e) + ")"
+            raise Exception('Error while parsing <node>/dirty_pid.tmp in path: ' + self.get_path())
 
     def _update_pid(self, process):
         pidfile = os.path.join(self.get_path(), 'cassandra.pid')
