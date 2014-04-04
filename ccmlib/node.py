@@ -459,6 +459,19 @@ class Node():
                     os.system("taskkill /PID " + str(self.pid))
                 else:
                     os.system("taskkill /F /PID " + str(self.pid))
+
+                # no graceful shutdown on windows means it should be immediate
+                cmd = 'tasklist /fi "PID eq ' + str(self.pid) + '"'
+                proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+
+                found = False
+                for line in proc.stdout:
+                    if re.match("Image", line):
+                        found = True
+                if found:
+                    return False
+                else:
+                    return True
             else:
                 if gently:
                     os.kill(self.pid, signal.SIGTERM)
