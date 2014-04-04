@@ -62,7 +62,7 @@ class Cmd(object):
           self.name = args[0]
 
         if load_cluster:
-            self.cluster = self.load_current_cluster()
+            self.cluster = self._load_current_cluster()
             if node_name and load_node:
                 try:
                     self.node = self.cluster.nodes[self.name]
