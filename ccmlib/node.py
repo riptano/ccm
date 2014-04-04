@@ -999,6 +999,8 @@ class Node():
                 now = common.now_ms()
                 if (now - start > 500):
                     raise Exception('Timed out waiting for dirty_pid file.')
+                else:
+                    time.sleep(.001)
 
             with open(self.get_path() + "/dirty_pid.tmp", 'r') as f:
                 found = False
@@ -1025,7 +1027,7 @@ class Node():
                     raise Exception('Node: %s  Failed to find pid in ' +
                                     self.get_path() +
                                     '/dirty_pid.tmp. Manually kill it and check logs - ccm will be out of sync.')
-        except IOError as e:
+        except:
             raise Exception('Attempted to find dirty_pid.tmp output from modified cassandra.bat in path: ' + self.get_path() + ' and failed on node: ' + self.name)
 
     def _update_pid(self, process):
