@@ -911,7 +911,7 @@ class Node():
 
     def __update_envfile(self):
         jmx_port_pattern='JMX_PORT='
-        remote_debug_port_pattern='address='
+        remote_debug_port_pattern='-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address='
         conf_file = os.path.join(self.get_conf_dir(), common.CASSANDRA_ENV)
         common.replace_in_file(conf_file, jmx_port_pattern, jmx_port_pattern + self.jmx_port)
         if self.remote_debug_port != '0':
