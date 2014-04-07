@@ -791,7 +791,7 @@ class Node():
         # background the server process and grab the pid
         run_text="\"%JAVA_HOME%\\bin\\java\" %JAVA_OPTS% %CASSANDRA_PARAMS% -cp %CASSANDRA_CLASSPATH% \"%CASSANDRA_MAIN%\""
         run_pattern=".*-cp.*"
-        common.replace_in_file(bat_file, run_pattern, "wmic process call create '" + run_text + "' > " + self.get_path() + "/dirty_pid.tmp\n")
+        common.replace_in_file(bat_file, run_pattern, "wmic process call create '" + run_text + "' > \"" + self.get_path() + "/dirty_pid.tmp\"\n")
 
     def _save(self):
         self.__update_yaml()
