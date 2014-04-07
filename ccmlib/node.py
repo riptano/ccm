@@ -401,6 +401,9 @@ class Node():
 
         process = None
         if common.is_win():
+            # clean up any old dirty_pid files from prior runs
+            if (os.path.isfile(self.get_path() + "/dirty_pid.tmp")):
+                os.remove(self.get_path() + "/dirty_pid.tmp")
             process = subprocess.Popen(args, cwd=self.get_bin_dir(), env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         else:
             process = subprocess.Popen(args, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -408,9 +411,6 @@ class Node():
         # Our modified batch file writes a dirty output with more than just the pid - clean it to get in parity
         # with *nix operation here.
         if common.is_win():
-            # short delay could give us a false positive on a node being started as it could die and delete the pid file
-            # after we check, however dtests have assumptions on how long the starting process takes.
-            time.sleep(.5)
             self.__clean_win_pid()
             self._update_pid(process)
         elif update_pid:
@@ -459,6 +459,19 @@ class Node():
                     os.system("taskkill /PID " + str(self.pid))
                 else:
                     os.system("taskkill /F /PID " + str(self.pid))
+
+                # no graceful shutdown on windows means it should be immediate
+                cmd = 'tasklist /fi "PID eq ' + str(self.pid) + '"'
+                proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+
+                found = False
+                for line in proc.stdout:
+                    if re.match("Image", line):
+                        found = True
+                if found:
+                    return False
+                else:
+                    return True
             else:
                 if gently:
                     os.kill(self.pid, signal.SIGTERM)
@@ -781,7 +794,7 @@ class Node():
         # background the server process and grab the pid
         run_text="\"%JAVA_HOME%\\bin\\java\" %JAVA_OPTS% %CASSANDRA_PARAMS% -cp %CASSANDRA_CLASSPATH% \"%CASSANDRA_MAIN%\""
         run_pattern=".*-cp.*"
-        common.replace_in_file(bat_file, run_pattern, "wmic process call create '" + run_text + "' > " + self.get_path() + "/dirty_pid.tmp\n")
+        common.replace_in_file(bat_file, run_pattern, "wmic process call create '" + run_text + "' > \"" + self.get_path() + "/dirty_pid.tmp\"\n")
 
     def _save(self):
         self.__update_yaml()
@@ -982,23 +995,44 @@ class Node():
             return self.status
 
     def __clean_win_pid(self):
+        start = common.now_ms()
         try:
+            # Spin for 500ms waiting for .bat to write the dirty_pid file
+            while (not os.path.isfile(self.get_path() + "/dirty_pid.tmp")):
+                now = common.now_ms()
+                if (now - start > 500):
+                    raise Exception('Timed out waiting for dirty_pid file.')
+                else:
+                    time.sleep(.001)
+
             with open(self.get_path() + "/dirty_pid.tmp", 'r') as f:
                 found = False
-                for line in f:
-                    if re.match('\s+ProcessId = *', line):
-                        found = True
-                        linesub = line.split(' ')
-                        win_pid = linesub[2].rstrip()
-                        win_pid = re.sub(';', '', win_pid)
-                        with open (self.get_path() + "/cassandra.pid", 'w') as pidfile:
-                            pidfile.write(win_pid)
+                process_regex = re.compile('ProcessId')
+
+                readStart = common.now_ms()
+                readEnd = common.now_ms()
+                while (found == False and readEnd - readStart < 500):
+                    line = f.read()
+                    if (line):
+                        m = process_regex.search(line)
+                        if (m):
+                            found = True
+                            linesub = line.split('=')
+                            pidchunk = linesub[1].split(';')
+                            win_pid = pidchunk[0].lstrip()
+                            with open (self.get_path() + "/cassandra.pid", 'w') as pidfile:
+                                found = True
+                                pidfile.write(win_pid)
+                        readEnd = common.now_ms()
+                    else:
+                        time.sleep(.001)
                 if not found:
                     raise Exception('Node: %s  Failed to find pid in ' +
                                     self.get_path() +
                                     '/dirty_pid.tmp. Manually kill it and check logs - ccm will be out of sync.')
-        except:
-            raise Exception('Attempted to find dirty_pid.tmp output from modified cassandra.bat in path: ' + self.get_path() + ' and failed on node: ' + self.name)
+        except Exception as e:
+            print "ERROR: Problem starting " + self.name + " (" + str(e) + ")"
+            raise Exception('Error while parsing <node>/dirty_pid.tmp in path: ' + self.get_path())
 
     def _update_pid(self, process):
         pidfile = os.path.join(self.get_path(), 'cassandra.pid')

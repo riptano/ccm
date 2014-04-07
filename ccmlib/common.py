@@ -2,7 +2,7 @@
 # Cassandra Cluster Management lib
 #
 
-import os, common, shutil, re, cluster, socket, stat, subprocess, sys, yaml
+import os, common, shutil, re, cluster, socket, stat, subprocess, sys, time, yaml
 
 CASSANDRA_BIN_DIR= "bin"
 CASSANDRA_CONF_DIR= "conf"
@@ -53,6 +53,8 @@ def get_config():
     with open(config_path, 'r') as f:
         return yaml.load(f)
 
+def now_ms():
+    return int(round(time.time() * 1000))
 
 def parse_interface(itf, default_port):
     i = itf.split(':')
