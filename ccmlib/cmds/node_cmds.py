@@ -75,7 +75,7 @@ class NodeShowlogCmd(Cmd):
 
     def run(self):
         log = self.node.logfilename()
-        pager = os.environ.get('PAGER', 'less')
+        pager = os.environ.get('PAGER', common.platform_pager())
         os.execvp(pager, (pager, log))
 
 class NodeSetlogCmd(Cmd):
@@ -427,9 +427,9 @@ class NodeUpdateconfCmd(Cmd):
 
 
 #
-# Class implementens the functionality of updating log4j-server.properties 
-# on the given node by copying the given config into 
-# ~/.ccm/name-of-cluster/nodeX/conf/log4j-server.properties 
+# Class implementens the functionality of updating log4j-server.properties
+# on the given node by copying the given config into
+# ~/.ccm/name-of-cluster/nodeX/conf/log4j-server.properties
 #
 
 class NodeUpdatelog4jCmd(Cmd):
@@ -448,7 +448,7 @@ class NodeUpdatelog4jCmd(Cmd):
         try:
             self.log4jpath = options.log4jpath
             if self.log4jpath is None:
-                raise KeyError("[Errno] -p or --path <path of new log4j congiguration file> is not provided") 
+                raise KeyError("[Errno] -p or --path <path of new log4j configuration file> is not provided")
         except common.ArgumentError as e:
             print >> sys.stderr, str(e)
             exit(1)
@@ -462,7 +462,6 @@ class NodeUpdatelog4jCmd(Cmd):
         except common.ArgumentError as e:
             print >> sys.stderr, str(e)
             exit(1)
-
 
 class NodeStressCmd(Cmd):
     def description(self):
@@ -491,7 +490,7 @@ class NodeShuffleCmd(Cmd):
         usage = "usage: ccm node_name shuffle [options] [shuffle_cmds]"
         parser = self._get_default_parser(usage, self.description(), ignore_unknown_options=True)
         return parser
-        
+
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
         self.shuffle_cmd =  args[1]

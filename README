@@ -22,8 +22,13 @@ Requirements
     ...
   Note that the usage section assumes that at least 127.0.0.1, 127.0.0.2 and
   127.0.0.3 are available.
-- I'm pretty sure this doesn't work under Windows, but I accept pull requests
 
+Known issues
+------------
+Windows only:
+    - Node start pops up a window, stealing focus.
+    - cli and cqlsh started from ccm show incorrect prompts on command-prompt
+    - non nodetool-based command-line options fail (sstablesplit, scrub, etc)
 
 Installation
 ------------

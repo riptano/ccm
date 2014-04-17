@@ -23,7 +23,10 @@ class Cluster():
                 # at this point, cassandra_dir should always not be None, but
                 # we keep this for backward compatibility (in loading old cluster)
                 if cassandra_dir is not None:
-                    self.__cassandra_dir = os.path.abspath(cassandra_dir)
+                    if common.is_win():
+                        self.__cassandra_dir = cassandra_dir
+                    else:
+                        self.__cassandra_dir = os.path.abspath(cassandra_dir)
                     self.__version = self.__get_version_from_build()
             else:
                 dir, v = repository.setup(cassandra_version, verbose)
@@ -273,7 +276,11 @@ class Cluster():
             return
         args = [ stress, '-d', ",".join(livenodes) ] + stress_options
         try:
-            subprocess.call(args)
+            # need to set working directory for env on Windows
+            if common.is_win():
+                subprocess.call(args, cwd=common.parse_path(stress))
+            else:
+                subprocess.call(args)
         except KeyboardInterrupt:
             pass
         return self

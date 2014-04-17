@@ -36,6 +36,8 @@ def print_global_usage():
         print "  {0:14} {1}".format(cmd_name, cmd.description())
     exit(1)
 
+common.check_win_requirements()
+
 if len(sys.argv) <= 1:
     print "Missing arguments"
     print_global_usage()

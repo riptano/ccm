@@ -1,7 +1,7 @@
 # downloaded sources handling
 from __future__ import with_statement
 
-import os, shutil, urllib2, tarfile, tempfile, subprocess, stat, time
+import os, shutil, urllib2, tarfile, tempfile, subprocess, stat, sys, time
 import common
 
 ARCHIVE="http://archive.apache.org/dist/cassandra"
@@ -36,10 +36,10 @@ def clone_development(version, verbose=False):
                 if verbose:
                     print "Cloning Cassandra..."
                 out = subprocess.call(
-                    ['git', 'clone', '--mirror', GIT_REPO, local_git_cache], 
+                    ['git', 'clone', '--mirror', GIT_REPO, local_git_cache],
                     cwd=__get_dir(), stdout=lf, stderr=lf)
                 assert out == 0, "Could not do a git clone"
-            else: 
+            else:
                 if verbose:
                     print "Fetching Cassandra updates..."
                 out = subprocess.call(
@@ -51,7 +51,15 @@ def clone_development(version, verbose=False):
                 # development branch doesn't exist. Check it out.
                 if verbose:
                     print "Cloning Cassandra (from local cache)"
-                subprocess.call(['git', 'clone', local_git_cache, target_dir], cwd=__get_dir(), stdout=lf, stderr=lf)
+
+                # git on cygwin appears to be adding `cwd` to the commands which is breaking clone
+                if sys.platform == "cygwin":
+                    local_split = local_git_cache.split(os.sep)
+                    target_split = target_dir.split(os.sep)
+                    subprocess.call(['git', 'clone', local_split[-1], target_split[-1]], cwd=__get_dir(), stdout=lf, stderr=lf)
+                else:
+                    subprocess.call(['git', 'clone', local_git_cache, target_dir], cwd=__get_dir(), stdout=lf, stderr=lf)
+
                 # now check out the right version
                 if verbose:
                     print "Checking out requested branch (%s)" % git_branch
@@ -69,9 +77,9 @@ def clone_development(version, verbose=False):
                         print "Branch is behind, recompiling"
                     out = subprocess.call(['git', 'pull'], cwd=target_dir, stdout=lf, stderr=lf)
                     assert out == 0, "Could not do a git pull"
-                    out = subprocess.call(['ant', 'realclean'], cwd=target_dir, stdout=lf, stderr=lf)
+                    out = subprocess.call([common.platform_binary('ant'), 'realclean'], cwd=target_dir, stdout=lf, stderr=lf)
                     assert out == 0, "Could not run 'ant realclean'"
-                    
+
                     # now compile
                     compile_version(git_branch, target_dir, verbose)
         except:
@@ -80,7 +88,7 @@ def clone_development(version, verbose=False):
                 shutil.rmtree(target_dir)
             except: pass
             raise
-                
+
 
 def download_version(version, url=None, verbose=False):
     u = "%s/%s/apache-cassandra-%s-src.tar.gz" % (ARCHIVE, version.split('-')[0], version) if url is None else url
@@ -122,13 +130,13 @@ def compile_version(version, target_dir, verbose=False):
             while attempt < 3 and ret_val is not 0:
                 if attempt > 0:
                     lf.write("\n\n`ant jar` failed. Retry #%s...\n\n" % attempt)
-                ret_val = subprocess.call(['ant', 'jar'], cwd=target_dir, stdout=lf, stderr=lf)
+                ret_val = subprocess.call([common.platform_binary('ant'),'jar'], cwd=target_dir, stdout=lf, stderr=lf)
                 attempt += 1
             if ret_val is not 0:
                 raise common.CCMError("Error compiling Cassandra. See %s for details" % logfile)
         except OSError, e:
             raise common.CCMError("Error compiling Cassandra. Is ant installed? See %s for details" % logfile)
-        
+
         lf.write("\n\n--- cassandra/stress build ------------\n")
         stress_dir = os.path.join(target_dir, "tools", "stress") if (
                 version >= "0.8.0") else \
@@ -143,8 +151,8 @@ def compile_version(version, target_dir, verbose=False):
                     full_path = os.path.join(stress_bin_dir, f)
                     os.chmod(full_path, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
 
-                if subprocess.call(['ant', 'build'], cwd=stress_dir, stdout=lf, stderr=lf) is not 0:
-                    if subprocess.call(['ant', 'stress-build'], cwd=target_dir, stdout=lf, stderr=lf) is not 0:
+                if subprocess.call([common.platform_binary('ant'), 'build'], cwd=stress_dir, stdout=lf, stderr=lf) is not 0:
+                    if subprocess.call([common.platform_binary('ant'), 'stress-build'], cwd=target_dir, stdout=lf, stderr=lf) is not 0:
                         raise common.CCMError("Error compiling Cassandra stress tool.  "
                                 "See %s for details (you will still be able to use ccm "
                                 "but not the stress related commands)" % logfile)
