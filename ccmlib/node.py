@@ -618,8 +618,6 @@ class Node():
 
     def clear(self, clear_all = False, only_data = False):
         data_dirs = [ 'data' ]
-        if self.cluster.version() >= "2.1":
-            data_dirs.append("flush")
         if not only_data:
             data_dirs.append("commitlogs")
             if clear_all:
@@ -857,8 +855,6 @@ class Node():
         data['data_file_directories'] = [ os.path.join(self.get_path(), 'data') ]
         data['commitlog_directory'] = os.path.join(self.get_path(), 'commitlogs')
         data['saved_caches_directory'] = os.path.join(self.get_path(), 'saved_caches')
-        if self.cluster.version() >= "2.1":
-            data['flush_directory'] = os.path.join(self.get_path(), 'flush')
 
         if self.cluster.partitioner:
             data['partitioner'] = self.cluster.partitioner
