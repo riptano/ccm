@@ -1,9 +1,24 @@
 # ccm node
 from __future__ import with_statement
 
-import common, yaml, os, errno, signal, time, subprocess, shutil, sys, glob, re, stat
-import repository
-from cli_session import CliSession
+from six import print_, iteritems, string_types
+from six.moves import xrange
+
+import errno
+import glob
+import os
+import re
+import shutil
+import signal
+import stat
+import subprocess
+import sys
+import time
+import yaml
+
+from ccmlib.repository import setup
+from ccmlib.cli_session import CliSession
+from ccmlib import common
 
 class Status():
     UNINITIALIZED = "UNINITIALIZED"
@@ -140,7 +155,7 @@ class Node():
             if cassandra_dir is not None:
                 common.validate_cassandra_dir(cassandra_dir)
         else:
-            dir, v = repository.setup(cassandra_version, verbose=verbose)
+            dir, v = setup(cassandra_version, verbose=verbose)
             self.__cassandra_dir = dir
         self.import_config_files()
         return self
@@ -157,7 +172,7 @@ class Node():
         commitlog (since it requires setting 2 options and unsetting one).
         """
         if values is not None:
-            for k, v in values.iteritems():
+            for k, v in iteritems(values):
                 self.__config_options[k] = v
         if batch_commitlog is not None:
             if batch_commitlog:
@@ -177,20 +192,20 @@ class Node():
         """
         self.__update_status()
         indent = ''.join([ " " for i in xrange(0, len(self.name) + 2) ])
-        print "%s: %s" % (self.name, self.__get_status_string())
+        print_("%s: %s" % (self.name, self.__get_status_string()))
         if not only_status:
             if show_cluster:
-                print "%s%s=%s" % (indent, 'cluster', self.cluster.name)
-            print "%s%s=%s" % (indent, 'auto_bootstrap', self.auto_bootstrap)
-            print "%s%s=%s" % (indent, 'thrift', self.network_interfaces['thrift'])
+                print_("%s%s=%s" % (indent, 'cluster', self.cluster.name))
+            print_("%s%s=%s" % (indent, 'auto_bootstrap', self.auto_bootstrap))
+            print_("%s%s=%s" % (indent, 'thrift', self.network_interfaces['thrift']))
             if self.network_interfaces['binary'] is not None:
-                print "%s%s=%s" % (indent, 'binary', self.network_interfaces['binary'])
-            print "%s%s=%s" % (indent, 'storage', self.network_interfaces['storage'])
-            print "%s%s=%s" % (indent, 'jmx_port', self.jmx_port)
-            print "%s%s=%s" % (indent, 'remote_debug_port', self.remote_debug_port)
-            print "%s%s=%s" % (indent, 'initial_token', self.initial_token)
+                print_("%s%s=%s" % (indent, 'binary', self.network_interfaces['binary']))
+            print_("%s%s=%s" % (indent, 'storage', self.network_interfaces['storage']))
+            print_("%s%s=%s" % (indent, 'jmx_port', self.jmx_port))
+            print_("%s%s=%s" % (indent, 'remote_debug_port', self.remote_debug_port))
+            print_("%s%s=%s" % (indent, 'initial_token', self.initial_token))
             if self.pid:
-                print "%s%s=%s" % (indent, 'pid', self.pid)
+                print_("%s%s=%s" % (indent, 'pid', self.pid))
 
     def is_running(self):
         """
@@ -241,9 +256,9 @@ class Node():
     def print_process_output(self, name, proc, verbose=False):
         if verbose:
             for line in proc.stdout:
-                print "[%s] %s" % (name, line.rstrip('\n'))
+                print_("[%s] %s" % (name, line.rstrip('\n')))
         for line in proc.stderr:
-            print "[%s ERROR] %s" % (name, line.rstrip('\n'))
+            print_("[%s ERROR] %s" % (name, line.rstrip('\n')))
 
 
     # This will return when exprs are found or it timeouts
@@ -255,7 +270,7 @@ class Node():
         a list of pair (line matched, match object) is returned.
         """
         elapsed = 0
-        tofind = [exprs] if isinstance(exprs, basestring) else exprs
+        tofind = [exprs] if isinstance(exprs, string_types) else exprs
         tofind = [ re.compile(e) for e in tofind ]
         matchings = []
         reads = ""
@@ -295,7 +310,7 @@ class Node():
                             matchings.append((line, m))
                             tofind.remove(e)
                             if len(tofind) == 0:
-                                return matchings[0] if isinstance(exprs, basestring) else matchings
+                                return matchings[0] if isinstance(exprs, string_types) else matchings
                 else:
                     # yep, it's ugly
                     time.sleep(1)
@@ -356,12 +371,12 @@ class Node():
         if self.is_running():
             raise NodeError("%s is already running" % self.name)
 
-        for itf in self.network_interfaces.values():
+        for itf in list(self.network_interfaces.values()):
             if itf is not None and replace_address is None:
                 common.check_socket_available(itf)
 
         if wait_other_notice:
-            marks = [ (node, node.mark_log()) for node in self.cluster.nodes.values() if node.is_running() ]
+            marks = [ (node, node.mark_log()) for node in list(self.cluster.nodes.values()) if node.is_running() ]
 
         cdir = self.get_cassandra_dir()
         cass_bin = common.join_bin(cdir, 'bin', 'cassandra')
@@ -381,7 +396,7 @@ class Node():
             cmd = '-agentpath:%s' % config['yourkit_agent']
             if 'options' in profile_options:
                 cmd = cmd + '=' + profile_options['options']
-            print cmd
+            print_(cmd)
             # Yes, it's fragile as shit
             pattern=r'cassandra_parms="-Dlog4j.configuration=log4j-server.properties -Dlog4j.defaultInitOverride=true'
             common.replace_in_file(cass_bin, pattern, '    ' + pattern + ' ' + cmd + '"')
@@ -419,7 +434,7 @@ class Node():
             else:
                 for line in process.stdout:
                     if verbose:
-                        print line.rstrip('\n')
+                        print_(line.rstrip('\n'))
 
             self._update_pid(process)
 
@@ -451,7 +466,7 @@ class Node():
         if self.is_running():
             if wait_other_notice:
                 #tstamp = time.time()
-                marks = [ (node, node.mark_log()) for node in self.cluster.nodes.values() if node.is_running() and node is not self ]
+                marks = [ (node, node.mark_log()) for node in list(self.cluster.nodes.values()) if node.is_running() and node is not self ]
 
             if common.is_win():
                 # Gentle on Windows is relative.  WM_CLOSE is the best we get without external scripting
@@ -534,13 +549,13 @@ class Node():
             p.stdin.write("quit;\n")
             p.wait()
             for err in p.stderr:
-                print "(EE) " + err,
+                print_("(EE) ", err, end='')
             if show_output:
                 i = 0
                 for log in p.stdout:
                     # first four lines are not interesting
                     if i >= 4:
-                        print log,
+                        print_(log, end='')
                     i = i + 1
 
     def run_cqlsh(self, cmds=None, show_output=False, cqlsh_options=[]):
@@ -563,13 +578,13 @@ class Node():
             p.stdin.write("quit;\n")
             p.wait()
             for err in p.stderr:
-                print "(EE) " + err,
+                print_("(EE) ", err, end='')
             if show_output:
                 i = 0
                 for log in p.stdout:
                     # first four lines are not interesting
                     if i >= 4:
-                        print log,
+                        print_(log, end='')
                     i = i + 1
 
     def cli(self):
@@ -643,12 +658,12 @@ class Node():
         datafiles = self.__gather_sstables(datafile,keyspace,column_families)
 
         for file in datafiles:
-            print "-- {0} -----".format(os.path.basename(file))
+            print_("-- {0} -----".format(os.path.basename(file)))
             args = [ sstable2json , file ]
             if enumerate_keys:
                 args = args + ["-e"]
             subprocess.call(args, env=env)
-            print ""
+            print_("")
 
     def run_sstablesplit(self, datafile=None,  size=None, keyspace=None, column_families=None):
         cdir = self.get_cassandra_dir()
@@ -657,7 +672,7 @@ class Node():
         datafiles = self.__gather_sstables(datafile, keyspace, column_families)
 
         def do_split(f):
-            print "-- {0}-----".format(os.path.basename(f))
+            print_("-- {0}-----".format(os.path.basename(f)))
             if size is not None:
                 subprocess.call( [sstablesplit, '-s', str(size), f], cwd=os.path.join(cdir, 'bin'), env=env )
             else:
@@ -859,7 +874,7 @@ class Node():
         if self.cluster.partitioner:
             data['partitioner'] = self.cluster.partitioner
 
-        full_options = dict(self.cluster._config_options.items() + self.__config_options.items()) # last win and we want node options to win
+        full_options = dict(list(self.cluster._config_options.items()) + list(self.__config_options.items())) # last win and we want node options to win
         for name in full_options:
             value = full_options[name]
             if value is None:
@@ -943,7 +958,7 @@ class Node():
         else:
             try:
                 os.kill(self.pid, 0)
-            except OSError, err:
+            except OSError as err:
                 if err.errno == errno.ESRCH:
                     # not running
                     if self.status == Status.UP or self.status == Status.DECOMMISIONNED:
@@ -1027,7 +1042,7 @@ class Node():
                                     self.get_path() +
                                     '/dirty_pid.tmp. Manually kill it and check logs - ccm will be out of sync.')
         except Exception as e:
-            print "ERROR: Problem starting " + self.name + " (" + str(e) + ")"
+            print_("ERROR: Problem starting " + self.name + " (" + str(e) + ")")
             raise Exception('Error while parsing <node>/dirty_pid.tmp in path: ' + self.get_path())
 
     def _update_pid(self, process):
