@@ -3,13 +3,14 @@
 #
 
 import os
+import re
 import shutil
 import socket
 import stat
 import subprocess
 import sys
 from six import print_
-import re
+import time
 import yaml
 
 CASSANDRA_BIN_DIR= "bin"
@@ -61,6 +62,8 @@ def get_config():
     with open(config_path, 'r') as f:
         return yaml.load(f)
 
+def now_ms():
+    return int(round(time.time() * 1000))
 
 def parse_interface(itf, default_port):
     i = itf.split(':')

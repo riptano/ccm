@@ -128,7 +128,7 @@ class ClusterCreateCmd(Cmd):
                             details = " (you can use --debug for more information)"
                         print_("Error starting nodes, see above for details%s" % details, file=sys.stderr)
             except common.ArgumentError as e:
-                print >> sys.stderr, str(e)
+                print_(str(e), file=sys.stderr)
                 exit(1)
 
 class ClusterAddCmd(Cmd):
@@ -461,7 +461,7 @@ class ClusterStopCmd(Cmd):
                     sys.out.write(node.name + " ")
                 print_("")
         except NodeError as e:
-            print >> sys.stderr, str(e)
+            print_(str(e), file=sys.stderr)
             exit(1)
 
 class _ClusterNodetoolCmd(Cmd):
