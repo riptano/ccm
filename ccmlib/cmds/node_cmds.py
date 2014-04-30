@@ -35,6 +35,7 @@ def node_cmds():
         "status",
         "setdir",
         "version",
+        "nodetool"
     ]
 
 class NodeShowCmd(Cmd):
@@ -207,6 +208,13 @@ class _NodeToolCmd(Cmd):
 
     def run(self):
         self.node.nodetool(self.nodetool_cmd)
+
+class NodeNodetoolCmd(_NodeToolCmd):
+    usage = "usage: ccm node_name nodetool [options]"
+    descr_text = "Run nodetool (connecting to node name)"
+
+    def run(self):
+        self.node.nodetool(" ".join(self.args[1:]))
 
 class NodeRingCmd(_NodeToolCmd):
     usage = "usage: ccm node_name ring [options]"
@@ -523,3 +531,4 @@ class NodeSetdirCmd(Cmd):
         except common.ArgumentError as e:
             print_(str(e), file=sys.stderr)
             exit(1)
+
