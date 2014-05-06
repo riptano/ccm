@@ -68,6 +68,11 @@ class Cluster():
         self.__update_config()
         for node in list(self.nodes.values()):
             node.import_config_files()
+        
+        # if any nodes have a data center, let's update the topology
+        if any( [node.data_center for node in self.nodes.values()] ):
+            self.__update_topology_files()
+        
         return self
 
     def get_cassandra_dir(self):
