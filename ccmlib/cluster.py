@@ -173,8 +173,8 @@ class Cluster():
     def balanced_tokens(self, node_count):
         if self.version() >= '1.2' and not self.partitioner:
             ptokens = [(i*(2**64//node_count)) for i in xrange(0, node_count)]
-            return [t - 2**63 for t in ptokens]
-        return [ (i*(2**127//node_count)) for i in range(0, node_count) ]
+            return [int(t - 2**63) for t in ptokens]
+        return [ int(i*(2**127//node_count)) for i in range(0, node_count) ]
 
     def remove(self, node=None):
         if node is not None:
