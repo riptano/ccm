@@ -403,7 +403,8 @@ class Node():
 
         os.chmod(cass_bin, os.stat(cass_bin).st_mode | stat.S_IEXEC)
 
-        env = common.make_cassandra_env(cdir, self.get_path())
+        env = common.make_cassandra_env(cdir, self.get_path(), nodecount=len(self.cluster.nodes))
+        
         pidfile = os.path.join(self.get_path(), 'cassandra.pid')
         args = [ cass_bin, '-p', pidfile, '-Dcassandra.join_ring=%s' % str(join_ring) ]
         if replace_token is not None:
