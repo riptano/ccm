@@ -132,10 +132,16 @@ def make_cassandra_env(cassandra_dir, node_path, node=None):
     orig = os.path.join(cassandra_dir, sh_file)
     dst = os.path.join(node_path, sh_file)
     shutil.copy(orig, dst)
-    replacements = [
-        ('CASSANDRA_HOME=', '\tCASSANDRA_HOME=%s' % cassandra_dir),
-        ('CASSANDRA_CONF=', '\tCASSANDRA_CONF=%s' % os.path.join(node_path, 'conf'))
-    ]
+    if is_win():
+        replacements = [
+            ('CASSANDRA_HOME=', '\tCASSANDRA_HOME=%s' % cassandra_dir),
+            ('CASSANDRA_CONF=', '\t$env:CASSANDRA_CONF="%s"' % os.path.join(node_path, 'conf'))
+        ]
+    else:
+        replacements = [
+            ('CASSANDRA_HOME=', '\tCASSANDRA_HOME=%s' % cassandra_dir),
+            ('CASSANDRA_CONF=', '\tCASSANDRA_CONF=%s' % os.path.join(node_path, 'conf'))
+        ]
     replaces_in_file(dst, replacements)
 
     # If a cluster-wide cassandra.in.sh file exists in the parent
