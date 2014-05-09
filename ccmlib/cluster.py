@@ -367,14 +367,7 @@ class Cluster():
             node.update_logback(new_logback_config)
 
     def __get_version_from_build(self):
-        cassandra_dir = self.get_cassandra_dir()
-        build = os.path.join(cassandra_dir, 'build.xml')
-        with open(build) as f:
-            for line in f:
-                match = re.search('name="base\.version" value="([0-9.]+)[^"]*"', line)
-                if match:
-                    return match.group(1)
-        raise common.CCMError("Cannot find version")
+        return common.get_version_from_build(self.get_cassandra_dir())
 
     def __update_config(self):
         node_list = [ node.name for node in list(self.nodes.values()) ]

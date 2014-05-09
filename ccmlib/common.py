@@ -124,15 +124,15 @@ def replaces_or_add_into_file_tail(file, replacement_list):
 
     shutil.move(file_tmp, file)
 
-def make_cassandra_env(cassandra_dir, node_path, node=None):
-    if is_win():
+def make_cassandra_env(cassandra_dir, node_path):
+    if is_win() and get_version_from_build() >= 2.1:
         sh_file = os.path.join(CASSANDRA_CONF_DIR, CASSANDRA_WIN_ENV)
     else:
         sh_file = os.path.join(CASSANDRA_BIN_DIR, CASSANDRA_SH)
     orig = os.path.join(cassandra_dir, sh_file)
     dst = os.path.join(node_path, sh_file)
     shutil.copy(orig, dst)
-    if is_win():
+    if is_win() and get_version_from_build() >= 2.1:
         replacements = [
             ('CASSANDRA_HOME=', '\tCASSANDRA_HOME=%s' % cassandra_dir),
             ('CASSANDRA_CONF=', '\t$env:CASSANDRA_CONF="%s"' % os.path.join(node_path, 'conf'))
@@ -290,3 +290,14 @@ def copy_file(src_file, dst_file):
         print_(str(e), file=sys.stderr)
         exit(1)
 
+def get_version_from_build(cassandra_dir=None):
+    if cassandra_dir is None:
+        cassandra_dir = os.environ.get('CASSANDRA_HOME')
+    if cassandra_dir is not None:
+        build = os.path.join(cassandra_dir, 'build.xml')
+        with open(build) as f:
+            for line in f:
+                match = re.search('name="base\.version" value="([0-9.]+)[^"]*"', line)
+                if match:
+                    return match.group(1)
+    raise CCMError("Cannot find version")
