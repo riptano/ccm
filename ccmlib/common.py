@@ -21,6 +21,7 @@ LOG4J_CONF = "log4j-server.properties"
 LOG4J_TOOL_CONF = "log4j-tools.properties"
 LOGBACK_CONF = "logback.xml"
 CASSANDRA_ENV = "cassandra-env.sh"
+CASSANDRA_WIN_ENV = "cassandra-env.ps1"
 CASSANDRA_SH = "cassandra.in.sh"
 
 CONFIG_FILE = "config"
@@ -123,8 +124,11 @@ def replaces_or_add_into_file_tail(file, replacement_list):
 
     shutil.move(file_tmp, file)
 
-def make_cassandra_env(cassandra_dir, node_path):
-    sh_file = os.path.join(CASSANDRA_BIN_DIR, CASSANDRA_SH)
+def make_cassandra_env(cassandra_dir, node_path, node=None):
+    if is_win():
+        sh_file = os.path.join(CASSANDRA_CONF_DIR, CASSANDRA_WIN_ENV)
+    else:
+        sh_file = os.path.join(CASSANDRA_BIN_DIR, CASSANDRA_SH)
     orig = os.path.join(cassandra_dir, sh_file)
     dst = os.path.join(node_path, sh_file)
     shutil.copy(orig, dst)

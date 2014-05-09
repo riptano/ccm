@@ -403,7 +403,7 @@ class Node():
 
         os.chmod(cass_bin, os.stat(cass_bin).st_mode | stat.S_IEXEC)
 
-        env = common.make_cassandra_env(cdir, self.get_path())
+        env = common.make_cassandra_env(cdir, self.get_path(), self)
         pidfile = os.path.join(self.get_path(), 'cassandra.pid')
         args = [ cass_bin, '-p', pidfile, '-Dcassandra.join_ring=%s' % str(join_ring) ]
         if replace_token is not None:
@@ -1007,49 +1007,60 @@ class Node():
 
     def __clean_win_pid(self):
         start = common.now_ms()
-        try:
-            # Spin for 500ms waiting for .bat to write the dirty_pid file
-            while (not os.path.isfile(self.get_path() + "/dirty_pid.tmp")):
-                now = common.now_ms()
-                if (now - start > 500):
-                    raise Exception('Timed out waiting for dirty_pid file.')
-                else:
-                    time.sleep(.001)
-
-            with open(self.get_path() + "/dirty_pid.tmp", 'r') as f:
-                found = False
-                process_regex = re.compile('ProcessId')
-
-                readStart = common.now_ms()
-                readEnd = common.now_ms()
-                while (found == False and readEnd - readStart < 500):
-                    line = f.read()
-                    if (line):
-                        m = process_regex.search(line)
-                        if (m):
-                            found = True
-                            linesub = line.split('=')
-                            pidchunk = linesub[1].split(';')
-                            win_pid = pidchunk[0].lstrip()
-                            with open (self.get_path() + "/cassandra.pid", 'w') as pidfile:
-                                found = True
-                                pidfile.write(win_pid)
-                        readEnd = common.now_ms()
+        if self.cluster.version() >= 2.1:
+            try:
+                cassandra_dir = self.get_cassandra_dir()
+                shutil.copy(cassandra_dir + "/pid.txt", self.get_path() + "/cassandra.pid")
+            except Exception as e:
+                print_("ERROR: Problem starting " + self.name + " (" + str(e) + ")")
+                raise Exception('Error while parsing <node>/pid.txt in path: ' + cassandra_dir)
+        else:
+            try:
+                # Spin for 500ms waiting for .bat to write the dirty_pid file
+                while (not os.path.isfile(self.get_path() + "/dirty_pid.tmp")):
+                    now = common.now_ms()
+                    if (now - start > 500):
+                        raise Exception('Timed out waiting for dirty_pid file.')
                     else:
                         time.sleep(.001)
-                if not found:
-                    raise Exception('Node: %s  Failed to find pid in ' +
-                                    self.get_path() +
-                                    '/dirty_pid.tmp. Manually kill it and check logs - ccm will be out of sync.')
-        except Exception as e:
-            print_("ERROR: Problem starting " + self.name + " (" + str(e) + ")")
-            raise Exception('Error while parsing <node>/dirty_pid.tmp in path: ' + self.get_path())
+
+                with open(self.get_path() + "/dirty_pid.tmp", 'r') as f:
+                    found = False
+                    process_regex = re.compile('ProcessId')
+
+                    readStart = common.now_ms()
+                    readEnd = common.now_ms()
+                    while (found == False and readEnd - readStart < 500):
+                        line = f.read()
+                        if (line):
+                            m = process_regex.search(line)
+                            if (m):
+                                found = True
+                                linesub = line.split('=')
+                                pidchunk = linesub[1].split(';')
+                                win_pid = pidchunk[0].lstrip()
+                                with open (self.get_path() + "/cassandra.pid", 'w') as pidfile:
+                                    found = True
+                                    pidfile.write(win_pid)
+                            readEnd = common.now_ms()
+                        else:
+                            time.sleep(.001)
+                    if not found:
+                        raise Exception('Node: %s  Failed to find pid in ' +
+                                        self.get_path() +
+                                        '/dirty_pid.tmp. Manually kill it and check logs - ccm will be out of sync.')
+            except Exception as e:
+                print_("ERROR: Problem starting " + self.name + " (" + str(e) + ")")
+                raise Exception('Error while parsing <node>/dirty_pid.tmp in path: ' + self.get_path())
 
     def _update_pid(self, process):
         pidfile = os.path.join(self.get_path(), 'cassandra.pid')
         try:
             with open(pidfile, 'r') as f:
-                self.pid = int(f.readline().strip())
+                if common.is_win() and self.cluster.version() >= 2.1:
+                    self.pid = int(f.readline().strip().decode('utf-16'))
+                else:
+                    self.pid = int(f.readline().strip())
         except IOError:
             raise NodeError('Problem starting node %s' % self.name, process)
         self.__update_status()
