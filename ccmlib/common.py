@@ -132,10 +132,11 @@ def make_cassandra_env(cassandra_dir, node_path):
     orig = os.path.join(cassandra_dir, sh_file)
     dst = os.path.join(node_path, sh_file)
     shutil.copy(orig, dst)
+    replacements = ""
     if is_win() and get_version_from_build() >= 2.1:
         replacements = [
-            ('CASSANDRA_HOME=', '\tCASSANDRA_HOME=%s' % cassandra_dir),
-            ('CASSANDRA_CONF=', '\t$env:CASSANDRA_CONF="%s"' % os.path.join(node_path, 'conf'))
+            ('env:CASSANDRA_HOME =', '        $env:CASSANDRA_HOME="%s"' % cassandra_dir),
+            ('env:CASSANDRA_CONF =', '    $env:CASSANDRA_CONF="%s"' % os.path.join(node_path, 'conf'))
         ]
     else:
         replacements = [

@@ -388,6 +388,8 @@ class Node():
         # If Windows, change entries in .bat file to split conf from binaries
         if common.is_win():
             self.__clean_bat()
+            if self.version() >= 2.1:
+                self._clean_win_jmx();
 
         if profile_options is not None:
             config = common.get_config()
@@ -1091,3 +1093,9 @@ class Node():
             datafiles = [ os.path.join(keyspace_dir, datafile) ]
 
         return datafiles
+
+    def _clean_win_jmx(self):
+        sh_file = os.path.join(common.CASSANDRA_CONF_DIR, common.CASSANDRA_WIN_ENV)
+        dst = os.path.join(self.get_path(), sh_file)
+        replace_in_file(dst, "JMX_PORT=", "    $JMX_PORT=\"" + self.jmx_port + "\"")
+        replace_in_file(dst,'CASSANDRA_PARAMS=','    $env:CASSANDRA_PARAMS="-Dcassandra -Dlogback.configurationFile=logback.xml -Dcassandra.config=file:/$env:CASSANDRA_CONF/cassandra.yaml"')
