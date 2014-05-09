@@ -1008,12 +1008,22 @@ class Node():
     def __clean_win_pid(self):
         start = common.now_ms()
         if self.cluster.version() >= 2.1:
-            try:
-                cassandra_dir = self.get_cassandra_dir()
-                shutil.copy(cassandra_dir + "/pid.txt", self.get_path() + "/cassandra.pid")
-            except Exception as e:
-                print_("ERROR: Problem starting " + self.name + " (" + str(e) + ")")
-                raise Exception('Error while parsing <node>/pid.txt in path: ' + cassandra_dir)
+            # Spin for 5s waiting for .bat to write the pid file
+            pidfile = self.get_path() + "/cassandra.pid"
+            while (not os.path.isfile(pidfile)):
+                now = common.now_ms()
+                if (now - start > 5000):
+                    raise Exception('Timed out waiting for pid file.')
+                else:
+                    time.sleep(.001)
+            # Spin for 5s waiting for .bat to fill the pid file
+            start = common.now_ms()
+            while (os.stat(pidfile).st_size == 0):
+                now = common.now_ms()
+                if (now - start > 5000):
+                    raise Exception('Timed out waiting for pid file to be filled.')
+                else:
+                    time.sleep(.001)
         else:
             try:
                 # Spin for 500ms waiting for .bat to write the dirty_pid file
