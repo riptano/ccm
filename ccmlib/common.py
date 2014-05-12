@@ -3,7 +3,6 @@
 #
 
 import os
-import psutil
 import re
 import shutil
 import socket
@@ -124,7 +123,7 @@ def replaces_or_add_into_file_tail(file, replacement_list):
 
     shutil.move(file_tmp, file)
 
-def make_cassandra_env(cassandra_dir, node_path, nodecount=1):
+def make_cassandra_env(cassandra_dir, node_path):
     sh_file = os.path.join(CASSANDRA_BIN_DIR, CASSANDRA_SH)
     orig = os.path.join(cassandra_dir, sh_file)
     dst = os.path.join(node_path, sh_file)
@@ -148,16 +147,11 @@ def make_cassandra_env(cassandra_dir, node_path, nodecount=1):
     env = os.environ.copy()
     env['CASSANDRA_INCLUDE'] = os.path.join(dst)
     
-    # Configure node env heap based on total number of nodes expected
-    if os.environ.get('MAX_HEAP_SIZE') is None:
-        ccm_mem_mb = (psutil.TOTAL_PHYMEM * 0.7) / (10**6) # ccm gets 70% of ram
-
-        env['MAX_HEAP_SIZE'] = str( int(ccm_mem_mb/nodecount) ) + 'M'
+    if os.environ.get('CCMNODE_MAX_HEAP_SIZE') is None:
+        env['MAX_HEAP_SIZE'] = "{size}M".format(size=500)
     
-    if os.environ.get('HEAP_NEWSIZE') is None:
-        # Use 50mb*cpu_count for new gen
-        # this is lower than prod recommendations
-        env['HEAP_NEWSIZE'] = str( int(psutil.NUM_CPUS*50) ) + 'M'
+    if os.environ.get('CCMNODE_HEAP_NEWSIZE') is None:
+        env['HEAP_NEWSIZE'] = "{size}M".format(size=50)
     
     return env
 
