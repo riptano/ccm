@@ -146,6 +146,10 @@ def make_cassandra_env(cassandra_dir, node_path):
 
     env = os.environ.copy()
     env['CASSANDRA_INCLUDE'] = os.path.join(dst)
+    
+    env['MAX_HEAP_SIZE'] = os.environ.get('CCMNODE_MAX_HEAP_SIZE', '500M')
+    env['HEAP_NEWSIZE'] = os.environ.get('CCMNODE_HEAP_NEWSIZE', '50M')
+    
     return env
 
 def check_win_requirements():
