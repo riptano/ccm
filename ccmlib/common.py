@@ -21,6 +21,7 @@ LOG4J_CONF = "log4j-server.properties"
 LOG4J_TOOL_CONF = "log4j-tools.properties"
 LOGBACK_CONF = "logback.xml"
 CASSANDRA_ENV = "cassandra-env.sh"
+CASSANDRA_WIN_ENV = "cassandra-env.ps1"
 CASSANDRA_SH = "cassandra.in.sh"
 
 CONFIG_FILE = "config"
@@ -124,14 +125,24 @@ def replaces_or_add_into_file_tail(file, replacement_list):
     shutil.move(file_tmp, file)
 
 def make_cassandra_env(cassandra_dir, node_path):
-    sh_file = os.path.join(CASSANDRA_BIN_DIR, CASSANDRA_SH)
+    if is_win() and get_version_from_build() >= 2.1:
+        sh_file = os.path.join(CASSANDRA_CONF_DIR, CASSANDRA_WIN_ENV)
+    else:
+        sh_file = os.path.join(CASSANDRA_BIN_DIR, CASSANDRA_SH)
     orig = os.path.join(cassandra_dir, sh_file)
     dst = os.path.join(node_path, sh_file)
     shutil.copy(orig, dst)
-    replacements = [
-        ('CASSANDRA_HOME=', '\tCASSANDRA_HOME=%s' % cassandra_dir),
-        ('CASSANDRA_CONF=', '\tCASSANDRA_CONF=%s' % os.path.join(node_path, 'conf'))
-    ]
+    replacements = ""
+    if is_win() and get_version_from_build() >= 2.1:
+        replacements = [
+            ('env:CASSANDRA_HOME =', '        $env:CASSANDRA_HOME="%s"' % cassandra_dir),
+            ('env:CASSANDRA_CONF =', '    $env:CASSANDRA_CONF="%s"' % os.path.join(node_path, 'conf'))
+        ]
+    else:
+        replacements = [
+            ('CASSANDRA_HOME=', '\tCASSANDRA_HOME=%s' % cassandra_dir),
+            ('CASSANDRA_CONF=', '\tCASSANDRA_CONF=%s' % os.path.join(node_path, 'conf'))
+        ]
     replaces_in_file(dst, replacements)
 
     # If a cluster-wide cassandra.in.sh file exists in the parent
@@ -280,3 +291,14 @@ def copy_file(src_file, dst_file):
         print_(str(e), file=sys.stderr)
         exit(1)
 
+def get_version_from_build(cassandra_dir=None):
+    if cassandra_dir is None:
+        cassandra_dir = os.environ.get('CASSANDRA_HOME')
+    if cassandra_dir is not None:
+        build = os.path.join(cassandra_dir, 'build.xml')
+        with open(build) as f:
+            for line in f:
+                match = re.search('name="base\.version" value="([0-9.]+)[^"]*"', line)
+                if match:
+                    return match.group(1)
+    raise CCMError("Cannot find version")
