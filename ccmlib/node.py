@@ -1100,4 +1100,4 @@ class Node():
             sh_file = os.path.join(common.CASSANDRA_CONF_DIR, common.CASSANDRA_WIN_ENV)
             dst = os.path.join(self.get_path(), sh_file)
             common.replace_in_file(dst, "JMX_PORT=", "    $JMX_PORT=\"" + self.jmx_port + "\"")
-            common.replace_in_file(dst,'CASSANDRA_PARAMS=','    $env:CASSANDRA_PARAMS="-Dcassandra -Dlogback.configurationFile=logback.xml -Dcassandra.config=file:/$env:CASSANDRA_CONF/cassandra.yaml"')
+            common.replace_in_file(dst,'CASSANDRA_PARAMS=','    $env:CASSANDRA_PARAMS="-Dcassandra -Dlogback.configurationFile=/$env:CASSANDRA_CONF/logback.xml -Dcassandra.config=file:/$env:CASSANDRA_CONF/cassandra.yaml"')
