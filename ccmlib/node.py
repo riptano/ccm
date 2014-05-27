@@ -388,8 +388,6 @@ class Node():
         # If Windows, change entries in .bat file to split conf from binaries
         if common.is_win():
             self.__clean_bat()
-            if self.version() >= 2.1:
-                self._clean_win_jmx();
 
         if profile_options is not None:
             config = common.get_config()
@@ -406,6 +404,9 @@ class Node():
         os.chmod(cass_bin, os.stat(cass_bin).st_mode | stat.S_IEXEC)
 
         env = common.make_cassandra_env(cdir, self.get_path())
+        if common.is_win():
+            self._clean_win_jmx();
+        
         pidfile = os.path.join(self.get_path(), 'cassandra.pid')
         args = [ cass_bin, '-p', pidfile, '-Dcassandra.join_ring=%s' % str(join_ring) ]
         if replace_token is not None:
@@ -1095,7 +1096,8 @@ class Node():
         return datafiles
 
     def _clean_win_jmx(self):
-        sh_file = os.path.join(common.CASSANDRA_CONF_DIR, common.CASSANDRA_WIN_ENV)
-        dst = os.path.join(self.get_path(), sh_file)
-        replace_in_file(dst, "JMX_PORT=", "    $JMX_PORT=\"" + self.jmx_port + "\"")
-        replace_in_file(dst,'CASSANDRA_PARAMS=','    $env:CASSANDRA_PARAMS="-Dcassandra -Dlogback.configurationFile=logback.xml -Dcassandra.config=file:/$env:CASSANDRA_CONF/cassandra.yaml"')
+        if common.get_version_from_build() >= 2.1:
+            sh_file = os.path.join(common.CASSANDRA_CONF_DIR, common.CASSANDRA_WIN_ENV)
+            dst = os.path.join(self.get_path(), sh_file)
+            common.replace_in_file(dst, "JMX_PORT=", "    $JMX_PORT=\"" + self.jmx_port + "\"")
+            common.replace_in_file(dst,'CASSANDRA_PARAMS=','    $env:CASSANDRA_PARAMS="-Dcassandra -Dlogback.configurationFile=logback.xml -Dcassandra.config=file:/$env:CASSANDRA_CONF/cassandra.yaml"')
