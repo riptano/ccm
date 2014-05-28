@@ -1010,7 +1010,7 @@ class Node():
 
     def __clean_win_pid(self):
         start = common.now_ms()
-        if self.cluster.version() >= 2.1:
+        if self.cluster.version() >= '2.1':
             # Spin for 5s waiting for .bat to write the pid file
             pidfile = self.get_path() + "/cassandra.pid"
             while (not os.path.isfile(pidfile)):
@@ -1070,7 +1070,7 @@ class Node():
         pidfile = os.path.join(self.get_path(), 'cassandra.pid')
         try:
             with open(pidfile, 'r') as f:
-                if common.is_win() and self.cluster.version() >= 2.1:
+                if common.is_win() and self.cluster.version() >= '2.1':
                     self.pid = int(f.readline().strip().decode('utf-16'))
                 else:
                     self.pid = int(f.readline().strip())
@@ -1096,7 +1096,7 @@ class Node():
         return datafiles
 
     def _clean_win_jmx(self):
-        if common.get_version_from_build() >= 2.1:
+        if common.get_version_from_build(node_path=self.get_path()) >= '2.1':
             sh_file = os.path.join(common.CASSANDRA_CONF_DIR, common.CASSANDRA_WIN_ENV)
             dst = os.path.join(self.get_path(), sh_file)
             common.replace_in_file(dst, "JMX_PORT=", "    $JMX_PORT=\"" + self.jmx_port + "\"")
