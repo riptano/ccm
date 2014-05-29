@@ -404,6 +404,9 @@ class Node():
         os.chmod(cass_bin, os.stat(cass_bin).st_mode | stat.S_IEXEC)
 
         env = common.make_cassandra_env(cdir, self.get_path())
+        if common.is_win():
+            self._clean_win_jmx();
+        
         pidfile = os.path.join(self.get_path(), 'cassandra.pid')
         args = [ cass_bin, '-p', pidfile, '-Dcassandra.join_ring=%s' % str(join_ring) ]
         if replace_token is not None:
@@ -1007,49 +1010,70 @@ class Node():
 
     def __clean_win_pid(self):
         start = common.now_ms()
-        try:
-            # Spin for 500ms waiting for .bat to write the dirty_pid file
-            while (not os.path.isfile(self.get_path() + "/dirty_pid.tmp")):
+        if self.cluster.version() >= '2.1':
+            # Spin for 5s waiting for .bat to write the pid file
+            pidfile = self.get_path() + "/cassandra.pid"
+            while (not os.path.isfile(pidfile)):
                 now = common.now_ms()
-                if (now - start > 500):
-                    raise Exception('Timed out waiting for dirty_pid file.')
+                if (now - start > 5000):
+                    raise Exception('Timed out waiting for pid file.')
                 else:
                     time.sleep(.001)
-
-            with open(self.get_path() + "/dirty_pid.tmp", 'r') as f:
-                found = False
-                process_regex = re.compile('ProcessId')
-
-                readStart = common.now_ms()
-                readEnd = common.now_ms()
-                while (found == False and readEnd - readStart < 500):
-                    line = f.read()
-                    if (line):
-                        m = process_regex.search(line)
-                        if (m):
-                            found = True
-                            linesub = line.split('=')
-                            pidchunk = linesub[1].split(';')
-                            win_pid = pidchunk[0].lstrip()
-                            with open (self.get_path() + "/cassandra.pid", 'w') as pidfile:
-                                found = True
-                                pidfile.write(win_pid)
-                        readEnd = common.now_ms()
+            # Spin for 5s waiting for .bat to fill the pid file
+            start = common.now_ms()
+            while (os.stat(pidfile).st_size == 0):
+                now = common.now_ms()
+                if (now - start > 5000):
+                    raise Exception('Timed out waiting for pid file to be filled.')
+                else:
+                    time.sleep(.001)
+        else:
+            try:
+                # Spin for 500ms waiting for .bat to write the dirty_pid file
+                while (not os.path.isfile(self.get_path() + "/dirty_pid.tmp")):
+                    now = common.now_ms()
+                    if (now - start > 500):
+                        raise Exception('Timed out waiting for dirty_pid file.')
                     else:
                         time.sleep(.001)
-                if not found:
-                    raise Exception('Node: %s  Failed to find pid in ' +
-                                    self.get_path() +
-                                    '/dirty_pid.tmp. Manually kill it and check logs - ccm will be out of sync.')
-        except Exception as e:
-            print_("ERROR: Problem starting " + self.name + " (" + str(e) + ")")
-            raise Exception('Error while parsing <node>/dirty_pid.tmp in path: ' + self.get_path())
+
+                with open(self.get_path() + "/dirty_pid.tmp", 'r') as f:
+                    found = False
+                    process_regex = re.compile('ProcessId')
+
+                    readStart = common.now_ms()
+                    readEnd = common.now_ms()
+                    while (found == False and readEnd - readStart < 500):
+                        line = f.read()
+                        if (line):
+                            m = process_regex.search(line)
+                            if (m):
+                                found = True
+                                linesub = line.split('=')
+                                pidchunk = linesub[1].split(';')
+                                win_pid = pidchunk[0].lstrip()
+                                with open (self.get_path() + "/cassandra.pid", 'w') as pidfile:
+                                    found = True
+                                    pidfile.write(win_pid)
+                            readEnd = common.now_ms()
+                        else:
+                            time.sleep(.001)
+                    if not found:
+                        raise Exception('Node: %s  Failed to find pid in ' +
+                                        self.get_path() +
+                                        '/dirty_pid.tmp. Manually kill it and check logs - ccm will be out of sync.')
+            except Exception as e:
+                print_("ERROR: Problem starting " + self.name + " (" + str(e) + ")")
+                raise Exception('Error while parsing <node>/dirty_pid.tmp in path: ' + self.get_path())
 
     def _update_pid(self, process):
         pidfile = os.path.join(self.get_path(), 'cassandra.pid')
         try:
             with open(pidfile, 'r') as f:
-                self.pid = int(f.readline().strip())
+                if common.is_win() and self.cluster.version() >= '2.1':
+                    self.pid = int(f.readline().strip().decode('utf-16'))
+                else:
+                    self.pid = int(f.readline().strip())
         except IOError:
             raise NodeError('Problem starting node %s' % self.name, process)
         self.__update_status()
@@ -1070,3 +1094,10 @@ class Node():
             datafiles = [ os.path.join(keyspace_dir, datafile) ]
 
         return datafiles
+
+    def _clean_win_jmx(self):
+        if common.get_version_from_build(node_path=self.get_path()) >= '2.1':
+            sh_file = os.path.join(common.CASSANDRA_CONF_DIR, common.CASSANDRA_WIN_ENV)
+            dst = os.path.join(self.get_path(), sh_file)
+            common.replace_in_file(dst, "JMX_PORT=", "    $JMX_PORT=\"" + self.jmx_port + "\"")
+            common.replace_in_file(dst,'CASSANDRA_PARAMS=','    $env:CASSANDRA_PARAMS="-Dcassandra -Dlogback.configurationFile=/$env:CASSANDRA_CONF/logback.xml -Dcassandra.config=file:/$env:CASSANDRA_CONF/cassandra.yaml"')
