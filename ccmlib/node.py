@@ -473,23 +473,36 @@ class Node():
 
             if common.is_win():
                 # Gentle on Windows is relative.  WM_CLOSE is the best we get without external scripting
-                if gently:
-                    os.system("taskkill /PID " + str(self.pid))
-                else:
-                    os.system("taskkill /F /PID " + str(self.pid))
+                # New stop-server.bat allows for gentle shutdown on windows
+                if self.cluster.version() >= "2.1":
+                    cass_bin = common.join_bin(self.get_path(), 'bin', 'stop-server')
+                    pidfile = os.path.join(self.get_path(), 'cassandra.pid')
+                    args = [ cass_bin, '-p', pidfile]
 
-                # no graceful shutdown on windows means it should be immediate
-                cmd = 'tasklist /fi "PID eq ' + str(self.pid) + '"'
-                proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-
-                found = False
-                for line in proc.stdout:
-                    if re.match("Image", line):
-                        found = True
-                if found:
-                    return False
+                    if not gently:
+                        args.append('-f')
+                    proc = subprocess.Popen(args, cwd= self.get_bin_dir(), shell=True, stdout=subprocess.PIPE)
                 else:
-                    return True
+                    if gently:
+                        os.system("taskkill /PID " + str(self.pid))
+                    else:
+                        os.system("taskkill /F /PID " + str(self.pid))
+
+                    # no graceful shutdown on windows means it should be immediate
+                    cmd = 'tasklist /fi "PID eq ' + str(self.pid) + '"'
+                    proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+
+                    found = False
+                    for line in proc.stdout:
+                        if re.match("Image", line):
+                            found = True
+                    if found:
+                        return False
+                    else:
+                        pidfile = self.get_path() + "/cassandra.pid"
+                        if (os.path.isfile(pidfile)):
+                            os.remove(pidfile)
+                        return True
             else:
                 if gently:
                     os.kill(self.pid, signal.SIGTERM)
