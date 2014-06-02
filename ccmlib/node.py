@@ -472,37 +472,7 @@ class Node():
                 marks = [ (node, node.mark_log()) for node in list(self.cluster.nodes.values()) if node.is_running() and node is not self ]
 
             if common.is_win():
-                # Gentle on Windows is relative.  WM_CLOSE is the best we get without external scripting
-                # New stop-server.bat allows for gentle shutdown on windows
-                if self.cluster.version() >= "2.1":
-                    cass_bin = common.join_bin(self.get_path(), 'bin', 'stop-server')
-                    pidfile = os.path.join(self.get_path(), 'cassandra.pid')
-                    args = [ cass_bin, '-p', pidfile]
-
-                    if not gently:
-                        args.append('-f')
-                    proc = subprocess.Popen(args, cwd= self.get_bin_dir(), shell=True, stdout=subprocess.PIPE)
-                else:
-                    if gently:
-                        os.system("taskkill /PID " + str(self.pid))
-                    else:
-                        os.system("taskkill /F /PID " + str(self.pid))
-
-                    # no graceful shutdown on windows means it should be immediate
-                    cmd = 'tasklist /fi "PID eq ' + str(self.pid) + '"'
-                    proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-
-                    found = False
-                    for line in proc.stdout:
-                        if re.match("Image", line):
-                            found = True
-                    if found:
-                        return False
-                    else:
-                        pidfile = self.get_path() + "/cassandra.pid"
-                        if (os.path.isfile(pidfile)):
-                            os.remove(pidfile)
-                        return True
+                self.stop_win(wait, wait_other_notice, gently)
             else:
                 if gently:
                     os.kill(self.pid, signal.SIGTERM)
@@ -531,6 +501,52 @@ class Node():
                 return True
         else:
             return False
+
+    def stop_win(self, wait=True, wait_other_notice=False, gently=True):
+        # Gentle on Windows is relative.  WM_CLOSE is the best we get without external scripting
+        # New stop-server.bat allows for gentle shutdown on windows. If gentle shutdown
+        # does not succeed for any reason, we will revert to the more forceful taskkill.
+        # This is necessary intermittently.
+        if self.cluster.version() >= "2.1":
+            cass_bin = common.join_bin(self.get_path(), 'bin', 'stop-server')
+            pidfile = os.path.join(self.get_path(), 'cassandra.pid')
+            args = [ cass_bin, '-p', pidfile]
+
+            if not gently:
+                args.append('-f')
+            proc = subprocess.Popen(args, cwd= self.get_bin_dir(), shell=True, stdout=subprocess.PIPE)
+        
+            still_running = self.is_running()
+            if still_running and wait:
+                wait_time_sec = 1
+                for i in xrange(0, 4):
+                    time.sleep(wait_time_sec)
+                    if not self.is_running():
+                        return True
+                    wait_time_sec = wait_time_sec * 2
+            else:
+                return True
+
+        if gently:
+            os.system("taskkill /PID " + str(self.pid))
+        else:
+            os.system("taskkill /F /PID " + str(self.pid))
+
+        # no graceful shutdown on windows means it should be immediate
+        cmd = 'tasklist /fi "PID eq ' + str(self.pid) + '"'
+        proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+
+        found = False
+        for line in proc.stdout:
+            if re.match("Image", line):
+                found = True
+        if found:
+            return False
+        else:
+            pidfile = self.get_path() + "/cassandra.pid"
+            if (os.path.isfile(pidfile)):
+                os.remove(pidfile)
+            return True
 
     def nodetool(self, cmd):
         cdir = self.get_cassandra_dir()
