@@ -515,6 +515,10 @@ class Node():
             if not gently:
                 args.append('-f')
             proc = subprocess.Popen(args, cwd= self.get_bin_dir(), shell=True, stdout=subprocess.PIPE)
+
+            pidfile = self.get_path() + "/cassandra.pid"
+            if (os.path.isfile(pidfile)):
+                os.remove(pidfile)
         
             still_running = self.is_running()
             if still_running and wait:
