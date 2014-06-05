@@ -838,12 +838,29 @@ class Node():
         common.replace_in_file(bat_file, home_pattern, "set CASSANDRA_HOME=" + self.get_cassandra_dir())
 
         classpath_pattern="set CLASSPATH=\\\"%CASSANDRA_HOME%\\\\conf\\\""
-        common.replace_in_file(bat_file, classpath_pattern, "set CLASSPATH=\"" + self.get_conf_dir() + "\"")
+        common.replace_in_file(bat_file, classpath_pattern, "set CLASSPATH=\\\"" + self.get_conf_dir() + "\\\"")
+
+        # escape the double quotes in name of the lib files in the classpath
+        jar_file_pattern="do call :append \"%%i\""
+        for_statement="for %%i in (\"%CASSANDRA_HOME%\lib\*.jar\")"
+        common.replace_in_file(bat_file, jar_file_pattern, for_statement + " do call :append \\\"%%i\\\"")
+
+        # escape double quotes in java agent path
+        class_dir_pattern="-javaagent:"
+        common.replace_in_file(bat_file, class_dir_pattern, " -javaagent:\\\"%CASSANDRA_HOME%\\lib\\jamm-0.2.5.jar\\\"^")
+
+        # escape the double quotes in name of the class directories
+        class_dir_pattern="set CASSANDRA_CLASSPATH="
+        main_classes = "\\\"%CASSANDRA_HOME%\\build\\classes\\main\\\";"
+        thrift_classes="\\\"%CASSANDRA_HOME%\\build\\classes\\thrift\\\""
+        common.replace_in_file(bat_file, class_dir_pattern, "set CASSANDRA_CLASSPATH=%CLASSPATH%;" +
+                               main_classes + thrift_classes)
 
         # background the server process and grab the pid
-        run_text="\"%JAVA_HOME%\\bin\\java\" %JAVA_OPTS% %CASSANDRA_PARAMS% -cp %CASSANDRA_CLASSPATH% \"%CASSANDRA_MAIN%\""
+        run_text="\\\"%JAVA_HOME%\\bin\\java\\\" %JAVA_OPTS% %CASSANDRA_PARAMS% -cp %CASSANDRA_CLASSPATH% \\\"%CASSANDRA_MAIN%\\\""
         run_pattern=".*-cp.*"
-        common.replace_in_file(bat_file, run_pattern, "wmic process call create '" + run_text + "' > \"" + self.get_path() + "/dirty_pid.tmp\"\n")
+        common.replace_in_file(bat_file, run_pattern, "wmic process call create \"" + run_text + "\" > \"" +
+                               self.get_path() + "/dirty_pid.tmp\"\n")
 
     def _save(self):
         self.__update_yaml()
