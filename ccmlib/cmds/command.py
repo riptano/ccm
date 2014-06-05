@@ -1,7 +1,11 @@
-import os, sys, shutil
+import sys
+
+from six import print_
+
 from optparse import OptionParser, BadOptionError, Option
 
 from ccmlib import common
+from ccmlib.cluster import Cluster
 
 # This is fairly fragile, but handy for now
 class ForgivingParser(OptionParser):
@@ -46,24 +50,24 @@ class Cmd(object):
 
         if cluster_name:
           if len(args) == 0:
-              print >> sys.stderr, 'Missing cluster name'
+              print_('Missing cluster name', file=sys.stderr)
               parser.print_help()
               exit(1)
           self.name = args[0]
         if node_name:
           if len(args) == 0:
-              print >> sys.stderr, 'Missing node name'
+              print_('Missing node name', file=sys.stderr)
               parser.print_help()
               exit(1)
           self.name = args[0]
 
         if load_cluster:
-            self.cluster = common.load_current_cluster(self.path)
+            self.cluster = self._load_current_cluster()
             if node_name and load_node:
                 try:
                     self.node = self.cluster.nodes[self.name]
                 except KeyError:
-                    print >> sys.stderr, 'Unknown node %s in cluster %s' % (self.name, self.cluster.name)
+                    print_('Unknown node %s in cluster %s' % (self.name, self.cluster.name), file=sys.stderr)
                     exit(1)
 
     def run(self):
@@ -80,3 +84,14 @@ class Cmd(object):
 
     def description():
         return ""
+
+    def _load_current_cluster(self):
+        name = common.current_cluster_name(self.path)
+        if name is None:
+            print_('No currently active cluster (use ccm cluster switch)')
+            exit(1)
+        try:
+            return Cluster.load(self.path, name)
+        except common.LoadError as e:
+            print_(str(e))
+            exit(1)

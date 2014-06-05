@@ -2,7 +2,16 @@
 # Cassandra Cluster Management lib
 #
 
-import os, common, shutil, re, cluster, socket, stat, subprocess, sys, yaml
+import os
+import re
+import shutil
+import socket
+import stat
+import subprocess
+import sys
+from six import print_
+import time
+import yaml
 
 CASSANDRA_BIN_DIR= "bin"
 CASSANDRA_CONF_DIR= "conf"
@@ -12,6 +21,7 @@ LOG4J_CONF = "log4j-server.properties"
 LOG4J_TOOL_CONF = "log4j-tools.properties"
 LOGBACK_CONF = "logback.xml"
 CASSANDRA_ENV = "cassandra-env.sh"
+CASSANDRA_WIN_ENV = "cassandra-env.ps1"
 CASSANDRA_SH = "cassandra.in.sh"
 
 CONFIG_FILE = "config"
@@ -53,6 +63,8 @@ def get_config():
     with open(config_path, 'r') as f:
         return yaml.load(f)
 
+def now_ms():
+    return int(round(time.time() * 1000))
 
 def parse_interface(itf, default_port):
     i = itf.split(':')
@@ -69,17 +81,6 @@ def current_cluster_name(path):
             return f.readline().strip()
     except IOError:
         return None
-
-def load_current_cluster(path):
-    name = current_cluster_name(path)
-    if name is None:
-        print 'No currently active cluster (use ccm cluster switch)'
-        exit(1)
-    try:
-        return cluster.Cluster.load(path, name)
-    except common.LoadError as e:
-        print str(e)
-        exit(1)
 
 def switch_cluster(path, new_name):
     with open(os.path.join(path, 'CURRENT'), 'w') as f:
@@ -124,15 +125,25 @@ def replaces_or_add_into_file_tail(file, replacement_list):
     shutil.move(file_tmp, file)
 
 def make_cassandra_env(cassandra_dir, node_path):
-    sh_file = os.path.join(CASSANDRA_BIN_DIR, CASSANDRA_SH)
+    if is_win() and get_version_from_build(node_path=node_path) >= '2.1':
+        sh_file = os.path.join(CASSANDRA_CONF_DIR, CASSANDRA_WIN_ENV)
+    else:
+        sh_file = os.path.join(CASSANDRA_BIN_DIR, CASSANDRA_SH)
     orig = os.path.join(cassandra_dir, sh_file)
     dst = os.path.join(node_path, sh_file)
     shutil.copy(orig, dst)
-    replacements = [
-        ('CASSANDRA_HOME=', '\tCASSANDRA_HOME=%s' % cassandra_dir),
-        ('CASSANDRA_CONF=', '\tCASSANDRA_CONF=%s' % os.path.join(node_path, 'conf'))
-    ]
-    common.replaces_in_file(dst, replacements)
+    replacements = ""
+    if is_win() and get_version_from_build(node_path=node_path) >= '2.1':
+        replacements = [
+            ('env:CASSANDRA_HOME =', '        $env:CASSANDRA_HOME="%s"' % cassandra_dir),
+            ('env:CASSANDRA_CONF =', '    $env:CASSANDRA_CONF="%s"' % os.path.join(node_path, 'conf'))
+        ]
+    else:
+        replacements = [
+            ('CASSANDRA_HOME=', '\tCASSANDRA_HOME=%s' % cassandra_dir),
+            ('CASSANDRA_CONF=', '\tCASSANDRA_CONF=%s' % os.path.join(node_path, 'conf'))
+        ]
+    replaces_in_file(dst, replacements)
 
     # If a cluster-wide cassandra.in.sh file exists in the parent
     # directory, append it to the node specific one:
@@ -146,10 +157,13 @@ def make_cassandra_env(cassandra_dir, node_path):
 
     env = os.environ.copy()
     env['CASSANDRA_INCLUDE'] = os.path.join(dst)
+    env['MAX_HEAP_SIZE'] = os.environ.get('CCM_MAX_HEAP_SIZE', '500M')
+    env['HEAP_NEWSIZE'] = os.environ.get('CCM_HEAP_NEWSIZE', '50M')
+    
     return env
 
 def check_win_requirements():
-    if common.is_win():
+    if is_win():
         # Make sure ant.bat is in the path and executable before continuing
         try:
             process = subprocess.Popen('ant.bat', stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -195,7 +209,7 @@ def get_stress_bin(cassandra_dir):
         os.path.join(cassandra_dir, 'tools', 'bin', 'stress'),
         os.path.join(cassandra_dir, 'tools', 'bin', 'cassandra-stress')
     ]
-    candidates = [common.platform_binary(s) for s in candidates]
+    candidates = [platform_binary(s) for s in candidates]
 
     for candidate in candidates:
         if os.path.exists(candidate):
@@ -215,7 +229,7 @@ def get_stress_bin(cassandra_dir):
             # try to add user execute permissions
             # os.chmod doesn't work on Windows and isn't necessary unless in cygwin...
             if sys.platform == "cygwin":
-                common.add_exec_permission(path, stress)
+                add_exec_permission(path, stress)
             else:
                 os.chmod(stress, os.stat(stress).st_mode | stat.S_IXUSR)
         except:
@@ -228,7 +242,7 @@ def validate_cassandra_dir(cassandra_dir):
         raise ArgumentError('Undefined cassandra directory')
 
     # Windows requires absolute pathing on cassandra dir - abort if specified cygwin style
-    if common.is_win():
+    if is_win():
         if ':' not in cassandra_dir:
             raise ArgumentError('%s does not appear to be a cassandra source directory.  Please use absolute pathing (e.g. C:/cassandra.' % cassandra_dir)
 
@@ -246,7 +260,7 @@ def check_socket_available(itf):
     try:
         s.bind(itf)
         s.close()
-    except socket.error, msg:
+    except socket.error as msg:
         s.close()
         addr, port = itf
         raise UnavailableSocketError("Inet address %s:%s is not available: %s" % (addr, port, msg))
@@ -277,6 +291,26 @@ def copy_file(src_file, dst_file):
     try:
         shutil.copy2(src_file, dst_file)
     except (IOError, shutil.Error) as e:
-        print >> sys.stderr, str(e)
+        print_(str(e), file=sys.stderr)
         exit(1)
 
+def get_version_from_build(cassandra_dir=None, node_path=None):
+    if cassandra_dir is None and node_path is not None:
+        cassandra_dir = get_cassandra_dir_from_cluster_conf(node_path)
+    if cassandra_dir is not None:
+        build = os.path.join(cassandra_dir, 'build.xml')
+        with open(build) as f:
+            for line in f:
+                match = re.search('name="base\.version" value="([0-9.]+)[^"]*"', line)
+                if match:
+                    return match.group(1)
+    raise CCMError("Cannot find version")
+
+def get_cassandra_dir_from_cluster_conf(node_path):
+    file = os.path.join(os.path.dirname(node_path), "cluster.conf")
+    with open(file) as f:
+        for line in f:
+            match = re.search('cassandra_dir: (.*?)$', line)
+            if match:
+                return match.group(1)
+    return None

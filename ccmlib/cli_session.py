@@ -1,4 +1,4 @@
-import sys, time
+import sys
 from threading  import Thread
 try:
     from Queue import Queue, Empty

@@ -1,9 +1,24 @@
 # ccm node
 from __future__ import with_statement
 
-import common, yaml, os, errno, signal, time, subprocess, shutil, sys, glob, re, stat
-import repository
-from cli_session import CliSession
+from six import print_, iteritems, string_types
+from six.moves import xrange
+
+import errno
+import glob
+import os
+import re
+import shutil
+import signal
+import stat
+import subprocess
+import sys
+import time
+import yaml
+
+from ccmlib.repository import setup
+from ccmlib.cli_session import CliSession
+from ccmlib import common
 
 class Status():
     UNINITIALIZED = "UNINITIALIZED"
@@ -140,7 +155,7 @@ class Node():
             if cassandra_dir is not None:
                 common.validate_cassandra_dir(cassandra_dir)
         else:
-            dir, v = repository.setup(cassandra_version, verbose=verbose)
+            dir, v = setup(cassandra_version, verbose=verbose)
             self.__cassandra_dir = dir
         self.import_config_files()
         return self
@@ -157,7 +172,7 @@ class Node():
         commitlog (since it requires setting 2 options and unsetting one).
         """
         if values is not None:
-            for k, v in values.iteritems():
+            for k, v in iteritems(values):
                 self.__config_options[k] = v
         if batch_commitlog is not None:
             if batch_commitlog:
@@ -177,20 +192,20 @@ class Node():
         """
         self.__update_status()
         indent = ''.join([ " " for i in xrange(0, len(self.name) + 2) ])
-        print "%s: %s" % (self.name, self.__get_status_string())
+        print_("%s: %s" % (self.name, self.__get_status_string()))
         if not only_status:
             if show_cluster:
-                print "%s%s=%s" % (indent, 'cluster', self.cluster.name)
-            print "%s%s=%s" % (indent, 'auto_bootstrap', self.auto_bootstrap)
-            print "%s%s=%s" % (indent, 'thrift', self.network_interfaces['thrift'])
+                print_("%s%s=%s" % (indent, 'cluster', self.cluster.name))
+            print_("%s%s=%s" % (indent, 'auto_bootstrap', self.auto_bootstrap))
+            print_("%s%s=%s" % (indent, 'thrift', self.network_interfaces['thrift']))
             if self.network_interfaces['binary'] is not None:
-                print "%s%s=%s" % (indent, 'binary', self.network_interfaces['binary'])
-            print "%s%s=%s" % (indent, 'storage', self.network_interfaces['storage'])
-            print "%s%s=%s" % (indent, 'jmx_port', self.jmx_port)
-            print "%s%s=%s" % (indent, 'remote_debug_port', self.remote_debug_port)
-            print "%s%s=%s" % (indent, 'initial_token', self.initial_token)
+                print_("%s%s=%s" % (indent, 'binary', self.network_interfaces['binary']))
+            print_("%s%s=%s" % (indent, 'storage', self.network_interfaces['storage']))
+            print_("%s%s=%s" % (indent, 'jmx_port', self.jmx_port))
+            print_("%s%s=%s" % (indent, 'remote_debug_port', self.remote_debug_port))
+            print_("%s%s=%s" % (indent, 'initial_token', self.initial_token))
             if self.pid:
-                print "%s%s=%s" % (indent, 'pid', self.pid)
+                print_("%s%s=%s" % (indent, 'pid', self.pid))
 
     def is_running(self):
         """
@@ -241,9 +256,9 @@ class Node():
     def print_process_output(self, name, proc, verbose=False):
         if verbose:
             for line in proc.stdout:
-                print "[%s] %s" % (name, line.rstrip('\n'))
+                print_("[%s] %s" % (name, line.rstrip('\n')))
         for line in proc.stderr:
-            print "[%s ERROR] %s" % (name, line.rstrip('\n'))
+            print_("[%s ERROR] %s" % (name, line.rstrip('\n')))
 
 
     # This will return when exprs are found or it timeouts
@@ -255,7 +270,7 @@ class Node():
         a list of pair (line matched, match object) is returned.
         """
         elapsed = 0
-        tofind = [exprs] if isinstance(exprs, basestring) else exprs
+        tofind = [exprs] if isinstance(exprs, string_types) else exprs
         tofind = [ re.compile(e) for e in tofind ]
         matchings = []
         reads = ""
@@ -295,7 +310,7 @@ class Node():
                             matchings.append((line, m))
                             tofind.remove(e)
                             if len(tofind) == 0:
-                                return matchings[0] if isinstance(exprs, basestring) else matchings
+                                return matchings[0] if isinstance(exprs, string_types) else matchings
                 else:
                     # yep, it's ugly
                     time.sleep(1)
@@ -356,12 +371,12 @@ class Node():
         if self.is_running():
             raise NodeError("%s is already running" % self.name)
 
-        for itf in self.network_interfaces.values():
+        for itf in list(self.network_interfaces.values()):
             if itf is not None and replace_address is None:
                 common.check_socket_available(itf)
 
         if wait_other_notice:
-            marks = [ (node, node.mark_log()) for node in self.cluster.nodes.values() if node.is_running() ]
+            marks = [ (node, node.mark_log()) for node in list(self.cluster.nodes.values()) if node.is_running() ]
 
         cdir = self.get_cassandra_dir()
         cass_bin = common.join_bin(cdir, 'bin', 'cassandra')
@@ -381,7 +396,7 @@ class Node():
             cmd = '-agentpath:%s' % config['yourkit_agent']
             if 'options' in profile_options:
                 cmd = cmd + '=' + profile_options['options']
-            print cmd
+            print_(cmd)
             # Yes, it's fragile as shit
             pattern=r'cassandra_parms="-Dlog4j.configuration=log4j-server.properties -Dlog4j.defaultInitOverride=true'
             common.replace_in_file(cass_bin, pattern, '    ' + pattern + ' ' + cmd + '"')
@@ -389,6 +404,9 @@ class Node():
         os.chmod(cass_bin, os.stat(cass_bin).st_mode | stat.S_IEXEC)
 
         env = common.make_cassandra_env(cdir, self.get_path())
+        if common.is_win():
+            self._clean_win_jmx();
+        
         pidfile = os.path.join(self.get_path(), 'cassandra.pid')
         args = [ cass_bin, '-p', pidfile, '-Dcassandra.join_ring=%s' % str(join_ring) ]
         if replace_token is not None:
@@ -401,6 +419,9 @@ class Node():
 
         process = None
         if common.is_win():
+            # clean up any old dirty_pid files from prior runs
+            if (os.path.isfile(self.get_path() + "/dirty_pid.tmp")):
+                os.remove(self.get_path() + "/dirty_pid.tmp")
             process = subprocess.Popen(args, cwd=self.get_bin_dir(), env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         else:
             process = subprocess.Popen(args, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -408,9 +429,6 @@ class Node():
         # Our modified batch file writes a dirty output with more than just the pid - clean it to get in parity
         # with *nix operation here.
         if common.is_win():
-            # short delay could give us a false positive on a node being started as it could die and delete the pid file
-            # after we check, however dtests have assumptions on how long the starting process takes.
-            time.sleep(.5)
             self.__clean_win_pid()
             self._update_pid(process)
         elif update_pid:
@@ -419,7 +437,7 @@ class Node():
             else:
                 for line in process.stdout:
                     if verbose:
-                        print line.rstrip('\n')
+                        print_(line.rstrip('\n'))
 
             self._update_pid(process)
 
@@ -451,14 +469,10 @@ class Node():
         if self.is_running():
             if wait_other_notice:
                 #tstamp = time.time()
-                marks = [ (node, node.mark_log()) for node in self.cluster.nodes.values() if node.is_running() and node is not self ]
+                marks = [ (node, node.mark_log()) for node in list(self.cluster.nodes.values()) if node.is_running() and node is not self ]
 
             if common.is_win():
-                # Gentle on Windows is relative.  WM_CLOSE is the best we get without external scripting
-                if gently:
-                    os.system("taskkill /PID " + str(self.pid))
-                else:
-                    os.system("taskkill /F /PID " + str(self.pid))
+                self.stop_win(wait, wait_other_notice, gently)
             else:
                 if gently:
                     os.kill(self.pid, signal.SIGTERM)
@@ -487,6 +501,56 @@ class Node():
                 return True
         else:
             return False
+
+    def stop_win(self, wait=True, wait_other_notice=False, gently=True):
+        # Gentle on Windows is relative.  WM_CLOSE is the best we get without external scripting
+        # New stop-server.bat allows for gentle shutdown on windows. If gentle shutdown
+        # does not succeed for any reason, we will revert to the more forceful taskkill.
+        # This is necessary intermittently.
+        if self.cluster.version() >= "2.1":
+            cass_bin = common.join_bin(self.get_path(), 'bin', 'stop-server')
+            pidfile = os.path.join(self.get_path(), 'cassandra.pid')
+            args = [ cass_bin, '-p', pidfile]
+
+            if not gently:
+                args.append('-f')
+            proc = subprocess.Popen(args, cwd= self.get_bin_dir(), shell=True, stdout=subprocess.PIPE)
+
+            pidfile = self.get_path() + "/cassandra.pid"
+            if (os.path.isfile(pidfile)):
+                os.remove(pidfile)
+        
+            still_running = self.is_running()
+            if still_running and wait:
+                wait_time_sec = 1
+                for i in xrange(0, 4):
+                    time.sleep(wait_time_sec)
+                    if not self.is_running():
+                        return True
+                    wait_time_sec = wait_time_sec * 2
+            else:
+                return True
+
+        if gently:
+            os.system("taskkill /PID " + str(self.pid))
+        else:
+            os.system("taskkill /F /PID " + str(self.pid))
+
+        # no graceful shutdown on windows means it should be immediate
+        cmd = 'tasklist /fi "PID eq ' + str(self.pid) + '"'
+        proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+
+        found = False
+        for line in proc.stdout:
+            if re.match("Image", line):
+                found = True
+        if found:
+            return False
+        else:
+            pidfile = self.get_path() + "/cassandra.pid"
+            if (os.path.isfile(pidfile)):
+                os.remove(pidfile)
+            return True
 
     def nodetool(self, cmd):
         cdir = self.get_cassandra_dir()
@@ -521,13 +585,13 @@ class Node():
             p.stdin.write("quit;\n")
             p.wait()
             for err in p.stderr:
-                print "(EE) " + err,
+                print_("(EE) ", err, end='')
             if show_output:
                 i = 0
                 for log in p.stdout:
                     # first four lines are not interesting
                     if i >= 4:
-                        print log,
+                        print_(log, end='')
                     i = i + 1
 
     def run_cqlsh(self, cmds=None, show_output=False, cqlsh_options=[]):
@@ -550,13 +614,13 @@ class Node():
             p.stdin.write("quit;\n")
             p.wait()
             for err in p.stderr:
-                print "(EE) " + err,
+                print_("(EE) ", err, end='')
             if show_output:
                 i = 0
                 for log in p.stdout:
                     # first four lines are not interesting
                     if i >= 4:
-                        print log,
+                        print_(log, end='')
                     i = i + 1
 
     def cli(self):
@@ -605,8 +669,6 @@ class Node():
 
     def clear(self, clear_all = False, only_data = False):
         data_dirs = [ 'data' ]
-        if self.cluster.version() >= "2.1":
-            data_dirs.append("flush")
         if not only_data:
             data_dirs.append("commitlogs")
             if clear_all:
@@ -632,12 +694,12 @@ class Node():
         datafiles = self.__gather_sstables(datafile,keyspace,column_families)
 
         for file in datafiles:
-            print "-- {0} -----".format(os.path.basename(file))
+            print_("-- {0} -----".format(os.path.basename(file)))
             args = [ sstable2json , file ]
             if enumerate_keys:
                 args = args + ["-e"]
             subprocess.call(args, env=env)
-            print ""
+            print_("")
 
     def run_sstablesplit(self, datafile=None,  size=None, keyspace=None, column_families=None):
         cdir = self.get_cassandra_dir()
@@ -646,7 +708,7 @@ class Node():
         datafiles = self.__gather_sstables(datafile, keyspace, column_families)
 
         def do_split(f):
-            print "-- {0}-----".format(os.path.basename(f))
+            print_("-- {0}-----".format(os.path.basename(f)))
             if size is not None:
                 subprocess.call( [sstablesplit, '-s', str(size), f], cwd=os.path.join(cdir, 'bin'), env=env )
             else:
@@ -781,7 +843,7 @@ class Node():
         # background the server process and grab the pid
         run_text="\"%JAVA_HOME%\\bin\\java\" %JAVA_OPTS% %CASSANDRA_PARAMS% -cp %CASSANDRA_CLASSPATH% \"%CASSANDRA_MAIN%\""
         run_pattern=".*-cp.*"
-        common.replace_in_file(bat_file, run_pattern, "wmic process call create '" + run_text + "' > " + self.get_path() + "/dirty_pid.tmp\n")
+        common.replace_in_file(bat_file, run_pattern, "wmic process call create '" + run_text + "' > \"" + self.get_path() + "/dirty_pid.tmp\"\n")
 
     def _save(self):
         self.__update_yaml()
@@ -844,13 +906,11 @@ class Node():
         data['data_file_directories'] = [ os.path.join(self.get_path(), 'data') ]
         data['commitlog_directory'] = os.path.join(self.get_path(), 'commitlogs')
         data['saved_caches_directory'] = os.path.join(self.get_path(), 'saved_caches')
-        if self.cluster.version() >= "2.1":
-            data['flush_directory'] = os.path.join(self.get_path(), 'flush')
 
         if self.cluster.partitioner:
             data['partitioner'] = self.cluster.partitioner
 
-        full_options = dict(self.cluster._config_options.items() + self.__config_options.items()) # last win and we want node options to win
+        full_options = dict(list(self.cluster._config_options.items()) + list(self.__config_options.items())) # last win and we want node options to win
         for name in full_options:
             value = full_options[name]
             if value is None:
@@ -911,7 +971,7 @@ class Node():
 
     def __update_envfile(self):
         jmx_port_pattern='JMX_PORT='
-        remote_debug_port_pattern='address='
+        remote_debug_port_pattern='-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address='
         conf_file = os.path.join(self.get_conf_dir(), common.CASSANDRA_ENV)
         common.replace_in_file(conf_file, jmx_port_pattern, jmx_port_pattern + self.jmx_port)
         if self.remote_debug_port != '0':
@@ -934,7 +994,7 @@ class Node():
         else:
             try:
                 os.kill(self.pid, 0)
-            except OSError, err:
+            except OSError as err:
                 if err.errno == errno.ESRCH:
                     # not running
                     if self.status == Status.UP or self.status == Status.DECOMMISIONNED:
@@ -982,29 +1042,71 @@ class Node():
             return self.status
 
     def __clean_win_pid(self):
-        try:
-            with open(self.get_path() + "/dirty_pid.tmp", 'r') as f:
-                found = False
-                for line in f:
-                    if re.match('\s+ProcessId = *', line):
-                        found = True
-                        linesub = line.split(' ')
-                        win_pid = linesub[2].rstrip()
-                        win_pid = re.sub(';', '', win_pid)
-                        with open (self.get_path() + "/cassandra.pid", 'w') as pidfile:
-                            pidfile.write(win_pid)
-                if not found:
-                    raise Exception('Node: %s  Failed to find pid in ' +
-                                    self.get_path() +
-                                    '/dirty_pid.tmp. Manually kill it and check logs - ccm will be out of sync.')
-        except:
-            raise Exception('Attempted to find dirty_pid.tmp output from modified cassandra.bat in path: ' + self.get_path() + ' and failed on node: ' + self.name)
+        start = common.now_ms()
+        if self.cluster.version() >= '2.1':
+            # Spin for 5s waiting for .bat to write the pid file
+            pidfile = self.get_path() + "/cassandra.pid"
+            while (not os.path.isfile(pidfile)):
+                now = common.now_ms()
+                if (now - start > 5000):
+                    raise Exception('Timed out waiting for pid file.')
+                else:
+                    time.sleep(.001)
+            # Spin for 5s waiting for .bat to fill the pid file
+            start = common.now_ms()
+            while (os.stat(pidfile).st_size == 0):
+                now = common.now_ms()
+                if (now - start > 5000):
+                    raise Exception('Timed out waiting for pid file to be filled.')
+                else:
+                    time.sleep(.001)
+        else:
+            try:
+                # Spin for 500ms waiting for .bat to write the dirty_pid file
+                while (not os.path.isfile(self.get_path() + "/dirty_pid.tmp")):
+                    now = common.now_ms()
+                    if (now - start > 500):
+                        raise Exception('Timed out waiting for dirty_pid file.')
+                    else:
+                        time.sleep(.001)
+
+                with open(self.get_path() + "/dirty_pid.tmp", 'r') as f:
+                    found = False
+                    process_regex = re.compile('ProcessId')
+
+                    readStart = common.now_ms()
+                    readEnd = common.now_ms()
+                    while (found == False and readEnd - readStart < 500):
+                        line = f.read()
+                        if (line):
+                            m = process_regex.search(line)
+                            if (m):
+                                found = True
+                                linesub = line.split('=')
+                                pidchunk = linesub[1].split(';')
+                                win_pid = pidchunk[0].lstrip()
+                                with open (self.get_path() + "/cassandra.pid", 'w') as pidfile:
+                                    found = True
+                                    pidfile.write(win_pid)
+                            readEnd = common.now_ms()
+                        else:
+                            time.sleep(.001)
+                    if not found:
+                        raise Exception('Node: %s  Failed to find pid in ' +
+                                        self.get_path() +
+                                        '/dirty_pid.tmp. Manually kill it and check logs - ccm will be out of sync.')
+            except Exception as e:
+                print_("ERROR: Problem starting " + self.name + " (" + str(e) + ")")
+                raise Exception('Error while parsing <node>/dirty_pid.tmp in path: ' + self.get_path())
 
     def _update_pid(self, process):
         pidfile = os.path.join(self.get_path(), 'cassandra.pid')
         try:
             with open(pidfile, 'r') as f:
-                self.pid = int(f.readline().strip())
+                if common.is_win() and self.cluster.version() >= '2.1':
+                    self.pid = int(f.readline().strip().decode('utf-16'))
+                else:
+                    self.pid = int(f.readline().strip())
         except IOError:
             raise NodeError('Problem starting node %s' % self.name, process)
         self.__update_status()
@@ -1025,3 +1127,10 @@ class Node():
             datafiles = [ os.path.join(keyspace_dir, datafile) ]
 
         return datafiles
+
+    def _clean_win_jmx(self):
+        if common.get_version_from_build(node_path=self.get_path()) >= '2.1':
+            sh_file = os.path.join(common.CASSANDRA_CONF_DIR, common.CASSANDRA_WIN_ENV)
+            dst = os.path.join(self.get_path(), sh_file)
+            common.replace_in_file(dst, "JMX_PORT=", "    $JMX_PORT=\"" + self.jmx_port + "\"")
+            common.replace_in_file(dst,'CASSANDRA_PARAMS=','    $env:CASSANDRA_PARAMS="-Dcassandra -Dlogback.configurationFile=/$env:CASSANDRA_CONF/logback.xml -Dcassandra.config=file:/$env:CASSANDRA_CONF/cassandra.yaml"')

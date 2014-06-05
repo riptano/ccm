@@ -13,6 +13,8 @@ Requirements
 
 - A working python installation (tested to work with python 2.7).
 - pyYAML (http://pyyaml.org/ -- 'sudo easy_install pyYaml')
+- six (https://pypi.python.org/pypi/six -- 'sudo easy_install six')
+- ant (http://ant.apache.org/, on Mac OS X, 'brew install ant')
 - ccm works on localhost only for now. So if you want to create more than one
   node clusters the simplest way is to use multiple loopback aliases. On
   modern linux distribution you will probably have nothing to do, but
