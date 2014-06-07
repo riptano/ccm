@@ -1150,4 +1150,9 @@ class Node():
             sh_file = os.path.join(common.CASSANDRA_CONF_DIR, common.CASSANDRA_WIN_ENV)
             dst = os.path.join(self.get_path(), sh_file)
             common.replace_in_file(dst, "JMX_PORT=", "    $JMX_PORT=\"" + self.jmx_port + "\"")
-            common.replace_in_file(dst,'CASSANDRA_PARAMS=','    $env:CASSANDRA_PARAMS="-Dcassandra -Dlogback.configurationFile=/$env:CASSANDRA_CONF/logback.xml -Dcassandra.config=file:/$env:CASSANDRA_CONF/cassandra.yaml"')
+
+            # properly use single and double quotes to count for single quotes in the CASSANDRA_CONF path
+            common.replace_in_file(dst,'CASSANDRA_PARAMS=','    $env:CASSANDRA_PARAMS=\'-Dcassandra' +    # -Dcassandra
+              ' -Dlogback.configurationFile=/"\' + "$env:CASSANDRA_CONF" + \'/logback.xml"\'' +            # -Dlogback.configurationFile=/"$env:CASSANDRA_CONF/logback.xml"
+              ' + \' -Dcassandra.config=file:"\' + "/$env:CASSANDRA_CONF" + \'/cassandra.yaml"\'')        # -Dcassandra.config=file:"/$env:CASSANDRA_CONF/cassandra.yaml"
+
