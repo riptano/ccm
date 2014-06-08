@@ -143,6 +143,10 @@ class NodeStartCmd(Cmd):
             help="Print standard output of cassandra process", default=False)
         parser.add_option('--no-wait', action="store_true", dest="no_wait",
             help="Do not wait for cassandra node to be ready", default=False)
+        parser.add_option('--wait-other-notice', action="store_true", dest="wait_other_notice",
+            help="Wait until all other live node of the cluster have marked this node UP", default=False)
+        parser.add_option('--wait-for-binary-proto', action="store_true", dest="wait_for_binary_proto",
+            help="Wait for the binary protocol to start", default=False)
         parser.add_option('-j', '--dont-join-ring', action="store_true", dest="no_join_ring",
             help="Launch the instance without joining the ring", default=False)
         parser.add_option('--replace-address', type="string", dest="replace_address", default=None,
@@ -158,6 +162,8 @@ class NodeStartCmd(Cmd):
         try:
             self.node.start(not self.options.no_join_ring,
                             no_wait=self.options.no_wait,
+                            wait_other_notice=self.options.wait_other_notice,
+                            wait_for_binary_proto=self.options.wait_for_binary_proto,
                             verbose=self.options.verbose,
                             replace_address=self.options.replace_address,
                             jvm_args=self.options.jvm_args)
