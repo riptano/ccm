@@ -218,7 +218,10 @@ class Cluster():
             else:
                 node.show(only_status=True)
 
-    def start(self, no_wait=False, verbose=False, wait_for_binary_proto=False, jvm_args=[], profile_options=None):
+    def start(self, no_wait=False, verbose=False, wait_for_binary_proto=False, wait_other_notice=False, jvm_args=[], profile_options=None):
+        if wait_other_notice:
+            marks = [ (node, node.mark_log()) for node in list(self.nodes.values()) if node.is_running() ]
+
         started = []
         for node in list(self.nodes.values()):
             if not node.is_running():
@@ -251,6 +254,10 @@ class Cluster():
                 for other_node, _, _ in started:
                     if other_node is not node:
                         node.watch_log_for_alive(other_node, from_mark=mark)
+
+        if wait_other_notice:
+            for node, mark in marks:
+                node.watch_log_for_alive(self, from_mark=mark)
 
         if wait_for_binary_proto:
             for node, _, mark in started:

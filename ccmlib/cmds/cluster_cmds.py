@@ -402,6 +402,10 @@ class ClusterStartCmd(Cmd):
             help="Print standard output of cassandra process", default=False)
         parser.add_option('--no-wait', action="store_true", dest="no_wait",
             help="Do not wait for cassandra node to be ready", default=False)
+        parser.add_option('--wait-other-notice', action="store_true", dest="wait_other_notice",
+            help="Wait until all other live nodes of the cluster have marked this node UP", default=False)
+        parser.add_option('--wait-for-binary-proto', action="store_true", dest="wait_for_binary_proto",
+            help="Wait for the binary protocol to start", default=False)
         parser.add_option('--jvm_arg', action="append", dest="jvm_args",
             help="Specify a JVM argument", default=[])
         parser.add_option('--profile', action="store_true", dest="profile",
@@ -420,7 +424,12 @@ class ClusterStartCmd(Cmd):
                 profile_options = {}
                 if self.options.profile_options:
                     profile_options['options'] = self.options.profile_options
-            if self.cluster.start(no_wait=self.options.no_wait, verbose=self.options.verbose, jvm_args=self.options.jvm_args, profile_options=profile_options) is None:
+            if self.cluster.start(no_wait=self.options.no_wait,
+                                  wait_other_notice=self.options.wait_other_notice,
+                                  wait_for_binary_proto=self.options.wait_for_binary_proto,
+                                  verbose=self.options.verbose,
+                                  jvm_args=self.options.jvm_args,
+                                  profile_options=profile_options) is None:
                 details = ""
                 if not self.options.verbose:
                     details = " (you can use --verbose for more information)"
