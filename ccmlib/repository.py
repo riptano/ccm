@@ -116,9 +116,11 @@ def download_version(version, url=None, verbose=False):
         target_dir = os.path.join(__get_dir(), version)
         if os.path.exists(target_dir):
             shutil.rmtree(target_dir)
-        shutil.move(os.path.join(__get_dir(), dir), target_dir)
+        source_dir = os.path.join(__get_dir(), dir)
 
-        compile_version(version, target_dir, verbose=verbose)
+        compile_version(version, source_dir, verbose=verbose)
+
+        shutil.move(source_dir, target_dir)
 
     except urllib.error.URLError as e:
         msg = "Invalid version %s" % version if url is None else "Invalid url %s" % url
