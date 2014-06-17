@@ -71,7 +71,7 @@ class Cluster():
         
         # if any nodes have a data center, let's update the topology
         if any( [node.data_center for node in self.nodes.values()] ):
-            self.__update_topology_files()
+            self.update_topology_files()
         
         return self
 
@@ -127,7 +127,7 @@ class Cluster():
         node.set_log_level(self.__log_level)
         node._save()
         if data_center is not None:
-            self.__update_topology_files()
+            self.update_topology_files()
         return self
 
     def populate(self, nodes, debug=False, tokens=None, use_vnodes=False, ipprefix='127.0.0.'):
@@ -395,15 +395,15 @@ class Cluster():
         for node, p, _ in started:
             node._update_pid(p)
 
-    def __update_topology_files(self):
-        dcs = [('default', 'dc1')]
+    def update_topology_files(self):
+        dcs = [('default', 'dc1', 'r1')]
         for node in self.nodelist():
             if node.data_center is not None:
-                dcs.append((node.address(), node.data_center))
+                dcs.append((node.address(), node.data_center, node.rack or 'r1'))
 
         content = ""
-        for k, v in dcs:
-            content = "%s%s=%s:r1\n" % (content, k, v)
+        for n, d, r in dcs:
+            content = "%s%s=%s:%s\n" % (content, n, d, r)
 
         for node in self.nodelist():
             topology_file = os.path.join(node.get_conf_dir(), 'cassandra-topology.properties')
