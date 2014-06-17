@@ -35,7 +35,8 @@ def node_cmds():
         "status",
         "setdir",
         "version",
-        "nodetool"
+        "nodetool",
+        "relocate"
     ]
 
 class NodeShowCmd(Cmd):
@@ -538,3 +539,25 @@ class NodeSetdirCmd(Cmd):
             print_(str(e), file=sys.stderr)
             exit(1)
 
+class NodeRelocateCmd(Cmd):
+    def description(self):
+        return "Change the node's topology information"
+
+    def get_parser(self):
+        usage = "usage: ccm node_name relocate datacenter rack"
+        parser = self._get_default_parser(usage, self.description())
+        return parser
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
+        if len(args) == 1:
+            print_('Missing datacenter and rack', file=sys.stderr)
+            parser.print_help()
+        elif len(args) == 2:
+            print_('Missing rack', file=sys.stderr)
+            parser.print_help()
+        self.data_center = args[1]
+        self.rack = args[2]
+
+    def run(self):
+        self.node.relocate(self.data_center, self.rack)

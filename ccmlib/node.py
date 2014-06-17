@@ -67,6 +67,7 @@ class Node():
         self.initial_token = initial_token
         self.pid = None
         self.data_center = None
+        self.rack = None
         self.__config_options = {}
         self.__cassandra_dir = None
         self.__global_log_level = None
@@ -108,6 +109,8 @@ class Node():
                 node.__config_options = data['config_options']
             if 'data_center' in data:
                 node.data_center = data['data_center']
+            if 'rack' in data:
+                node.rack = data['rack']
             return node
         except KeyError as k:
             raise common.LoadError("Error Loading " + filename + ", missing property: " + str(k))
@@ -822,6 +825,11 @@ class Node():
                 shutil.copy(filename, self.get_bin_dir())
                 common.add_exec_permission(bin_dir, name)
 
+    def relocate(self, data_center, rack):
+        self.data_center = data_center
+        self.rack = rack
+        self.cluster.update_topology_files()
+
     def __clean_bat(self):
         # While the Windows specific changes to the batch files to get them to run are
         # fairly extensive and thus pretty brittle, all the changes are very unique to
@@ -879,6 +887,8 @@ class Node():
             values['cassandra_dir'] = self.__cassandra_dir
         if self.data_center:
             values['data_center'] = self.data_center
+        if self.rack:
+            values['rack'] = self.rack
         if self.remote_debug_port:
             values['remote_debug_port'] = self.remote_debug_port
         with open(filename, 'w') as f:
