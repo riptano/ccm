@@ -1154,5 +1154,5 @@ class Node():
             # properly use single and double quotes to count for single quotes in the CASSANDRA_CONF path
             common.replace_in_file(dst,'CASSANDRA_PARAMS=','    $env:CASSANDRA_PARAMS=\'-Dcassandra' +    # -Dcassandra
               ' -Dlogback.configurationFile=/"\' + "$env:CASSANDRA_CONF" + \'/logback.xml"\'' +            # -Dlogback.configurationFile=/"$env:CASSANDRA_CONF/logback.xml"
-              ' + \' -Dcassandra.config=file:"\' + "/$env:CASSANDRA_CONF" + \'/cassandra.yaml"\'')        # -Dcassandra.config=file:"/$env:CASSANDRA_CONF/cassandra.yaml"
+              ' + \' -Dcassandra.config=file:"\' + "///$env:CASSANDRA_CONF" + \'/cassandra.yaml"\'')        # -Dcassandra.config=file:"///$env:CASSANDRA_CONF/cassandra.yaml"
 
