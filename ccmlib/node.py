@@ -689,7 +689,10 @@ class Node():
 
     def run_sstable2json(self, keyspace=None, datafile=None, column_families=None, enumerate_keys=False):
         cdir = self.get_cassandra_dir()
-        sstable2json = common.join_bin(cdir, 'bin', 'sstable2json')
+        if self.cluster.version() >= "2.1":
+            sstable2json = common.join_bin(cdir, 'tools/bin', 'sstable2json')
+        else:
+            sstable2json = common.join_bin(cdir, 'bin', 'sstable2json')
         env = common.make_cassandra_env(cdir, self.get_path())
         datafiles = self.__gather_sstables(datafile,keyspace,column_families)
 
