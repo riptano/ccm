@@ -706,7 +706,10 @@ class Node():
 
     def run_sstablesplit(self, datafile=None,  size=None, keyspace=None, column_families=None):
         cdir = self.get_cassandra_dir()
-        sstablesplit = common.join_bin(cdir, 'bin', 'sstablesplit')
+        if self.cluster.version() >= "2.1":
+            sstablesplit = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstablesplit')
+        else:
+            sstablesplit = common.join_bin(cdir, 'bin', 'sstablesplit')
         env = common.make_cassandra_env(cdir, self.get_path())
         datafiles = self.__gather_sstables(datafile, keyspace, column_families)
 
