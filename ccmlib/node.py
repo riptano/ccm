@@ -687,7 +687,7 @@ class Node():
                 shutil.rmtree(full_dir)
                 os.mkdir(full_dir)
 
-    def run_sstable2json(self, keyspace=None, datafile=None, column_families=None, enumerate_keys=False):
+    def run_sstable2json(self, out_file, keyspace=None, datafile=None, column_families=None, enumerate_keys=False):
         cdir = self.get_cassandra_dir()
         if self.cluster.version() >= "2.1":
             sstable2json = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstable2json')
@@ -701,8 +701,21 @@ class Node():
             args = [ sstable2json , file ]
             if enumerate_keys:
                 args = args + ["-e"]
-            subprocess.call(args, env=env)
+            subprocess.call(args, env=env, stdout=out_file)
             print_("")
+
+    def run_json2sstable(self, in_file, ks, cf, keyspace=None, datafile=None, column_families=None, enumerate_keys=False):
+        cdir = self.get_cassandra_dir()
+        if self.cluster.version() >= "2.1":
+            json2sstable = common.join_bin(cdir, os.path.join('tools', 'bin'), 'json2sstable')
+        else:
+            json2sstable = common.join_bin(cdir, 'bin', 'json2sstable')
+        env = common.make_cassandra_env(cdir, self.get_path())
+        datafiles = self.__gather_sstables(datafile,keyspace,column_families)
+
+        for file in datafiles:
+            args = [ json2sstable, "-s", "-K " + ks, "-c " + cf, os.path.abspath(in_file.name), file ]
+            subprocess.call(args, env=env)
 
     def run_sstablesplit(self, datafile=None,  size=None, keyspace=None, column_families=None):
         cdir = self.get_cassandra_dir()
