@@ -1,7 +1,12 @@
 #!/usr/bin/env python
 
-from distutils.core import setup
 from os.path import abspath, join, dirname
+
+try:
+    from setuptools import setup
+except ImportError:
+    from distutils.core import setup
+
 
 setup(
     name='ccm',
