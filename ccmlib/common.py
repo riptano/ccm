@@ -3,6 +3,7 @@
 #
 
 import os
+import platform
 import re
 import shutil
 import socket
@@ -159,7 +160,7 @@ def make_cassandra_env(cassandra_dir, node_path):
     env['CASSANDRA_INCLUDE'] = os.path.join(dst)
     env['MAX_HEAP_SIZE'] = os.environ.get('CCM_MAX_HEAP_SIZE', '500M')
     env['HEAP_NEWSIZE'] = os.environ.get('CCM_HEAP_NEWSIZE', '50M')
-    
+
     return env
 
 def check_win_requirements():
@@ -169,6 +170,11 @@ def check_win_requirements():
             process = subprocess.Popen('ant.bat', stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         except Exception as e:
             sys.exit("ERROR!  Could not find or execute ant.bat.  Please fix this before attempting to run ccm on Windows.")
+
+        # Confirm matching architectures
+        # 32-bit python distributions will launch 32-bit cmd environments, losing PowerShell execution privileges on a 64-bit system
+        if sys.maxsize <= 2**32 and platform.machine().endswith('64'):
+            sys.exit("ERROR!  64-bit os and 32-bit python distribution found.  ccm requires matching architectures.")
 
 def is_win():
     return True if sys.platform == "cygwin" or sys.platform == "win32" else False
