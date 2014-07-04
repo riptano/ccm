@@ -15,6 +15,7 @@ import subprocess
 import sys
 import time
 import yaml
+import shlex
 
 from ccmlib.repository import setup
 from ccmlib.cli_session import CliSession
@@ -687,7 +688,7 @@ class Node():
                 shutil.rmtree(full_dir)
                 os.mkdir(full_dir)
 
-    def run_sstable2json(self, out_file, keyspace=None, datafile=None, column_families=None, enumerate_keys=False):
+    def run_sstable2json(self, out_file=sys.__stdout__, keyspace=None, datafile=None, column_families=None, enumerate_keys=False):
         cdir = self.get_cassandra_dir()
         if self.cluster.version() >= "2.1":
             sstable2json = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstable2json')
@@ -696,9 +697,9 @@ class Node():
         env = common.make_cassandra_env(cdir, self.get_path())
         datafiles = self.__gather_sstables(datafile,keyspace,column_families)
 
-        for file in datafiles:
-            print_("-- {0} -----".format(os.path.basename(file)))
-            args = [ sstable2json , file ]
+        for datafile in datafiles:
+            print_("-- {0} -----".format(os.path.basename(datafile)))
+            args = [ sstable2json , datafile ]
             if enumerate_keys:
                 args = args + ["-e"]
             subprocess.call(args, env=env, stdout=out_file)
@@ -713,8 +714,9 @@ class Node():
         env = common.make_cassandra_env(cdir, self.get_path())
         datafiles = self.__gather_sstables(datafile,keyspace,column_families)
 
-        for file in datafiles:
-            args = [ json2sstable, "-s", "-K " + ks, "-c " + cf, os.path.abspath(in_file.name), file ]
+        for datafile in datafiles:
+            in_file_name = os.path.abspath(in_file.name)
+            args = shlex.split("{json2sstable} -s -K {ks} -c {cf} {in_file_name} {datafile}".format(**locals()))
             subprocess.call(args, env=env)
 
     def run_sstablesplit(self, datafile=None,  size=None, keyspace=None, column_families=None):
