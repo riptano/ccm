@@ -304,6 +304,12 @@ def get_version_from_build(cassandra_dir=None, node_path=None):
     if cassandra_dir is None and node_path is not None:
         cassandra_dir = get_cassandra_dir_from_cluster_conf(node_path)
     if cassandra_dir is not None:
+        # Binary installs will have a 0.version.txt file
+        version_file = os.path.join(cassandra_dir, '0.version.txt')
+        if os.path.exists(version_file):
+            with open(version_file) as f:
+                return f.read().strip()
+        # Source installs we can read from build.xml
         build = os.path.join(cassandra_dir, 'build.xml')
         with open(build) as f:
             for line in f:
