@@ -223,7 +223,7 @@ def get_tagged_version_numbers(series='stable'):
         # Stable and oldstable releases are just a number:
         tag_regex = re.compile('^refs/tags/cassandra-([0-9]+\.[0-9]+\.[0-9]+$)')
 
-    r = urllib.request.urlopen('https://api.github.com/repos/apache/cassandra/git/refs/tags')
+    r = urllib.request.urlopen(GITHUB_TAGS)
     for ref in (i.get('ref','') for i in json.loads(r.read())) :
         m = tag_regex.match(ref)
         if m:
