@@ -558,7 +558,7 @@ class Node():
         nodetool = common.join_bin(cdir, 'bin', 'nodetool')
         env = common.make_cassandra_env(cdir, self.get_path())
         host = self.address()
-        args = [ nodetool, '-h', host, '-p', str(self.jmx_port)]
+        args = [ nodetool, '-h', 'localhost', '-p', str(self.jmx_port)]
         args += cmd.split()
         p = subprocess.Popen(args, env=env)
         p.wait()
@@ -1176,4 +1176,3 @@ class Node():
             common.replace_in_file(dst,'CASSANDRA_PARAMS=','    $env:CASSANDRA_PARAMS=\'-Dcassandra' +    # -Dcassandra
               ' -Dlogback.configurationFile=/"\' + "$env:CASSANDRA_CONF" + \'/logback.xml"\'' +            # -Dlogback.configurationFile=/"$env:CASSANDRA_CONF/logback.xml"
               ' + \' -Dcassandra.config=file:"\' + "///$env:CASSANDRA_CONF" + \'/cassandra.yaml"\'')        # -Dcassandra.config=file:"///$env:CASSANDRA_CONF/cassandra.yaml"
-
