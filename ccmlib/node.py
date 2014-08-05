@@ -255,11 +255,13 @@ class Node():
             return f.tell()
 
     def print_process_output(self, name, proc, verbose=False):
+        try:
+            [stdout, stderr] = proc.communicate()
+        except ValueError:
+            [stdout, stderr] = ['', '']
         if verbose:
-            for line in proc.stdout:
-                print_("[%s] %s" % (name, line.rstrip('\n')))
-        for line in proc.stderr:
-            print_("[%s ERROR] %s" % (name, line.rstrip('\n')))
+            print_("[%s] %s" % (name, stdout.rstrip('\n')))
+        print_("[%s ERROR] %s" % (name, stderr.rstrip('\n')))
 
 
     # This will return when exprs are found or it timeouts
