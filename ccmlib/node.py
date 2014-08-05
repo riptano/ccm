@@ -407,7 +407,7 @@ class Node():
         env = common.make_cassandra_env(cdir, self.get_path())
         if common.is_win():
             self._clean_win_jmx();
-        
+
         pidfile = os.path.join(self.get_path(), 'cassandra.pid')
         args = [ cass_bin, '-p', pidfile, '-Dcassandra.join_ring=%s' % str(join_ring) ]
         if replace_token is not None:
@@ -520,7 +520,7 @@ class Node():
             pidfile = self.get_path() + "/cassandra.pid"
             if (os.path.isfile(pidfile)):
                 os.remove(pidfile)
-        
+
             still_running = self.is_running()
             if still_running and wait:
                 wait_time_sec = 1
@@ -827,7 +827,10 @@ class Node():
                 shutil.copy(filename, self.get_conf_dir())
 
         self.__update_yaml()
-        version = self.cluster.version()
+        try:
+            version = common.get_version_from_build(self._Node__cassandra_dir)
+        except common.CCMError:
+            version = self.cluster.version()
         #loggers changed > 2.1
         if float(version[:version.index('.')+2]) < 2.1:
             self.__update_log4j()
