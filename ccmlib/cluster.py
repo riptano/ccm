@@ -68,11 +68,11 @@ class Cluster():
         self.__update_config()
         for node in list(self.nodes.values()):
             node.import_config_files()
-        
+
         # if any nodes have a data center, let's update the topology
         if any( [node.data_center for node in self.nodes.values()] ):
             self.__update_topology_files()
-        
+
         return self
 
     def get_cassandra_dir(self):
@@ -133,6 +133,7 @@ class Cluster():
     def populate(self, nodes, debug=False, tokens=None, use_vnodes=False, ipprefix='127.0.0.'):
         node_count = nodes
         dcs = []
+        self.use_vnodes = use_vnodes
         if isinstance(nodes, list):
             self.set_configuration_options(values={'endpoint_snitch' : 'org.apache.cassandra.locator.PropertyFileSnitch'})
             node_count = 0

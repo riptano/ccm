@@ -933,6 +933,8 @@ class Node():
         data['cluster_name'] = self.cluster.name
         data['auto_bootstrap'] = self.auto_bootstrap
         data['initial_token'] = self.initial_token
+        if not self.cluster.use_vnodes:
+            data['num_tokens'] = 1
         if 'seeds' in data:
             # cassandra 0.7
             data['seeds'] = self.cluster.get_seeds()
