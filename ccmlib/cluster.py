@@ -24,6 +24,7 @@ class Cluster():
         self.__log_level = "INFO"
         self.__path = path
         self.__version = None
+        self.use_vnodes = False
         if create_directory:
             # we create the dir before potentially downloading to throw an error sooner if need be
             os.mkdir(self.get_path())
@@ -106,6 +107,8 @@ class Cluster():
                 cluster._config_options = data['config_options']
             if 'log_level' in data:
                 cluster.__log_level = data['log_level']
+            if 'use_vnodes' in data:
+                cluster.use_vnodes = data['use_vnodes']
         except KeyError as k:
             raise common.LoadError("Error Loading " + filename + ", missing property:" + k)
 
@@ -389,7 +392,8 @@ class Cluster():
                 'partitioner' : self.partitioner,
                 'cassandra_dir' : self.__cassandra_dir,
                 'config_options' : self._config_options,
-                'log_level' : self.__log_level
+                'log_level' : self.__log_level,
+                'use_vnodes' : self.use_vnodes
             }, f)
 
     def __update_pids(self, started):
