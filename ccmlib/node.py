@@ -255,11 +255,13 @@ class Node():
             return f.tell()
 
     def print_process_output(self, name, proc, verbose=False):
+        try:
+            [stdout, stderr] = proc.communicate()
+        except ValueError:
+            [stdout, stderr] = ['', '']
         if verbose:
-            for line in proc.stdout:
-                print_("[%s] %s" % (name, line.rstrip('\n')))
-        for line in proc.stderr:
-            print_("[%s ERROR] %s" % (name, line.rstrip('\n')))
+            print_("[%s] %s" % (name, stdout.rstrip('\n')))
+        print_("[%s ERROR] %s" % (name, stderr.rstrip('\n')))
 
 
     # This will return when exprs are found or it timeouts
@@ -933,6 +935,8 @@ class Node():
         data['cluster_name'] = self.cluster.name
         data['auto_bootstrap'] = self.auto_bootstrap
         data['initial_token'] = self.initial_token
+        if not self.cluster.use_vnodes:
+            data['num_tokens'] = 1
         if 'seeds' in data:
             # cassandra 0.7
             data['seeds'] = self.cluster.get_seeds()
