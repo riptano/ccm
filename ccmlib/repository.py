@@ -20,15 +20,18 @@ ARCHIVE="http://archive.apache.org/dist/cassandra"
 GIT_REPO="http://git-wip-us.apache.org/repos/asf/cassandra.git"
 
 def setup(version, verbose=False):
+    binary = False
     if version.startswith('git:'):
         clone_development(version, verbose=verbose)
         return (version_directory(version), None)
-    else:
+    elif version.startswith('binary:'):
+        version = version.replace('binary:','')
+        binary = True
+    cdir = version_directory(version)
+    if cdir is None:
+        download_version(version, verbose=verbose, binary=binary)
         cdir = version_directory(version)
-        if cdir is None:
-            download_version(version, verbose=verbose)
-            cdir = version_directory(version)
-        return (cdir, version)
+    return (cdir, version)
 
 def validate(path):
     if path.startswith(__get_dir()):
@@ -102,8 +105,15 @@ def clone_development(version, verbose=False):
             raise
 
 
-def download_version(version, url=None, verbose=False):
-    u = "%s/%s/apache-cassandra-%s-src.tar.gz" % (ARCHIVE, version.split('-')[0], version) if url is None else url
+def download_version(version, url=None, verbose=False, binary=False):
+    """Download, extract, and build Cassandra tarball.
+
+    if binary == True, download precompiled tarball, otherwise build from source tarball.
+    """ 
+    if binary:
+        u = "%s/%s/apache-cassandra-%s-bin.tar.gz" % (ARCHIVE, version.split('-')[0], version) if url is None else url
+    else:
+        u = "%s/%s/apache-cassandra-%s-src.tar.gz" % (ARCHIVE, version.split('-')[0], version) if url is None else url
     _, target = tempfile.mkstemp(suffix=".tar.gz", prefix="ccm-")
     try:
         __download(u, target, show_progress=verbose)
@@ -118,7 +128,14 @@ def download_version(version, url=None, verbose=False):
             shutil.rmtree(target_dir)
         shutil.move(os.path.join(__get_dir(), dir), target_dir)
 
-        compile_version(version, target_dir, verbose=verbose)
+        if binary:
+            # Binary installs don't have a build.xml that is needed
+            # for pulling the version from. Write the version number
+            # into a file to read later in common.get_version_from_build()
+            with open(os.path.join(target_dir, '0.version.txt'), 'w') as f:
+                f.write(version)
+        else:
+            compile_version(version, target_dir, verbose=verbose)
 
     except urllib.error.URLError as e:
         msg = "Invalid version %s" % version if url is None else "Invalid url %s" % url
