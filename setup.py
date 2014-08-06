@@ -12,7 +12,7 @@ setup(
     name='ccm',
     version='1.1',
     description='Cassandra Cluster Manager',
-    long_description=open(abspath(join(dirname(__file__), 'README'))).read(),
+    long_description=open(abspath(join(dirname(__file__), 'README.md'))).read(),
     author='Sylvain Lebresne',
     author_email='sylvain@datastax.com',
     url='https://github.com/pcmanus/ccm',
