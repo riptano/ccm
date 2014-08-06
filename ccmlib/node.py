@@ -62,7 +62,9 @@ class Node():
         self.cluster = cluster
         self.status = Status.UNINITIALIZED
         self.auto_bootstrap = auto_bootstrap
-        self.network_interfaces = { 'thrift' : thrift_interface, 'storage' : storage_interface, 'binary' : binary_interface }
+        self.network_interfaces = {'thrift': common.normalize_interface(thrift_interface),
+                                   'storage': common.normalize_interface(storage_interface),
+                                   'binary': common.normalize_interface(binary_interface)}
         self.jmx_port = jmx_port
         self.remote_debug_port = remote_debug_port
         self.initial_token = initial_token
@@ -1024,6 +1026,10 @@ class Node():
 
         if self.cluster.version() < '2.0.1':
             common.replace_in_file(conf_file, "-Xss", '    JVM_OPTS="$JVM_OPTS -Xss228k"')
+
+        for itf in list(self.network_interfaces.values()):
+            if itf is not None and common.interface_is_ipv6(itf):
+                common.replace_in_file(conf_file, '-Djava.net.preferIPv4Stack=true', 'JVM_OPTS="$JVM_OPTS -Djava.net.preferIPv4Stack=false -Djava.net.preferIPv6Addresses=true"') 
 
     def __update_status(self):
         if self.pid is None:

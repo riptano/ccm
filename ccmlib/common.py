@@ -261,15 +261,38 @@ def validate_cassandra_dir(cassandra_dir):
         raise ArgumentError('%s does not appear to be a cassandra source directory' % cassandra_dir)
 
 def check_socket_available(itf):
-    s = socket.socket()
+    info = socket.getaddrinfo(itf[0], itf[1], socket.AF_UNSPEC, socket.SOCK_STREAM)
+    if not info:
+        raise UnavailableSocketError("Failed to get address info for [%s]:%s" % itf)
+
+    (family, socktype, proto, canonname, sockaddr) = info[0]
+    s = socket.socket(family, socktype)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
     try:
-        s.bind(itf)
+        s.bind(sockaddr)
         s.close()
     except socket.error as msg:
         s.close()
         addr, port = itf
         raise UnavailableSocketError("Inet address %s:%s is not available: %s" % (addr, port, msg))
+
+def interface_is_ipv6(itf):
+    info = socket.getaddrinfo(itf[0], itf[1], socket.AF_UNSPEC, socket.SOCK_STREAM)
+    if not info:
+        raise UnavailableSocketError("Failed to get address info for [%s]:%s" % itf)
+
+    return socket.AF_INET6 == info[0][0]
+
+# note: does not handle collapsing hextets with leading zeros
+def normalize_interface(itf):
+    ip = itf[0]
+    parts = ip.partition('::')
+    if '::' in parts:
+        missing_hextets = 9 - ip.count(':')
+        zeros = '0'.join([':' for _ in range(missing_hextets)])
+        ip = ''.join(['0' if p == '' else zeros if p == '::' else p for p in ip.partition('::')])
+    return (ip, itf[1])
 
 def parse_settings(args):
     settings = {}
@@ -282,7 +305,7 @@ def parse_settings(args):
         if val.lower() == "true":
             val = True
         if val.lower() == "false":
-            val = True
+            val = False
         try:
             val = int(val)
         except ValueError:

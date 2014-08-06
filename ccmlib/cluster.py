@@ -133,7 +133,7 @@ class Cluster():
             self.__update_topology_files()
         return self
 
-    def populate(self, nodes, debug=False, tokens=None, use_vnodes=False, ipprefix='127.0.0.'):
+    def populate(self, nodes, debug=False, tokens=None, use_vnodes=False, ipprefix='127.0.0.', ipformat=None):
         node_count = nodes
         dcs = []
         self.use_vnodes = use_vnodes
@@ -157,6 +157,9 @@ class Cluster():
         if tokens is None and not use_vnodes:
             tokens = self.balanced_tokens(node_count)
 
+        if not ipformat:
+            ipformat = ipprefix+"%d"
+
         for i in xrange(1, node_count + 1):
             tk = None
             if tokens is not None and i-1 < len(tokens):
@@ -165,12 +168,12 @@ class Cluster():
 
             binary = None
             if self.version() >= '1.2':
-                binary = ('%s%s' % (ipprefix, i), 9042)
+                binary = (ipformat % i, 9042)
             node = Node('node%s' % i,
                         self,
                         False,
-                        ('%s%s' % (ipprefix, i), 9160),
-                        ('%s%s' % (ipprefix, i), 7000),
+                        (ipformat % i, 9160),
+                        (ipformat % i, 7000),
                         str(7000 + i * 100),
                         (str(0),  str(2000 + i * 100))[debug == True],
                         tk,
