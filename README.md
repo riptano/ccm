@@ -15,6 +15,7 @@ Requirements
 - pyYAML (http://pyyaml.org/ -- `sudo easy_install pyYaml`)
 - six (https://pypi.python.org/pypi/six -- `sudo easy_install six`)
 - ant (http://ant.apache.org/, on Mac OS X, `brew install ant`)
+- Java 7. Antlr is an internal dependency that as of 2014-08-06 doesn't work with Java 8
 - ccm only works on localhost for now. If you want to create multiple 
   node clusters, the simplest way is to use multiple loopback aliases. On
   modern linux distributions you probably don't need to do anything, but
