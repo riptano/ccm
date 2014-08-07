@@ -286,6 +286,8 @@ def interface_is_ipv6(itf):
 
 # note: does not handle collapsing hextets with leading zeros
 def normalize_interface(itf):
+    if not itf:
+        return itf
     ip = itf[0]
     parts = ip.partition('::')
     if '::' in parts:
