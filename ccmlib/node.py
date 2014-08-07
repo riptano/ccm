@@ -1029,7 +1029,10 @@ class Node():
 
         for itf in list(self.network_interfaces.values()):
             if itf is not None and common.interface_is_ipv6(itf):
-                common.replace_in_file(conf_file, '-Djava.net.preferIPv4Stack=true', 'JVM_OPTS="$JVM_OPTS -Djava.net.preferIPv4Stack=false -Djava.net.preferIPv6Addresses=true"') 
+                common.replace_in_file(conf_file,
+                                       '-Djava.net.preferIPv4Stack=true',
+                                       'JVM_OPTS="$JVM_OPTS -Djava.net.preferIPv4Stack=false -Djava.net.preferIPv6Addresses=true"')
+                break
 
     def __update_status(self):
         if self.pid is None:
