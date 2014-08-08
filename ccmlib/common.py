@@ -292,7 +292,7 @@ def normalize_interface(itf):
     parts = ip.partition('::')
     if '::' in parts:
         missing_hextets = 9 - ip.count(':')
-        zeros = '0'.join([':' for _ in range(missing_hextets)])
+        zeros = '0'.join([':'] * missing_hextets)
         ip = ''.join(['0' if p == '' else zeros if p == '::' else p for p in ip.partition('::')])
     return (ip, itf[1])
 
