@@ -242,6 +242,27 @@ class Node():
                     matchings.append((line, m))
         return matchings
 
+    def grep_log_for_errors(self):
+        """
+        Returns a list of errors with stack traces
+        in the Cassandra log of this node
+        """
+        expr = "ERROR"
+        matchings = []
+        pattern = re.compile(expr)
+        with open(self.logfilename()) as f:
+            for line in f:
+                m = pattern.search(line)
+                if m:
+                    matchings.append([line])
+                    try:
+                        while line.find("INFO", 0, 5) < 0:
+                            line = f.next()
+                            matchings[-1].append(line)
+                    except StopIteration:
+                        break
+        return matchings
+
     def mark_log(self):
         """
         Returns "a mark" to the current position of this node Cassandra log.
