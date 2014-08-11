@@ -261,7 +261,8 @@ class Node():
             [stdout, stderr] = ['', '']
         if verbose:
             print_("[%s] %s" % (name, stdout.rstrip('\n')))
-        print_("[%s ERROR] %s" % (name, stderr.rstrip('\n')))
+        if len(stderr) > 1:
+            print_("[%s ERROR] %s" % (name, stderr.rstrip('\n')))
 
 
     # This will return when exprs are found or it timeouts
