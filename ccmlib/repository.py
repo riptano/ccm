@@ -12,12 +12,16 @@ import sys
 import tarfile
 import tempfile
 import time
+import json
+import re
+from distutils.version import LooseVersion
 
 from ccmlib.common import (ArgumentError, CCMError, get_default_path,
                            platform_binary, validate_cassandra_dir)
 
 ARCHIVE="http://archive.apache.org/dist/cassandra"
 GIT_REPO="http://git-wip-us.apache.org/repos/asf/cassandra.git"
+GITHUB_TAGS="https://api.github.com/repos/apache/cassandra/git/refs/tags"
 
 def setup(version, verbose=False):
     binary = False
@@ -27,6 +31,8 @@ def setup(version, verbose=False):
     elif version.startswith('binary:'):
         version = version.replace('binary:','')
         binary = True
+    if version in ('stable','oldstable','testing'):
+        version = get_tagged_version_numbers(version)[0]
     cdir = version_directory(version)
     if cdir is None:
         download_version(version, verbose=verbose, binary=binary)
@@ -204,6 +210,42 @@ def version_directory(version):
 
 def clean_all():
     shutil.rmtree(__get_dir())
+
+def get_tagged_version_numbers(series='stable'):
+    """Retrieve git tags and find version numbers for a release series
+
+    series - 'stable', 'oldstable', or 'testing'"""
+    releases = []
+    if series == 'testing':
+        # Testing releases always have a hyphen after the version number:
+        tag_regex = re.compile('^refs/tags/cassandra-([0-9]+\.[0-9]+\.[0-9]+-.*$)')
+    else:
+        # Stable and oldstable releases are just a number:
+        tag_regex = re.compile('^refs/tags/cassandra-([0-9]+\.[0-9]+\.[0-9]+$)')
+
+    r = urllib.request.urlopen(GITHUB_TAGS)
+    for ref in (i.get('ref','') for i in json.loads(r.read())) :
+        m = tag_regex.match(ref)
+        if m:
+            releases.append(LooseVersion(m.groups()[0]))
+
+    # Sort by semver:
+    releases.sort(reverse=True)
+    
+    stable_major_version = LooseVersion(str(releases[0].version[0]) + "." + str(releases[0].version[1]))
+    stable_releases = [r for r in releases if r >= stable_major_version]
+    oldstable_releases = [r for r in releases if r not in stable_releases]
+    oldstable_major_version = LooseVersion(str(oldstable_releases[0].version[0]) + "." + str(oldstable_releases[0].version[1]))
+    oldstable_releases = [r for r in oldstable_releases if r >= oldstable_major_version]
+
+    if series == 'testing':
+        return [r.vstring for r in releases]
+    elif series == 'stable':
+        return [r.vstring for r in stable_releases]
+    elif series == 'oldstable':
+        return [r.vstring for r in oldstable_releases]
+    else:
+        raise AssertionError("unknown release series: {series}".format(series=series))
 
 def __download(url, target, show_progress=False):
     u = urllib.request.urlopen(url)
