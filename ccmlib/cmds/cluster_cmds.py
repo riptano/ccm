@@ -168,6 +168,12 @@ class ClusterAddCmd(Cmd):
             parser.print_help()
             exit(1)
 
+        used_jmx_ports = [node.jmx_port for node in self.cluster.nodelist()]
+        if options.jmx_port in used_jmx_ports:
+            print_("This JMX port is already in use. Choose another.", file=sys.stderr)
+            parser.print_help()
+            exit(1)
+
         if options.thrift_itf is None:
             options.thrift_itf = options.itfs
         if options.storage_itf is None:
@@ -559,8 +565,8 @@ class ClusterUpdateconfCmd(Cmd):
         self.cluster.set_configuration_options(values=self.setting, batch_commitlog=self.options.cl_batch)
 
 #
-# Class implementens the functionality of updating log4j-server.properties 
-# on ALL nodes by copying the given config into 
+# Class implements the functionality of updating log4j-server.properties
+# on ALL nodes by copying the given config into
 # ~/.ccm/name-of-cluster/nodeX/conf/log4j-server.properties
 #
 class ClusterUpdatelog4jCmd(Cmd):
@@ -579,7 +585,7 @@ class ClusterUpdatelog4jCmd(Cmd):
         try:
             self.log4jpath = options.log4jpath
             if self.log4jpath is None:
-                raise KeyError("[Errno] -p or --path <path of new log4j congiguration file> is not provided") 
+                raise KeyError("[Errno] -p or --path <path of new log4j congiguration file> is not provided")
         except common.ArgumentError as e:
             print_(str(e), file=sys.stderr)
             exit(1)
