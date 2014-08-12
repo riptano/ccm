@@ -142,7 +142,7 @@ class ClusterAddCmd(Cmd):
     def get_parser(self):
         usage = "usage: ccm add [options] node_name"
         parser = self._get_default_parser(usage, self.description())
-        parser.add_option('-b', '--auto-boostrap', action="store_true", dest="boostrap",
+        parser.add_option('-b', '--auto-bootstrap', action="store_true", dest="bootstrap",
             help="Set auto bootstrap for the node", default=False)
         parser.add_option('-s', '--seeds', action="store_true", dest="is_seed",
             help="Configure this node as a seed", default=False)
@@ -201,7 +201,7 @@ class ClusterAddCmd(Cmd):
 
     def run(self):
         try:
-            node = Node(self.name, self.cluster, self.options.boostrap, self.thrift, self.storage, self.jmx_port, self.remote_debug_port, self.initial_token, binary_interface=self.binary)
+            node = Node(self.name, self.cluster, self.options.bootstrap, self.thrift, self.storage, self.jmx_port, self.remote_debug_port, self.initial_token, binary_interface=self.binary)
             self.cluster.add(node, self.options.is_seed, self.options.data_center)
         except common.ArgumentError as e:
             print_(str(e), file=sys.stderr)
