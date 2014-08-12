@@ -128,9 +128,9 @@ class Cluster():
         self.__update_config()
         node.data_center = data_center
         node.set_log_level(self.__log_level)
-        node._save()
         if data_center is not None:
             self.__update_topology_files()
+        node._save()
         return self
 
     def populate(self, nodes, debug=False, tokens=None, use_vnodes=False, ipprefix='127.0.0.'):
