@@ -72,7 +72,7 @@ class ClusterCreateCmd(Cmd):
         parser.add_option('-T', "--trace-log", action="store_true", dest="trace_log",
             help="With -n, sets trace logging on the new nodes", default=False)
         parser.add_option("--vnodes", action="store_true", dest="vnodes",
-            help="Use vnodes (256 tokens)", default=False)
+            help="Use vnodes (256 tokens). Must be paired with -n.", default=False)
         parser.add_option('--jvm_arg', action="append", dest="jvm_args",
             help="Specify a JVM argument", default=[])
         parser.add_option('--profile', action="store_true", dest="profile",
@@ -84,6 +84,10 @@ class ClusterCreateCmd(Cmd):
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, cluster_name=True)
         self.nodes = parse_populate_count(options.nodes)
+        if self.options.vnodes and self.nodes is None:
+            print_("Can't set --vnodes if not populating cluster in this command.")
+            parser.print_help()
+            exit(1)
 
     def run(self):
         try:
