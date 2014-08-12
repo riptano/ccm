@@ -282,8 +282,8 @@ def parse_settings(args):
         # ok, that's not super beautiful
         if val.lower() == "true":
             val = True
-        if val.lower() == "false":
-            val = True
+        elif val.lower() == "false":
+            val = False
         try:
             val = int(val)
         except ValueError:
