@@ -925,7 +925,7 @@ class Node():
         dir_name = self.get_path()
         if not os.path.exists(dir_name):
             os.mkdir(dir_name)
-            for dir in self.__get_diretories():
+            for dir in self.__get_directories():
                 os.mkdir(os.path.join(dir_name, dir))
 
         filename = os.path.join(dir_name, 'node.conf')
@@ -1099,7 +1099,7 @@ class Node():
             if self.status == Status.DOWN or self.status == Status.UNINITIALIZED:
                 self.status = Status.UP
 
-    def __get_diretories(self):
+    def __get_directories(self):
         dirs = {}
         for i in ['data', 'commitlogs', 'saved_caches', 'logs', 'conf', 'bin']:
             dirs[i] = os.path.join(self.get_path(), i)
