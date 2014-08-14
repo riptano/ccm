@@ -1,7 +1,7 @@
-import unittest
+from ccmtest import Tester
 from ccmlib import common
 
-class TestCommon(unittest.TestCase):
+class TestCommon(Tester):
 
     def test_normalize_interface(self):
         normalized = common.normalize_interface(('::1', 9042))
@@ -18,7 +18,7 @@ class TestCommon(unittest.TestCase):
 
         normalized = common.normalize_interface(('fd6d:404d:54cb::1', 9042))
         self.assertEqual(normalized, ('fd6d:404d:54cb:0:0:0:0:1', 9042))
-        
+
 
 if __name__ == '__main__':
         unittest.main()
