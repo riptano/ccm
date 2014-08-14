@@ -137,7 +137,8 @@ def make_cassandra_env(cassandra_dir, node_path):
     if is_win() and get_version_from_build(node_path=node_path) >= '2.1':
         replacements = [
             ('env:CASSANDRA_HOME =', '        $env:CASSANDRA_HOME="%s"' % cassandra_dir),
-            ('env:CASSANDRA_CONF =', '    $env:CASSANDRA_CONF="%s"' % os.path.join(node_path, 'conf'))
+            ('env:CASSANDRA_CONF =', '    $env:CASSANDRA_CONF="%s"' % os.path.join(node_path, 'conf')),
+            ('cp = ".*?env:CASSANDRA_HOME.conf', '    $cp = "$env:CASSANDRA_CONF"')
         ]
     else:
         replacements = [
@@ -306,7 +307,7 @@ def parse_settings(args):
         # ok, that's not super beautiful
         if val.lower() == "true":
             val = True
-        if val.lower() == "false":
+        elif val.lower() == "false":
             val = False
         try:
             val = int(val)

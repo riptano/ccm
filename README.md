@@ -17,11 +17,11 @@ Requirements
 - ant (http://ant.apache.org/, on Mac OS X, `brew install ant`)
 - Java (which version depends on the version of Cassandra you plan to use. If
   unsure, use Java 7 as it is known to work with current versions of Cassandra).
-- ccm only works on localhost for now. If you want to create multiple 
+- ccm only works on localhost for now. If you want to create multiple
   node clusters, the simplest way is to use multiple loopback aliases. On
   modern linux distributions you probably don't need to do anything, but
   on Mac OS X, you will need to create the aliases with
-      
+
       sudo ifconfig lo0 alias 127.0.0.2 up
       sudo ifconfig lo0 alias 127.0.0.3 up
       ...
@@ -65,24 +65,24 @@ ccm works from a Cassandra source tree (not the jars). There are two ways to
 tell ccm how to find the sources:
   1. If you have downloaded *and* compiled Cassandra sources, you can ask ccm
      to use those by initiating a new cluster with:
-          
+
         ccm create test --cassandra-dir=<path/to/cassandra-sources>
 
      or, from that source tree directory, simply
-     
+
           ccm create test
-          
+
   2. You can ask ccm to use a released version of Cassandra. For instance to
      use Cassandra 2.0.5, run
 
           ccm create test -v 2.0.5
-          
+
      ccm will download the source (from http://archive.apache.org/dist/cassandra),
      compile it, and set the new cluster to use it. This means
      that this command can take a few minutes the first time you
      create a cluster for a given version. ccm saves the compiled
-     source in `~/.ccm/repository/`, so creating a cluster for that 
-     version will be much faster the second time you run it 
+     source in `~/.ccm/repository/`, so creating a cluster for that
+     version will be much faster the second time you run it
      (note however that if you create a lot of clusters with
      different versions, this will take up disk space).
 
@@ -95,20 +95,20 @@ the nodes with:
 That will start 3 nodes on IP 127.0.0.[1, 2, 3] on port 9160 for thrift, port
 7000 for the internal cluster communication and ports 7100, 7200 and 7300 for JMX.
 You can check that the cluster is correctly set up with
-  
+
     ccm node1 ring
 
-You can then boostrap a 4th node with
+You can then bootstrap a 4th node with
 
     ccm add node4 -i 127.0.0.4 -j 7400 -b
-    
+
 (populate is just a shortcut for adding multiple nodes initially)
 
 ccm provides a number of conveniences, like flushing all of the nodes of
 the cluster:
 
     ccm flush
-    
+
 or only one node:
 
     ccm node2 flush
@@ -125,7 +125,7 @@ remove all the data) with
 The list of other provided commands is available through
 
     ccm
-    
+
 Each command is then documented through the `-h` (or `--help`) flag. For
 instance `ccm add -h` describes the options for `ccm add`.
 
@@ -143,7 +143,7 @@ be used to implement automated tests again Cassandra. A simple example of
 how to use ccmlib follows:
 
     import ccmlib
-    
+
     CLUSTER_PATH="."
     cluster = ccmlib.Cluster(CLUSTER_PATH, 'test', cassandra_version='2.0.5')
     cluster.populate(3).start()

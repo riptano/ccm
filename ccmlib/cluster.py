@@ -128,9 +128,9 @@ class Cluster():
         self.__update_config()
         node.data_center = data_center
         node.set_log_level(self.__log_level)
-        node._save()
         if data_center is not None:
             self.__update_topology_files()
+        node._save()
         return self
 
     def populate(self, nodes, debug=False, tokens=None, use_vnodes=False, ipprefix='127.0.0.', ipformat=None):
@@ -155,7 +155,10 @@ class Cluster():
                 raise common.ArgumentError('Cannot create existing node node%s' % i)
 
         if tokens is None and not use_vnodes:
-            tokens = self.balanced_tokens(node_count)
+            if dcs is None or len(dcs) <= 1:
+                tokens = self.balanced_tokens(node_count)
+            else:
+                tokens = self.balanced_tokens_across_dcs(dcs)
 
         if not ipformat:
             ipformat = ipprefix+"%d"
@@ -187,6 +190,24 @@ class Cluster():
             ptokens = [(i*(2**64//node_count)) for i in xrange(0, node_count)]
             return [int(t - 2**63) for t in ptokens]
         return [ int(i*(2**127//node_count)) for i in range(0, node_count) ]
+
+    def balanced_tokens_across_dcs(self, dcs):
+        tokens = []
+        current_dc = dcs[0]
+        count = 0
+        dc_count = 0
+        for dc in dcs:
+            if dc == current_dc:
+                count += 1
+            else:
+                new_tokens = [tk+dc_count for tk in self.balanced_tokens(count)]
+                tokens.extend(new_tokens)
+                current_dc = dc
+                count = 1
+                dc_count += 1
+        new_tokens = [tk+dc_count for tk in self.balanced_tokens(count)]
+        tokens.extend(new_tokens)
+        return tokens
 
     def remove(self, node=None):
         if node is not None:

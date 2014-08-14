@@ -74,7 +74,7 @@ class ClusterCreateCmd(Cmd):
         parser.add_option('-T', "--trace-log", action="store_true", dest="trace_log",
             help="With -n, sets trace logging on the new nodes", default=False)
         parser.add_option("--vnodes", action="store_true", dest="vnodes",
-            help="Use vnodes (256 tokens)", default=False)
+            help="Use vnodes (256 tokens). Must be paired with -n.", default=False)
         parser.add_option('--jvm_arg', action="append", dest="jvm_args",
             help="Specify a JVM argument", default=[])
         parser.add_option('--profile', action="store_true", dest="profile",
@@ -89,6 +89,10 @@ class ClusterCreateCmd(Cmd):
             parser.print_help()
             parser.error("%s and %s may not be used together" % (parser.get_option('-i'), parser.get_option('-I')))
         self.nodes = parse_populate_count(options.nodes)
+        if self.options.vnodes and self.nodes is None:
+            print_("Can't set --vnodes if not populating cluster in this command.")
+            parser.print_help()
+            exit(1)
 
     def run(self):
         try:
@@ -146,7 +150,7 @@ class ClusterAddCmd(Cmd):
     def get_parser(self):
         usage = "usage: ccm add [options] node_name"
         parser = self._get_default_parser(usage, self.description())
-        parser.add_option('-b', '--auto-boostrap', action="store_true", dest="boostrap",
+        parser.add_option('-b', '--auto-bootstrap', action="store_true", dest="bootstrap",
             help="Set auto bootstrap for the node", default=False)
         parser.add_option('-s', '--seeds', action="store_true", dest="is_seed",
             help="Configure this node as a seed", default=False)
@@ -176,6 +180,12 @@ class ClusterAddCmd(Cmd):
             parser.print_help()
             exit(1)
 
+        used_jmx_ports = [node.jmx_port for node in self.cluster.nodelist()]
+        if options.jmx_port in used_jmx_ports:
+            print_("This JMX port is already in use. Choose another.", file=sys.stderr)
+            parser.print_help()
+            exit(1)
+
         if options.thrift_itf is None:
             options.thrift_itf = options.itfs
         if options.storage_itf is None:
@@ -199,7 +209,7 @@ class ClusterAddCmd(Cmd):
 
     def run(self):
         try:
-            node = Node(self.name, self.cluster, self.options.boostrap, self.thrift, self.storage, self.jmx_port, self.remote_debug_port, self.initial_token, binary_interface=self.binary)
+            node = Node(self.name, self.cluster, self.options.bootstrap, self.thrift, self.storage, self.jmx_port, self.remote_debug_port, self.initial_token, binary_interface=self.binary)
             self.cluster.add(node, self.options.is_seed, self.options.data_center)
         except common.ArgumentError as e:
             print_(str(e), file=sys.stderr)
@@ -575,8 +585,8 @@ class ClusterUpdateconfCmd(Cmd):
         self.cluster.set_configuration_options(values=self.setting, batch_commitlog=self.options.cl_batch)
 
 #
-# Class implementens the functionality of updating log4j-server.properties 
-# on ALL nodes by copying the given config into 
+# Class implements the functionality of updating log4j-server.properties
+# on ALL nodes by copying the given config into
 # ~/.ccm/name-of-cluster/nodeX/conf/log4j-server.properties
 #
 class ClusterUpdatelog4jCmd(Cmd):
@@ -595,7 +605,7 @@ class ClusterUpdatelog4jCmd(Cmd):
         try:
             self.log4jpath = options.log4jpath
             if self.log4jpath is None:
-                raise KeyError("[Errno] -p or --path <path of new log4j congiguration file> is not provided") 
+                raise KeyError("[Errno] -p or --path <path of new log4j congiguration file> is not provided")
         except common.ArgumentError as e:
             print_(str(e), file=sys.stderr)
             exit(1)

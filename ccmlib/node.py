@@ -49,7 +49,7 @@ class Node():
         Create a new Node.
           - name: the name for that node
           - cluster: the cluster this node is part of
-          - auto_boostrap: whether or not this node should be set for auto-boostrap
+          - auto_bootstrap: whether or not this node should be set for auto-boostrap
           - thrift_interface: the (host, port) tuple for thrift
           - storage_interface: the (host, port) tuple for internal cluster communication
           - jmx_port: the port for JMX to bind to
@@ -244,6 +244,27 @@ class Node():
                     matchings.append((line, m))
         return matchings
 
+    def grep_log_for_errors(self):
+        """
+        Returns a list of errors with stack traces
+        in the Cassandra log of this node
+        """
+        expr = "ERROR"
+        matchings = []
+        pattern = re.compile(expr)
+        with open(self.logfilename()) as f:
+            for line in f:
+                m = pattern.search(line)
+                if m:
+                    matchings.append([line])
+                    try:
+                        while line.find("INFO", 0, 5) < 0:
+                            line = f.next()
+                            matchings[-1].append(line)
+                    except StopIteration:
+                        break
+        return matchings
+
     def mark_log(self):
         """
         Returns "a mark" to the current position of this node Cassandra log.
@@ -263,7 +284,8 @@ class Node():
             [stdout, stderr] = ['', '']
         if verbose:
             print_("[%s] %s" % (name, stdout.rstrip('\n')))
-        print_("[%s ERROR] %s" % (name, stderr.rstrip('\n')))
+        if len(stderr) > 1:
+            print_("[%s ERROR] %s" % (name, stderr.rstrip('\n')))
 
 
     # This will return when exprs are found or it timeouts
@@ -899,12 +921,13 @@ class Node():
         else:
             self.__update_logback()
         self.__update_envfile()
+        self.__update_config()
 
     def __update_config(self):
         dir_name = self.get_path()
         if not os.path.exists(dir_name):
             os.mkdir(dir_name)
-            for dir in self.__get_diretories():
+            for dir in self.__get_directories():
                 os.mkdir(os.path.join(dir_name, dir))
 
         filename = os.path.join(dir_name, 'node.conf')
@@ -926,6 +949,8 @@ class Node():
             values['data_center'] = self.data_center
         if self.remote_debug_port:
             values['remote_debug_port'] = self.remote_debug_port
+        if self.data_center:
+            values['data_center'] = self.data_center
         with open(filename, 'w') as f:
             yaml.safe_dump(values, f)
 
@@ -1083,7 +1108,7 @@ class Node():
             if self.status == Status.DOWN or self.status == Status.UNINITIALIZED:
                 self.status = Status.UP
 
-    def __get_diretories(self):
+    def __get_directories(self):
         dirs = {}
         for i in ['data', 'commitlogs', 'saved_caches', 'logs', 'conf', 'bin']:
             dirs[i] = os.path.join(self.get_path(), i)
