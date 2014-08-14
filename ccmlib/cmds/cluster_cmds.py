@@ -59,8 +59,10 @@ class ClusterCreateCmd(Cmd):
             help="Path to the cassandra directory to use [default %default]", default="./")
         parser.add_option('-n', '--nodes', type="string", dest="nodes",
             help="Populate the new cluster with that number of nodes (a single int or a colon-separate list of ints for multi-dc setups)")
-        parser.add_option('-i', '--ipprefix', type="string", dest="ipprefix", default="127.0.0.",
+        parser.add_option('-i', '--ipprefix', type="string", dest="ipprefix",
             help="Ipprefix to use to create the ip of a node while populating")
+        parser.add_option('-I', '--ip-format', type="string", dest="ipformat",
+            help="Format to use when creating the ip of a node (supports enumerating ipv6-type addresses like fe80::%d%lo0)")
         parser.add_option('-s', "--start", action="store_true", dest="start_nodes",
             help="Start nodes added through -s", default=False)
         parser.add_option('-d', "--debug", action="store_true", dest="debug",
@@ -83,6 +85,9 @@ class ClusterCreateCmd(Cmd):
 
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, cluster_name=True)
+        if options.ipprefix and options.ipformat:
+            parser.print_help()
+            parser.error("%s and %s may not be used together" % (parser.get_option('-i'), parser.get_option('-I')))
         self.nodes = parse_populate_count(options.nodes)
         if self.options.vnodes and self.nodes is None:
             print_("Can't set --vnodes if not populating cluster in this command.")
@@ -113,13 +118,16 @@ class ClusterCreateCmd(Cmd):
             common.switch_cluster(self.path, self.name)
             print_('Current cluster is now: %s' % self.name)
 
+        if not (self.options.ipprefix or self.options.ipformat):
+            self.options.ipformat = '127.0.0.%d'
+
         if self.nodes is not None:
             try:
                 if self.options.debug_log:
                     cluster.set_log_level("DEBUG")
                 if self.options.trace_log:
                     cluster.set_log_level("TRACE")
-                cluster.populate(self.nodes, use_vnodes=self.options.vnodes, ipprefix=self.options.ipprefix)
+                cluster.populate(self.nodes, use_vnodes=self.options.vnodes, ipprefix=self.options.ipprefix, ipformat=self.options.ipformat)
                 if self.options.start_nodes:
                     profile_options = None
                     if self.options.profile:
@@ -220,12 +228,17 @@ class ClusterPopulateCmd(Cmd):
             help="Enable remote debugging options", default=False)
         parser.add_option('--vnodes', action="store_true", dest="vnodes",
             help="Populate using vnodes", default=False)
-        parser.add_option('-i', '--ipprefix', type="string", dest="ipprefix", default="127.0.0.",
+        parser.add_option('-i', '--ipprefix', type="string", dest="ipprefix",
             help="Ipprefix to use to create the ip of a node")
+        parser.add_option('-I', '--ip-format', type="string", dest="ipformat",
+            help="Format to use when creating the ip of a node (supports enumerating ipv6-type addresses like fe80::%d%lo0)")
         return parser
 
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, load_cluster=True)
+        if options.ipprefix and options.ipformat:
+            parser.print_help()
+            parser.error("%s and %s may not be used together" % (parser.get_option('-i'), parser.get_option('-I')))
         self.nodes = parse_populate_count(options.nodes)
 
     def run(self):
@@ -233,7 +246,10 @@ class ClusterPopulateCmd(Cmd):
             if self.cluster.version() >= "1.2" and self.options.vnodes:
                 self.cluster.set_configuration_options({ 'num_tokens' : 256 })
 
-            self.cluster.populate(self.nodes, self.options.debug, use_vnodes=self.options.vnodes, ipprefix=self.options.ipprefix)
+            if not (self.options.ipprefix or self.options.ipformat):
+                self.options.ipformat = '127.0.0.%d'
+
+            self.cluster.populate(self.nodes, self.options.debug, use_vnodes=self.options.vnodes, ipprefix=self.options.ipprefix, ipformat=self.options.ipformat)
         except common.ArgumentError as e:
             print_(str(e), file=sys.stderr)
             exit(1)
