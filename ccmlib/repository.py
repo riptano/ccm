@@ -2,8 +2,8 @@
 from __future__ import with_statement
 
 from six import print_
-from six.moves import urllib
 
+from six.moves import urllib
 import os
 import shutil
 import subprocess
@@ -17,16 +17,18 @@ import re
 from distutils.version import LooseVersion
 
 from ccmlib.common import (ArgumentError, CCMError, get_default_path,
-                           platform_binary, validate_cassandra_dir)
+                           platform_binary, validate_install_dir)
 
+DSE_ARCHIVE="http://downloads.datastax.com/enterprise/dse-%s-bin.tar.gz"
 ARCHIVE="http://archive.apache.org/dist/cassandra"
 GIT_REPO="http://git-wip-us.apache.org/repos/asf/cassandra.git"
 GITHUB_TAGS="https://api.github.com/repos/apache/cassandra/git/refs/tags"
+DSE_GIT_REPO="git@github.com:riptano/bdp.git"
 
 def setup(version, verbose=False):
     binary = False
     if version.startswith('git:'):
-        clone_development(version, verbose=verbose)
+        clone_development(GIT_REPO, version, 'Cassandra', verbose=verbose)
         return (version_directory(version), None)
     elif version.startswith('binary:'):
         version = version.replace('binary:','')
@@ -39,12 +41,22 @@ def setup(version, verbose=False):
         cdir = version_directory(version)
     return (cdir, version)
 
+def setup_dse(version, username, password, verbose=False):
+    if version.startswith('git:'):
+        clone_development(DSE_GIT_REPO, version, 'DSE', verbose)
+        return (version_directory(version), None)
+    cdir = version_directory(version)
+    if cdir is None:
+        download_dse_version(version, username, password, verbose=verbose)
+        cdir = version_directory(version)
+    return (cdir, version)
+
 def validate(path):
     if path.startswith(__get_dir()):
         _, version = os.path.split(os.path.normpath(path))
         setup(version)
 
-def clone_development(version, verbose=False):
+def clone_development(git_repo, version, product, verbose=False):
     local_git_cache = os.path.join(__get_dir(), '_git_cache')
     target_dir = os.path.join(__get_dir(), version.replace(':', '_')) # handle git branches like 'git:trunk'.
     git_branch = version[4:] # the part of the version after the 'git:'
@@ -55,14 +67,14 @@ def clone_development(version, verbose=False):
             #remote fetches we need to perform:
             if not os.path.exists(local_git_cache):
                 if verbose:
-                    print_("Cloning Cassandra...")
+                    print_("Cloning %s..." % product)
                 out = subprocess.call(
-                    ['git', 'clone', '--mirror', GIT_REPO, local_git_cache],
+                    ['git', 'clone', '--mirror', git_repo, local_git_cache],
                     cwd=__get_dir(), stdout=lf, stderr=lf)
                 assert out == 0, "Could not do a git clone"
             else:
                 if verbose:
-                    print_("Fetching Cassandra updates...")
+                    print_("Fetching %s updates..." % product)
                 out = subprocess.call(
                     ['git', 'fetch', '-fup', 'origin', '+refs/*:refs/*'],
                     cwd=local_git_cache, stdout=lf, stderr=lf)
@@ -71,7 +83,7 @@ def clone_development(version, verbose=False):
             if not os.path.exists(target_dir):
                 # development branch doesn't exist. Check it out.
                 if verbose:
-                    print_("Cloning Cassandra (from local cache)")
+                    print_("Cloning %s (from local cache)" % product)
 
                 # git on cygwin appears to be adding `cwd` to the commands which is breaking clone
                 if sys.platform == "cygwin":
@@ -88,7 +100,7 @@ def clone_development(version, verbose=False):
                 if int(out) != 0:
                     raise CCMError("Could not check out git branch %s. Is this a valid branch name? (see last.log for details)" % git_branch)
                 # now compile
-                compile_version(git_branch, target_dir, verbose)
+                compile_version(git_branch, target_dir, product, verbose)
             else: # branch is already checked out. See if it is behind and recompile if needed.
                 out = subprocess.call(['git', 'fetch', 'origin'], cwd=target_dir, stdout=lf, stderr=lf)
                 assert out == 0, "Could not do a git fetch"
@@ -102,7 +114,7 @@ def clone_development(version, verbose=False):
                     assert out == 0, "Could not run 'ant realclean'"
 
                     # now compile
-                    compile_version(git_branch, target_dir, verbose)
+                    compile_version(git_branch, target_dir, product, verbose)
         except:
             # wipe out the directory if anything goes wrong. Otherwise we will assume it has been compiled the next time it runs.
             try:
@@ -112,6 +124,27 @@ def clone_development(version, verbose=False):
                 raise CCMError("Building C* version %s failed. Attempted to delete %s but failed. This will need to be manually deleted" % (version, target_dir))
             raise
 
+def download_dse_version(version, username, password, verbose=False):
+    url = DSE_ARCHIVE % version
+    _, target = tempfile.mkstemp(suffix=".tar.gz", prefix="ccm-")
+    try:
+        __download(url, target, username=username, password=password, show_progress=verbose)
+        if verbose:
+            print_("Extracting %s as version %s ..." % (target, version))
+        tar = tarfile.open(target)
+        dir = tar.next().name.split("/")[0]
+        tar.extractall(path=__get_dir())
+        tar.close()
+        target_dir = os.path.join(__get_dir(), version)
+        if os.path.exists(target_dir):
+            shutil.rmtree(target_dir)
+        shutil.move(os.path.join(__get_dir(), dir), target_dir)
+    except urllib.error.URLError as e:
+        msg = "Invalid version %s" % version if url is None else "Invalid url %s" % url
+        msg = msg + " (underlying error is: %s)" % str(e)
+        raise ArgumentError(msg)
+    except tarfile.ReadError as e:
+        raise ArgumentError("Unable to uncompress downloaded file: %s" % str(e))
 
 def download_version(version, url=None, verbose=False, binary=False):
     """Download, extract, and build Cassandra tarball.
@@ -160,13 +193,13 @@ def download_version(version, url=None, verbose=False, binary=False):
             raise CCMError("Building C* version %s failed. Attempted to delete %s but failed. This will need to be manually deleted" % (version, target_dir))
         raise e
 
-def compile_version(version, target_dir, verbose=False):
+def compile_version(version, target_dir, product, verbose=False):
     # compiling cassandra and the stress tool
     logfile = os.path.join(__get_dir(), "last.log")
     if verbose:
-        print_("Compiling Cassandra %s ..." % version)
+        print_("Compiling %s %s ..." % (product, version))
     with open(logfile, 'w') as lf:
-        lf.write("--- Cassandra build -------------------\n")
+        lf.write("--- %s Build -------------------\n" % product)
         try:
             # Patch for pending Cassandra issue: https://issues.apache.org/jira/browse/CASSANDRA-5543
             # Similar patch seen with buildbot
@@ -178,9 +211,9 @@ def compile_version(version, target_dir, verbose=False):
                 ret_val = subprocess.call([platform_binary('ant'),'jar'], cwd=target_dir, stdout=lf, stderr=lf)
                 attempt += 1
             if ret_val is not 0:
-                raise CCMError("Error compiling Cassandra. See %s for details" % logfile)
+                raise CCMError("Error compiling %s. See %s for details" % (product, logfile))
         except OSError as e:
-            raise CCMError("Error compiling Cassandra. Is ant installed? See %s for details" % logfile)
+            raise CCMError("Error compiling %s. Is ant installed? See %s for details" % (product, logfile))
 
         lf.write("\n\n--- cassandra/stress build ------------\n")
         stress_dir = os.path.join(target_dir, "tools", "stress") if (
@@ -210,7 +243,7 @@ def version_directory(version):
     dir = os.path.join(__get_dir(), version)
     if os.path.exists(dir):
         try:
-            validate_cassandra_dir(dir)
+            validate_install_dir(dir)
             return dir
         except ArgumentError as e:
             shutil.rmtree(dir)
@@ -257,7 +290,14 @@ def get_tagged_version_numbers(series='stable'):
     else:
         raise AssertionError("unknown release series: {series}".format(series=series))
 
-def __download(url, target, show_progress=False):
+def __download(url, target, username=None, password=None, show_progress=False):
+    if username is not None:
+        password_mgr = urllib.request.HTTPPasswordMgrWithDefaultRealm()
+        password_mgr.add_password(None, url, username, password)
+        handler = urllib.request.HTTPBasicAuthHandler(password_mgr)
+        opener = urllib.request.build_opener(handler)
+        urllib.request.install_opener(opener)
+
     u = urllib.request.urlopen(url)
     f = open(target, 'wb')
     meta = u.info()
