@@ -785,7 +785,7 @@ class Node():
                 files.remove(f)
         return files
 
-    def stress(self, stress_options):
+    def stress(self, stress_options=[]):
         stress = common.get_stress_bin(self.get_cassandra_dir())
         args = [ stress ] + stress_options
         try:
