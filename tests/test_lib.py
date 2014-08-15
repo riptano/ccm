@@ -42,7 +42,7 @@ class TestCCMLib(Tester):
         self.cluster.show(True)
 
     def multi_dc_test(self):
-        self.cluster = Cluster(CLUSTER_PATH, "test1", cassandra_version='2.0.9')
+        self.cluster = Cluster(CLUSTER_PATH, "multi_dc", cassandra_version='2.0.9')
         self.cluster.populate([1, 2])
         self.cluster.start()
         dcs = [node.data_center for node in self.cluster.nodelist()]
