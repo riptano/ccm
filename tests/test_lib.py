@@ -18,7 +18,7 @@ class TestCCMLib(Tester):
         if version < '2.1':
             node1.stress()
         else:
-            node1.stress(['write'])
+            node1.stress(['write', 'n=1000000'])
 
         self.cluster.flush()
 
