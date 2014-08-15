@@ -31,6 +31,29 @@ class TestCCMLib(Tester):
 
         self.simple_test(version='2.1.0-rc5')
 
+    def restart_test(self):
+        self.cluster = Cluster(CLUSTER_PATH, "restart", cassandra_version='2.0.9')
+        self.cluster.populate(3)
+        self.cluster.start()
+
+        self.cluster.stop()
+        self.cluster.start()
+
+        self.cluster.show(True)
+
+    def multi_dc_test(self):
+        self.cluster = Cluster(CLUSTER_PATH, "test1", cassandra_version='2.0.9')
+        self.cluster.populate([1, 2])
+        self.cluster.start()
+        dcs = [node.data_center for node in self.cluster.nodelist()]
+        self.cluster.set_configuration_options(None, None)
+
+        self.cluster.stop()
+        self.cluster.start()
+
+        dcs_2 = [node.data_center for node in self.cluster.nodelist()]
+        self.assertItemsEqual(dcs, dcs_2)
+
     def test1(self):
         self.cluster = Cluster(CLUSTER_PATH, "test1", cassandra_version='2.0.3')
         self.cluster.show(False)
