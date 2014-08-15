@@ -589,6 +589,15 @@ class Node():
         p = subprocess.Popen(args, env=env)
         p.wait()
 
+    def nodetool_status(self):
+        cdir = self.get_cassandra_dir()
+        nodetool = common.join_bin(cdir, 'bin', 'nodetool')
+        env = common.make_cassandra_env(cdir, self.get_path())
+        host = self.address()
+        args = [ nodetool, '-h', 'localhost', '-p', str(self.jmx_port), 'status']
+        p = subprocess.Popen(args, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        return p.communicate()
+
     def scrub(self, options):
         cdir = self.get_cassandra_dir()
         scrub_bin = common.join_bin(cdir, 'bin', 'sstablescrub')
