@@ -269,7 +269,7 @@ def check_socket_available(itf):
     (family, socktype, proto, canonname, sockaddr) = info[0]
     s = socket.socket(family, socktype)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+
     try:
         s.bind(sockaddr)
         s.close()
