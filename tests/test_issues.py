@@ -14,11 +14,11 @@ class TestCCMIssues(Tester):
         dcs = [node.data_center for node in self.cluster.nodelist()]
         dcs.append('dc2')
 
-        n = Node('node4', self.cluster, True, ('127.0.0.4', 9160), ('127.0.0.4', 7000),
+        node4 = Node('node4', self.cluster, True, ('127.0.0.4', 9160), ('127.0.0.4', 7000),
             '7400', '2000', None)
-        self.cluster.add(n, False, 'dc2')
-        n.start()
+        self.cluster.add(node4, False, 'dc2')
+        node4.start()
 
         dcs_2 = [node.data_center for node in self.cluster.nodelist()]
         self.assertItemsEqual(dcs, dcs_2)
-        n.nodetool('status')
+        node4.nodetool('status')
