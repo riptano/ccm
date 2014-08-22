@@ -1,7 +1,7 @@
-CCM (for Cassandra Cluster Manager ... or something)
+CCM (Cassandra Cluster Manager)
 ====================================================
 
-A script/library to create, launch and remove a Apache Cassandra cluster on
+A script/library to create, launch and remove an Apache Cassandra cluster on
 localhost.
 
 The goal of ccm and ccmlib is to make it easy to create, manage and destroy a
@@ -35,6 +35,7 @@ Windows only:
   - `node start` pops up a window, stealing focus.
   - cli and cqlsh started from ccm show incorrect prompts on command-prompt
   - non nodetool-based command-line options fail (sstablesplit, scrub, etc)
+  - cli_session does not accept commands.
 
 Installation
 ------------
