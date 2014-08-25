@@ -283,9 +283,9 @@ class Node():
         except ValueError:
             [stdout, stderr] = ['', '']
         if verbose:
-            print_("[%s] %s" % (name, stdout.rstrip('\n')))
+            print_("[%s] %s" % (name, stdout.strip()))
         if len(stderr) > 1:
-            print_("[%s ERROR] %s" % (name, stderr.rstrip('\n')))
+            print_("[%s ERROR] %s" % (name, stderr.strip()))
 
 
     # This will return when exprs are found or it timeouts
