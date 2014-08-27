@@ -107,7 +107,8 @@ def clone_development(version, verbose=False):
             # wipe out the directory if anything goes wrong. Otherwise we will assume it has been compiled the next time it runs.
             try:
                 shutil.rmtree(target_dir)
-            except: pass
+            except:
+                raise CCMError("Downloading C* version %s failed. Attempted to delete %s but failed. This will need to be manually deleted" % (version, target_dir))
             raise
 
 
@@ -115,7 +116,7 @@ def download_version(version, url=None, verbose=False, binary=False):
     """Download, extract, and build Cassandra tarball.
 
     if binary == True, download precompiled tarball, otherwise build from source tarball.
-    """ 
+    """
     if binary:
         u = "%s/%s/apache-cassandra-%s-bin.tar.gz" % (ARCHIVE, version.split('-')[0], version) if url is None else url
     else:
@@ -149,6 +150,13 @@ def download_version(version, url=None, verbose=False, binary=False):
         raise ArgumentError(msg)
     except tarfile.ReadError as e:
         raise ArgumentError("Unable to uncompress downloaded file: %s" % str(e))
+    except CCMError as e:
+        # wipe out the directory if anything goes wrong. Otherwise we will assume it has been compiled the next time it runs.
+        try:
+            shutil.rmtree(target_dir)
+        except:
+            raise CCMError("Downloading C* version %s failed. Attempted to delete %s but failed. This will need to be manually deleted" % (version, target_dir))
+        raise e
 
 def compile_version(version, target_dir, verbose=False):
     # compiling cassandra and the stress tool
@@ -231,7 +239,7 @@ def get_tagged_version_numbers(series='stable'):
 
     # Sort by semver:
     releases.sort(reverse=True)
-    
+
     stable_major_version = LooseVersion(str(releases[0].version[0]) + "." + str(releases[0].version[1]))
     stable_releases = [r for r in releases if r >= stable_major_version]
     oldstable_releases = [r for r in releases if r not in stable_releases]
