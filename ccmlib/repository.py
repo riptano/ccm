@@ -107,8 +107,9 @@ def clone_development(version, verbose=False):
             # wipe out the directory if anything goes wrong. Otherwise we will assume it has been compiled the next time it runs.
             try:
                 shutil.rmtree(target_dir)
+                print_("Deleted %s due to error" % target_dir)
             except:
-                raise CCMError("Downloading C* version %s failed. Attempted to delete %s but failed. This will need to be manually deleted" % (version, target_dir))
+                raise CCMError("Building C* version %s failed. Attempted to delete %s but failed. This will need to be manually deleted" % (version, target_dir))
             raise
 
 
@@ -154,8 +155,9 @@ def download_version(version, url=None, verbose=False, binary=False):
         # wipe out the directory if anything goes wrong. Otherwise we will assume it has been compiled the next time it runs.
         try:
             shutil.rmtree(target_dir)
+            print_("Deleted %s due to error" % target_dir)
         except:
-            raise CCMError("Downloading C* version %s failed. Attempted to delete %s but failed. This will need to be manually deleted" % (version, target_dir))
+            raise CCMError("Building C* version %s failed. Attempted to delete %s but failed. This will need to be manually deleted" % (version, target_dir))
         raise e
 
 def compile_version(version, target_dir, verbose=False):
