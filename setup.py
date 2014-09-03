@@ -10,7 +10,7 @@ except ImportError:
 
 setup(
     name='ccm',
-    version='1.1',
+    version='1.2',
     description='Cassandra Cluster Manager',
     long_description=open(abspath(join(dirname(__file__), 'README.md'))).read(),
     author='Sylvain Lebresne',
@@ -26,7 +26,8 @@ setup(
         'Programming Language :: Python :: 2.6',
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.3'
+        'Programming Language :: Python :: 3.3',
+        'Programming Language :: Python :: 3.4'
     ],
 
 )
