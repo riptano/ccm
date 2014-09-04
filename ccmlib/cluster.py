@@ -284,8 +284,9 @@ class Cluster():
                         node.watch_log_for_alive(other_node, from_mark=mark)
 
         if wait_other_notice:
-            for node, mark in marks:
-                node.watch_log_for_alive(self, from_mark=mark)
+            for old_node, mark in marks:
+                for node, _, _ in started:
+                    old_node.watch_log_for_alive(node, from_mark=mark)
 
         if wait_for_binary_proto:
             for node, _, mark in started:
