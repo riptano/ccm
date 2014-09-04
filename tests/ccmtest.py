@@ -13,7 +13,7 @@ class Tester(TestCase):
         if hasattr(self, 'cluster'):
             try:
                 for node in self.cluster.nodelist():
-                    self.assertItemsEqual(node.grep_log_for_errors(), [])
+                    self.assertListEqual(node.grep_log_for_errors(), [])
             finally:
                 test_path = self.cluster.get_path()
                 self.cluster.remove()

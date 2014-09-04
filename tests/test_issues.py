@@ -1,11 +1,11 @@
 from . import TEST_DIR
+from . import ccmtest
 from ccmlib.cluster import Cluster
 from ccmlib.node import Node
-from ccmtest import Tester
 
 CLUSTER_PATH = TEST_DIR
 
-class TestCCMIssues(Tester):
+class TestCCMIssues(ccmtest.Tester):
 
     def issue_150_test(self):
         self.cluster = Cluster(CLUSTER_PATH, "150", cassandra_version='2.0.9')
@@ -20,5 +20,5 @@ class TestCCMIssues(Tester):
         node4.start()
 
         dcs_2 = [node.data_center for node in self.cluster.nodelist()]
-        self.assertItemsEqual(dcs, dcs_2)
+        self.assertListEqual(dcs, dcs_2)
         node4.nodetool('status')

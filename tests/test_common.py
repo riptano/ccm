@@ -1,7 +1,7 @@
-from ccmtest import Tester
+from . import ccmtest
 from ccmlib import common
 
-class TestCommon(Tester):
+class TestCommon(ccmtest.Tester):
 
     def test_normalize_interface(self):
         normalized = common.normalize_interface(('::1', 9042))

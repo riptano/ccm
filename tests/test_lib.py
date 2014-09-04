@@ -2,12 +2,12 @@ import sys
 sys.path = [".."] + sys.path
 
 from . import TEST_DIR
+from . import ccmtest
 from ccmlib.cluster import Cluster
-from ccmtest import Tester
 
 CLUSTER_PATH = TEST_DIR
 
-class TestCCMLib(Tester):
+class TestCCMLib(ccmtest.Tester):
 
     def simple_test(self, version='2.0.9'):
         self.cluster = Cluster(CLUSTER_PATH, "simple", cassandra_version=version)
@@ -52,7 +52,7 @@ class TestCCMLib(Tester):
         self.cluster.start()
 
         dcs_2 = [node.data_center for node in self.cluster.nodelist()]
-        self.assertItemsEqual(dcs, dcs_2)
+        self.assertListEqual(dcs, dcs_2)
 
     def test1(self):
         self.cluster = Cluster(CLUSTER_PATH, "test1", cassandra_version='2.0.3')
