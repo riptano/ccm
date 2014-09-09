@@ -236,6 +236,9 @@ class Cluster():
         return [ s.network_interfaces['storage'][0] for s in self.seeds ]
 
     def show(self, verbose):
+        msg = "Cluster: '%s'" % self.name
+        print_(msg);
+        print_('-'*len(msg))
         if len(list(self.nodes.values())) == 0:
             print_("No node in this cluster yet")
             return
