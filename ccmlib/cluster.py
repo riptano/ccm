@@ -237,7 +237,7 @@ class Cluster():
 
     def show(self, verbose):
         msg = "Cluster: '%s'" % self.name
-        print_(msg);
+        print_(msg)
         print_('-'*len(msg))
         if len(list(self.nodes.values())) == 0:
             print_("No node in this cluster yet")
