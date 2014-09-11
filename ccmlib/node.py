@@ -39,7 +39,7 @@ class TimeoutError(Exception):
 # Groups: 1 = cf, 2 = tmp or none, 3 = suffix (Compacted or Data.db)
 _sstable_regexp = re.compile('(?P<cf>[\S]+)+-(?P<tmp>tmp-)?[\S]+-(?P<suffix>[a-zA-Z.]+)')
 
-class Node():
+class Node(object):
     """
     Provides interactions to a Cassandra node.
     """
@@ -70,14 +70,15 @@ class Node():
         self.initial_token = initial_token
         self.pid = None
         self.data_center = None
+        self.workload = None
         self.__config_options = {}
-        self.__cassandra_dir = None
+        self.__install_dir = None
         self.__global_log_level = None
         self.__classes_log_level = {}
         if save:
             self.import_config_files()
             self.import_bin_files()
-            if common.is_win:
+            if common.is_win():
                 self.__clean_bat()
 
     @staticmethod
@@ -101,16 +102,18 @@ class Node():
             binary_interface = None
             if 'binary' in itf and itf['binary'] is not None:
                 binary_interface = tuple(itf['binary'])
-            node = Node(data['name'], cluster, data['auto_bootstrap'], tuple(itf['thrift']), tuple(itf['storage']), data['jmx_port'], remote_debug_port, initial_token, save=False, binary_interface=binary_interface)
+            node = cluster.create_node(data['name'], data['auto_bootstrap'], tuple(itf['thrift']), tuple(itf['storage']), data['jmx_port'], remote_debug_port, initial_token, save=False, binary_interface=binary_interface)
             node.status = data['status']
             if 'pid' in data:
                 node.pid = int(data['pid'])
-            if 'cassandra_dir' in data:
-                node.__cassandra_dir = data['cassandra_dir']
+            if 'install_dir' in data:
+                node.__install_dir = data['install_dir']
             if 'config_options' in data:
                 node.__config_options = data['config_options']
             if 'data_center' in data:
                 node.data_center = data['data_center']
+            if 'workload' in data:
+                node.workload = data['workload']
             return node
         except KeyError as k:
             raise common.LoadError("Error Loading " + filename + ", missing property: " + str(k))
@@ -127,6 +130,21 @@ class Node():
         """
         return os.path.join(self.get_path(), 'bin')
 
+    def get_tool(self, toolname):
+        return common.join_bin(self.get_install_dir(), 'bin', toolname)
+
+    def get_tool_args(self, toolname):
+        return [common.join_bin(self.get_install_dir(), 'bin', toolname)]
+
+    def get_env(self):
+        return common.make_cassandra_env(self.get_install_dir(), self.get_path())
+
+    def get_install_cassandra_root(self):
+        return self.get_install_dir()
+
+    def get_node_cassandra_root(self):
+        return self.get_path()
+
     def get_conf_dir(self):
         """
         Returns the path to the directory where Cassandra config are located
@@ -139,29 +157,42 @@ class Node():
         """
         return self.network_interfaces['storage'][0]
 
-    def get_cassandra_dir(self):
+    def get_install_dir(self):
         """
         Returns the path to the cassandra source directory used by this node.
         """
-        if self.__cassandra_dir is None:
-            return self.cluster.get_cassandra_dir()
+        if self.__install_dir is None:
+            return self.cluster.get_install_dir()
         else:
-            common.validate_cassandra_dir(self.__cassandra_dir)
-            return self.__cassandra_dir
+            common.validate_install_dir(self.__install_dir)
+            return self.__install_dir
 
-    def set_cassandra_dir(self, cassandra_dir=None, cassandra_version=None, verbose=False):
+    def set_install_dir(self, install_dir=None, version=None, verbose=False):
         """
         Sets the path to the cassandra source directory for use by this node.
         """
-        if cassandra_version is None:
-            self.__cassandra_dir = cassandra_dir
-            if cassandra_dir is not None:
-                common.validate_cassandra_dir(cassandra_dir)
+        if version is None:
+            self.__install_dir = install_dir
+            if install_dir is not None:
+                common.validate_install_dir(install_dir)
         else:
-            dir, v = setup(cassandra_version, verbose=verbose)
-            self.__cassandra_dir = dir
+            dir, v = setup(version, verbose=verbose)
+            self.__install_dir = dir
         self.import_config_files()
         return self
+
+    def set_workload(self, workload):
+        raise common.ArgumentError("Cannot set workload on cassandra node")
+
+    def get_cassandra_version(self):
+        try:
+            return common.get_version_from_build(self.get_install_dir())
+        except common.CCMError:
+            return self.cluster.cassandra_version()
+
+    def get_base_cassandra_version(self):
+        version = self.get_cassandra_version()
+        return float(version[:version.index('.')+2])
 
     def set_configuration_options(self, values=None, batch_commitlog=None):
         """
@@ -287,7 +318,6 @@ class Node():
         if len(stderr) > 1:
             print_("[%s ERROR] %s" % (name, stderr.strip()))
 
-
     # This will return when exprs are found or it timeouts
     def watch_log_for(self, exprs, from_mark=None, timeout=600, process=None, verbose=False):
         """
@@ -395,6 +425,7 @@ class Node():
           - replace_token: start the node with the -Dcassandra.replace_token option.
           - replace_address: start the node with the -Dcassandra.replace_address option.
         """
+
         if self.is_running():
             raise NodeError("%s is already running" % self.name)
 
@@ -405,12 +436,12 @@ class Node():
         if wait_other_notice:
             marks = [ (node, node.mark_log()) for node in list(self.cluster.nodes.values()) if node.is_running() ]
 
-        cdir = self.get_cassandra_dir()
-        cass_bin = common.join_bin(cdir, 'bin', 'cassandra')
 
+        cdir = self.get_install_dir()
+        launch_bin = common.join_bin(cdir, 'bin', 'cassandra')
         # Copy back the cassandra scripts since profiling may have modified it the previous time
-        shutil.copy(cass_bin, self.get_bin_dir())
-        cass_bin = common.join_bin(self.get_path(), 'bin', 'cassandra')
+        shutil.copy(launch_bin, self.get_bin_dir())
+        launch_bin = common.join_bin(self.get_path(), 'bin', 'cassandra')
 
         # If Windows, change entries in .bat file to split conf from binaries
         if common.is_win():
@@ -426,16 +457,17 @@ class Node():
             print_(cmd)
             # Yes, it's fragile as shit
             pattern=r'cassandra_parms="-Dlog4j.configuration=log4j-server.properties -Dlog4j.defaultInitOverride=true'
-            common.replace_in_file(cass_bin, pattern, '    ' + pattern + ' ' + cmd + '"')
+            common.replace_in_file(launch_bin, pattern, '    ' + pattern + ' ' + cmd + '"')
 
-        os.chmod(cass_bin, os.stat(cass_bin).st_mode | stat.S_IEXEC)
+        os.chmod(launch_bin, os.stat(launch_bin).st_mode | stat.S_IEXEC)
 
         env = common.make_cassandra_env(cdir, self.get_path())
+
         if common.is_win():
             self._clean_win_jmx();
 
         pidfile = os.path.join(self.get_path(), 'cassandra.pid')
-        args = [ cass_bin, '-p', pidfile, '-Dcassandra.join_ring=%s' % str(join_ring) ]
+        args = [ launch_bin, '-p', pidfile, '-Dcassandra.join_ring=%s' % str(join_ring) ]
         if replace_token is not None:
             args.append('-Dcassandra.replace_token=%s' % str(replace_token))
         if replace_address is not None:
@@ -534,7 +566,7 @@ class Node():
         # New stop-server.bat allows for gentle shutdown on windows. If gentle shutdown
         # does not succeed for any reason, we will revert to the more forceful taskkill.
         # This is necessary intermittently.
-        if self.cluster.version() >= "2.1":
+        if self.get_base_cassandra_version() >= 2.1:
             cass_bin = common.join_bin(self.get_path(), 'bin', 'stop-server')
             pidfile = os.path.join(self.get_path(), 'cassandra.pid')
             args = [ cass_bin, '-p', pidfile]
@@ -580,9 +612,9 @@ class Node():
             return True
 
     def nodetool(self, cmd, capture_output=False):
-        cdir = self.get_cassandra_dir()
-        nodetool = common.join_bin(cdir, 'bin', 'nodetool')
-        env = common.make_cassandra_env(cdir, self.get_path())
+        env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
+        host = self.address()
+        nodetool = self.get_tool('nodetool')
         host = self.address()
         args = [ nodetool, '-h', 'localhost', '-p', str(self.jmx_port)]
         args += cmd.split()
@@ -593,16 +625,20 @@ class Node():
             p = subprocess.Popen(args, env=env)
             p.wait()
 
+    def dsetool(self, cmd):
+        raise common.ArgumentError('Cassandra nodes do not support dsetool')
+
+    def hive(self, show_output=False, hive_options=[]):
+        raise common.ArgumentError('Cassandra nodes do not support hive')
+
     def scrub(self, options):
-        cdir = self.get_cassandra_dir()
-        scrub_bin = common.join_bin(cdir, 'bin', 'sstablescrub')
-        env = common.make_cassandra_env(cdir, self.get_path())
+        scrub_bin = self.get_tool('sstablescrub')
+        env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
         os.execve(scrub_bin, [ common.platform_binary('sstablescrub') ] + options, env)
 
     def run_cli(self, cmds=None, show_output=False, cli_options=[]):
-        cdir = self.get_cassandra_dir()
-        cli = common.join_bin(cdir, 'bin', 'cassandra-cli')
-        env = common.make_cassandra_env(cdir, self.get_path())
+        cli = self.get_tool('cassandra-cli')
+        env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
         host = self.network_interfaces['thrift'][0]
         port = self.network_interfaces['thrift'][1]
         args = [ '-h', host, '-p', str(port) , '--jmxport', str(self.jmx_port) ] + cli_options
@@ -626,20 +662,19 @@ class Node():
                     i = i + 1
 
     def run_cqlsh(self, cmds=None, show_output=False, cqlsh_options=[]):
-        cdir = self.get_cassandra_dir()
-        cli = common.join_bin(cdir, 'bin', 'cqlsh')
-        env = common.make_cassandra_env(cdir, self.get_path())
+        cqlsh = self.get_tool('cqlsh')
+        env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
         host = self.network_interfaces['thrift'][0]
-        if self.cluster.version() >= "2.1":
+        if self.get_base_cassandra_version() >= 2.1:
             port = self.network_interfaces['binary'][1]
         else:
             port = self.network_interfaces['thrift'][1]
         args = cqlsh_options + [ host, str(port) ]
         sys.stdout.flush()
         if cmds is None:
-            os.execve(cli, [ common.platform_binary('cqlsh') ] + args, env)
+            os.execve(cqlsh, [ common.platform_binary('cqlsh') ] + args, env)
         else:
-            p = subprocess.Popen([ cli ] + args, env=env, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+            p = subprocess.Popen([ cqlsh ] + args, env=env, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
             for cmd in cmds.split(';'):
                 p.stdin.write(cmd + ';\n')
             p.stdin.write("quit;\n")
@@ -654,15 +689,6 @@ class Node():
                         print_(log, end='')
                     i = i + 1
 
-    def cli(self):
-        cdir = self.get_cassandra_dir()
-        cli = common.join_bin(cdir, 'bin', 'cassandra-cli')
-        env = common.make_cassandra_env(cdir, self.get_path())
-        host = self.network_interfaces['thrift'][0]
-        port = self.network_interfaces['thrift'][1]
-        args = [ '-h', host, '-p', str(port) , '--jmxport', str(self.jmx_port) ]
-        return CliSession(subprocess.Popen([ cli ] + args, env=env, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE))
-
     def set_log_level(self, new_level, class_name=None):
         known_level = [ 'TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR' ]
         if new_level not in known_level:
@@ -672,9 +698,8 @@ class Node():
             self.__classes_log_level[class_name] = new_level
         else:
             self.__global_log_level = new_level
-        version = self.cluster.version()
         #loggers changed > 2.1
-        if float(version[:version.index('.')+2]) < 2.1:
+        if self.get_base_cassandra_version() < 2.1:
             self.__update_log4j()
         else:
             self.__update_logback()
@@ -719,14 +744,15 @@ class Node():
                 os.mkdir(full_dir)
 
     def run_sstable2json(self, out_file=sys.__stdout__, keyspace=None, datafile=None, column_families=None, enumerate_keys=False):
-        cdir = self.get_cassandra_dir()
-        if self.cluster.version() >= "2.1":
+        print_("running")
+        cdir = self.get_install_cassandra_root()
+        if self.get_base_cassandra_version() >= 2.1:
             sstable2json = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstable2json')
         else:
             sstable2json = common.join_bin(cdir, 'bin', 'sstable2json')
-        env = common.make_cassandra_env(cdir, self.get_path())
+        env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
         datafiles = self.__gather_sstables(datafile,keyspace,column_families)
-
+        print_(datafiles)
         for datafile in datafiles:
             print_("-- {0} -----".format(os.path.basename(datafile)))
             args = [ sstable2json , datafile ]
@@ -737,7 +763,7 @@ class Node():
 
     def run_json2sstable(self, in_file, ks, cf, keyspace=None, datafile=None, column_families=None, enumerate_keys=False):
         cdir = self.get_cassandra_dir()
-        if self.cluster.version() >= "2.1":
+        if self.get_base_cassandra_version() >= 2.1:
             json2sstable = common.join_bin(cdir, os.path.join('tools', 'bin'), 'json2sstable')
         else:
             json2sstable = common.join_bin(cdir, 'bin', 'json2sstable')
@@ -751,7 +777,7 @@ class Node():
 
     def run_sstablesplit(self, datafile=None,  size=None, keyspace=None, column_families=None):
         cdir = self.get_cassandra_dir()
-        if self.cluster.version() >= "2.1":
+        if self.get_base_cassandra_version() >= 2.1:
             sstablesplit = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstablesplit')
         else:
             sstablesplit = common.join_bin(cdir, 'bin', 'sstablesplit')
@@ -778,9 +804,8 @@ class Node():
         if not os.path.exists(keyspace_dir):
             raise common.ArgumentError("Unknown keyspace {0}".format(keyspace))
 
-        version = self.cluster.version()
         # data directory layout is changed from 1.1
-        if float(version[:version.index('.')+2]) < 1.1:
+        if self.get_base_cassandra_version() < 1.1:
             files = glob.glob(os.path.join(keyspace_dir, "{0}*-Data.db".format(column_family)))
         else:
             files = glob.glob(os.path.join(keyspace_dir, column_family or "*", "%s-%s*-Data.db" % (keyspace, column_family)))
@@ -842,34 +867,31 @@ class Node():
     def decommission(self):
         self.nodetool("decommission")
         self.status = Status.DECOMMISIONNED
-        self.__update_config()
+        self._update_config()
 
     def removeToken(self, token):
         self.nodetool("removeToken " + str(token))
 
     def import_config_files(self):
-        self.__update_config()
-
-        conf_dir = os.path.join(self.get_cassandra_dir(), 'conf')
-        for name in os.listdir(conf_dir):
-            filename = os.path.join(conf_dir, name)
-            if os.path.isfile(filename):
-                shutil.copy(filename, self.get_conf_dir())
-
+        self._update_config()
+        self.copy_config_files()
         self.__update_yaml()
-        try:
-            version = common.get_version_from_build(self._Node__cassandra_dir)
-        except common.CCMError:
-            version = self.cluster.version()
         #loggers changed > 2.1
-        if float(version[:version.index('.')+2]) < 2.1:
+        if self.get_base_cassandra_version() < 2.1:
             self.__update_log4j()
         else:
             self.__update_logback()
         self.__update_envfile()
 
+    def copy_config_files(self):
+        conf_dir = os.path.join(self.get_install_dir(), 'conf')
+        for name in os.listdir(conf_dir):
+            filename = os.path.join(conf_dir, name)
+            if os.path.isfile(filename):
+                shutil.copy(filename, self.get_conf_dir())
+
     def import_bin_files(self):
-        bin_dir = os.path.join(self.get_cassandra_dir(), 'bin')
+        bin_dir = os.path.join(self.get_install_dir(), 'bin')
         for name in os.listdir(bin_dir):
             filename = os.path.join(bin_dir, name)
             if os.path.isfile(filename):
@@ -918,16 +940,15 @@ class Node():
 
     def _save(self):
         self.__update_yaml()
-        version = self.cluster.version()
         #loggers changed > 2.1
-        if float(version[:version.index('.')+2]) < 2.1:
+        if self.get_base_cassandra_version() < 2.1:
             self.__update_log4j()
         else:
             self.__update_logback()
         self.__update_envfile()
-        self.__update_config()
+        self._update_config()
 
-    def __update_config(self):
+    def _update_config(self):
         dir_name = self.get_path()
         if not os.path.exists(dir_name):
             os.mkdir(dir_name)
@@ -947,14 +968,16 @@ class Node():
             values['pid'] = self.pid
         if self.initial_token:
             values['initial_token'] = self.initial_token
-        if self.__cassandra_dir is not None:
-            values['cassandra_dir'] = self.__cassandra_dir
+        if self.__install_dir is not None:
+            values['install_dir'] = self.__install_dir
         if self.data_center:
             values['data_center'] = self.data_center
         if self.remote_debug_port:
             values['remote_debug_port'] = self.remote_debug_port
         if self.data_center:
             values['data_center'] = self.data_center
+        if self.workload is not None:
+            values['workload'] = self.workload
         with open(filename, 'w') as f:
             yaml.safe_dump(values, f)
 
@@ -976,7 +999,7 @@ class Node():
             data['seed_provider'][0]['parameters'][0]['seeds'] = ','.join(self.cluster.get_seeds())
         data['listen_address'], data['storage_port'] = self.network_interfaces['storage']
         data['rpc_address'], data['rpc_port'] = self.network_interfaces['thrift']
-        if self.network_interfaces['binary'] is not None and self.cluster.version() >= "1.2":
+        if self.network_interfaces['binary'] is not None and self.get_base_cassandra_version() >= 1.2:
             _, data['native_transport_port'] = self.network_interfaces['binary']
 
         data['data_file_directories'] = [ os.path.join(self.get_path(), 'data') ]
@@ -1053,7 +1076,7 @@ class Node():
         if self.remote_debug_port != '0':
             common.replace_in_file(conf_file, remote_debug_port_pattern, 'JVM_OPTS="$JVM_OPTS -Xdebug -Xnoagent -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=' + str(self.remote_debug_port) + '"')
 
-        if self.cluster.version() < '2.0.1':
+        if self.get_cassandra_version() < '2.0.1':
             common.replace_in_file(conf_file, "-Xss", '    JVM_OPTS="$JVM_OPTS -Xss228k"')
 
         for itf in list(self.network_interfaces.values()):
@@ -1096,7 +1119,7 @@ class Node():
         if not old_status == self.status:
             if old_status == Status.UP and self.status == Status.DOWN:
                 self.pid = None
-            self.__update_config()
+            self._update_config()
 
     def __update_status_win(self):
         cmd = 'tasklist /fi "PID eq ' + str(self.pid) + '"'
@@ -1126,7 +1149,7 @@ class Node():
 
     def __clean_win_pid(self):
         start = common.now_ms()
-        if self.cluster.version() >= '2.1':
+        if self.get_base_cassandra_version() >= 2.1:
             # Spin for 5s waiting for .bat to write the pid file
             pidfile = self.get_path() + "/cassandra.pid"
             while (not os.path.isfile(pidfile)):
@@ -1186,7 +1209,7 @@ class Node():
         pidfile = os.path.join(self.get_path(), 'cassandra.pid')
         try:
             with open(pidfile, 'r') as f:
-                if common.is_win() and self.cluster.version() >= '2.1':
+                if common.is_win() and self.get_base_cassandra_version() >= 2.1:
                     self.pid = int(f.readline().strip().decode('utf-16'))
                 else:
                     self.pid = int(f.readline().strip())
@@ -1212,7 +1235,7 @@ class Node():
         return datafiles
 
     def _clean_win_jmx(self):
-        if common.get_version_from_build(node_path=self.get_path()) >= '2.1':
+        if self.get_base_cassandra_version() >= 2.1:
             sh_file = os.path.join(common.CASSANDRA_CONF_DIR, common.CASSANDRA_WIN_ENV)
             dst = os.path.join(self.get_path(), sh_file)
             common.replace_in_file(dst, "JMX_PORT=", "    $JMX_PORT=\"" + self.jmx_port + "\"")
