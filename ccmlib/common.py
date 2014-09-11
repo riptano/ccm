@@ -371,22 +371,10 @@ def get_version_from_build(install_dir=None, node_path=None):
         if os.path.exists(version_file):
             with open(version_file) as f:
                 return f.read().strip()
-        # Binary dse installs will have a ds_version.txt
-        version_file = os.path.join(install_dir, 'ds_version.txt')
-        if os.path.exists(version_file):
-            with open(version_file) as f:
-                line = f.read().strip()
-                match = re.search('DSVersion=([0-9.]+)', line)
-                if match:
-                    return match.group(1)
-        # Source dse installs we can read from build.properties.default
-        properties = os.path.join(install_dir, 'build.properties.default')
-        with open(properties) as f:
-            for line in f:
-                match = re.search('base\.version:\s*([0-9.]+)', line)
-                if match:
-                    return match.group(1)
-
+        # For DSE look for a dse*.jar and extract the version number
+        dse_version = get_dse_version(install_dir)
+        if (dse_version is not None):
+            return dse_version
         # Source cassandra installs we can read from build.xml
         build = os.path.join(install_dir, 'build.xml')
         with open(build) as f:
@@ -395,6 +383,14 @@ def get_version_from_build(install_dir=None, node_path=None):
                 if match:
                     return match.group(1)
     raise CCMError("Cannot find version")
+
+def get_dse_version(install_dir):
+    for root, dirs, files in os.walk(install_dir):
+        for file in files:
+            match = re.search('^dse-([0-9.]+)(?:-SNAPSHOT)?\.jar', file)
+            if match:
+                return match.group(1)
+    return None
 
 def get_dse_cassandra_version(install_dir):
     clib = os.path.join(install_dir, 'resources', 'cassandra', 'lib')

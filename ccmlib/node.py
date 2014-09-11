@@ -744,14 +744,15 @@ class Node(object):
                 os.mkdir(full_dir)
 
     def run_sstable2json(self, out_file=sys.__stdout__, keyspace=None, datafile=None, column_families=None, enumerate_keys=False):
-        cdir = self.get_cassandra_dir()
+        print_("running")
+        cdir = self.get_install_cassandra_root()
         if self.get_base_cassandra_version() >= 2.1:
             sstable2json = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstable2json')
         else:
             sstable2json = common.join_bin(cdir, 'bin', 'sstable2json')
-        env = common.make_cassandra_env(cdir, self.get_path())
+        env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
         datafiles = self.__gather_sstables(datafile,keyspace,column_families)
-
+        print_(datafiles)
         for datafile in datafiles:
             print_("-- {0} -----".format(os.path.basename(datafile)))
             args = [ sstable2json , datafile ]

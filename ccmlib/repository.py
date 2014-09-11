@@ -23,12 +23,11 @@ DSE_ARCHIVE="http://downloads.datastax.com/enterprise/dse-%s-bin.tar.gz"
 ARCHIVE="http://archive.apache.org/dist/cassandra"
 GIT_REPO="http://git-wip-us.apache.org/repos/asf/cassandra.git"
 GITHUB_TAGS="https://api.github.com/repos/apache/cassandra/git/refs/tags"
-DSE_GIT_REPO="git@github.com:riptano/bdp.git"
 
 def setup(version, verbose=False):
     binary = False
     if version.startswith('git:'):
-        clone_development(GIT_REPO, version, 'Cassandra', verbose=verbose)
+        clone_development(GIT_REPO, version, verbose=verbose)
         return (version_directory(version), None)
     elif version.startswith('binary:'):
         version = version.replace('binary:','')
@@ -42,9 +41,6 @@ def setup(version, verbose=False):
     return (cdir, version)
 
 def setup_dse(version, username, password, verbose=False):
-    if version.startswith('git:'):
-        clone_development(DSE_GIT_REPO, version, 'DSE', verbose)
-        return (version_directory(version), None)
     cdir = version_directory(version)
     if cdir is None:
         download_dse_version(version, username, password, verbose=verbose)
@@ -56,7 +52,7 @@ def validate(path):
         _, version = os.path.split(os.path.normpath(path))
         setup(version)
 
-def clone_development(git_repo, version, product, verbose=False):
+def clone_development(git_repo, version, verbose=False):
     local_git_cache = os.path.join(__get_dir(), '_git_cache')
     target_dir = os.path.join(__get_dir(), version.replace(':', '_')) # handle git branches like 'git:trunk'.
     git_branch = version[4:] # the part of the version after the 'git:'
@@ -67,14 +63,14 @@ def clone_development(git_repo, version, product, verbose=False):
             #remote fetches we need to perform:
             if not os.path.exists(local_git_cache):
                 if verbose:
-                    print_("Cloning %s..." % product)
+                    print_("Cloning Cassandra...")
                 out = subprocess.call(
                     ['git', 'clone', '--mirror', git_repo, local_git_cache],
                     cwd=__get_dir(), stdout=lf, stderr=lf)
                 assert out == 0, "Could not do a git clone"
             else:
                 if verbose:
-                    print_("Fetching %s updates..." % product)
+                    print_("Fetching Cassandra updates...")
                 out = subprocess.call(
                     ['git', 'fetch', '-fup', 'origin', '+refs/*:refs/*'],
                     cwd=local_git_cache, stdout=lf, stderr=lf)
@@ -83,7 +79,7 @@ def clone_development(git_repo, version, product, verbose=False):
             if not os.path.exists(target_dir):
                 # development branch doesn't exist. Check it out.
                 if verbose:
-                    print_("Cloning %s (from local cache)" % product)
+                    print_("Cloning Cassandra (from local cache)")
 
                 # git on cygwin appears to be adding `cwd` to the commands which is breaking clone
                 if sys.platform == "cygwin":
@@ -100,7 +96,7 @@ def clone_development(git_repo, version, product, verbose=False):
                 if int(out) != 0:
                     raise CCMError("Could not check out git branch %s. Is this a valid branch name? (see last.log for details)" % git_branch)
                 # now compile
-                compile_version(git_branch, target_dir, product, verbose)
+                compile_version(git_branch, target_dir, verbose)
             else: # branch is already checked out. See if it is behind and recompile if needed.
                 out = subprocess.call(['git', 'fetch', 'origin'], cwd=target_dir, stdout=lf, stderr=lf)
                 assert out == 0, "Could not do a git fetch"
@@ -114,7 +110,7 @@ def clone_development(git_repo, version, product, verbose=False):
                     assert out == 0, "Could not run 'ant realclean'"
 
                     # now compile
-                    compile_version(git_branch, target_dir, product, verbose)
+                    compile_version(git_branch, target_dir, verbose)
         except:
             # wipe out the directory if anything goes wrong. Otherwise we will assume it has been compiled the next time it runs.
             try:
@@ -193,13 +189,13 @@ def download_version(version, url=None, verbose=False, binary=False):
             raise CCMError("Building C* version %s failed. Attempted to delete %s but failed. This will need to be manually deleted" % (version, target_dir))
         raise e
 
-def compile_version(version, target_dir, product, verbose=False):
+def compile_version(version, target_dir, verbose=False):
     # compiling cassandra and the stress tool
     logfile = os.path.join(__get_dir(), "last.log")
     if verbose:
-        print_("Compiling %s %s ..." % (product, version))
+        print_("Compiling Cassandra %s ..." % version)
     with open(logfile, 'w') as lf:
-        lf.write("--- %s Build -------------------\n" % product)
+        lf.write("--- Cassandra Build -------------------\n")
         try:
             # Patch for pending Cassandra issue: https://issues.apache.org/jira/browse/CASSANDRA-5543
             # Similar patch seen with buildbot
@@ -211,9 +207,9 @@ def compile_version(version, target_dir, product, verbose=False):
                 ret_val = subprocess.call([platform_binary('ant'),'jar'], cwd=target_dir, stdout=lf, stderr=lf)
                 attempt += 1
             if ret_val is not 0:
-                raise CCMError("Error compiling %s. See %s for details" % (product, logfile))
+                raise CCMError("Error compiling Cassandra. See %s for details" % logfile)
         except OSError as e:
-            raise CCMError("Error compiling %s. Is ant installed? See %s for details" % (product, logfile))
+            raise CCMError("Error compiling Cassandra. Is ant installed? See %s for details" % logfile)
 
         lf.write("\n\n--- cassandra/stress build ------------\n")
         stress_dir = os.path.join(target_dir, "tools", "stress") if (
