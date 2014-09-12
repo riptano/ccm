@@ -94,11 +94,12 @@ class ClusterCreateCmd(Cmd):
             print_("Can't set --vnodes if not populating cluster in this command.")
             parser.print_help()
             exit(1)
-        try:
-            common.validate_cassandra_dir(options.cassandra_dir)
-        except ArgumentError:
-            parser.print_help()
-            parser.error("%s is not a valid cassandra directory. You must define a cassandra dir or version." % options.cassandra_dir)
+        if not options.cassandra_version:
+            try:
+                common.validate_cassandra_dir(options.cassandra_dir)
+            except ArgumentError:
+                parser.print_help()
+                parser.error("%s is not a valid cassandra directory. You must define a cassandra dir or version." % options.cassandra_dir)
 
     def run(self):
         try:
