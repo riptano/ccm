@@ -4,6 +4,7 @@ import sys
 from six import print_
 
 from ccmlib import common, repository
+from ccmlib.common import ArgumentError
 from ccmlib.node import Node, NodeError
 from ccmlib.cluster import Cluster
 from ccmlib.cmds.command import Cmd
@@ -93,6 +94,11 @@ class ClusterCreateCmd(Cmd):
             print_("Can't set --vnodes if not populating cluster in this command.")
             parser.print_help()
             exit(1)
+        try:
+            common.validate_cassandra_dir(options.cassandra_dir)
+        except ArgumentError:
+            parser.print_help()
+            parser.error("%s is not a valid cassandra directory. You must define a cassandra dir or version." % options.cassandra_dir)
 
     def run(self):
         try:
