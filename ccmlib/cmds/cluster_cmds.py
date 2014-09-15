@@ -571,6 +571,11 @@ class ClusterUpdateconfCmd(Cmd):
             print_(str(e), file=sys.stderr)
             exit(1)
 
+        if self.options.yaml_file is not None:
+            if not os.path.exists(self.options.yaml_file):
+                print_("%s does not appear to be a valid file" % self.options.yaml_file)
+                exit(1)
+
     def run(self):
         self.setting['hinted_handoff_enabled'] = self.options.hinted_handoff
 
