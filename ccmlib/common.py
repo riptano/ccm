@@ -353,12 +353,9 @@ def get_cassandra_dir_from_cluster_conf(node_path):
                 return match.group(1)
     return None
 
-#This does not recursively merge nested structures.
 def yaml_merge(primary, secondary):
-    merged = {}
-    for k, v in secondary.items():
-        if k not in primary:
+    merged = secondary.copy()
+    for k, v in primary.items():
+        if k not in merged:
             merged[k] = v
-        else:
-            merged[k] = primary[k]
     return merged
