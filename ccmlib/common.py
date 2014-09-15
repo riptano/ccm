@@ -352,3 +352,10 @@ def get_cassandra_dir_from_cluster_conf(node_path):
             if match:
                 return match.group(1)
     return None
+
+def yaml_merge(primary, secondary):
+    merged = secondary.copy()
+    for k, v in primary.items():
+        if k not in merged:
+            merged[k] = v
+    return merged

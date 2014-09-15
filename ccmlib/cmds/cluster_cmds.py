@@ -560,6 +560,7 @@ class ClusterUpdateconfCmd(Cmd):
             dest="cl_batch", default=False, help="Set commit log to batch mode")
         parser.add_option('--rt', '--rpc-timeout', action="store", type='int',
             dest="rpc_timeout", help="Set rpc timeout")
+        parser.add_option('-y', '--yaml', action="store", type="string", dest="yaml_file", help="Path to a yaml file containing options to be copied into each node's cassandra.yaml. Useful for defining nested structures.", default=None)
         return parser
 
     def validate(self, parser, options, args):
@@ -570,8 +571,17 @@ class ClusterUpdateconfCmd(Cmd):
             print_(str(e), file=sys.stderr)
             exit(1)
 
+        if self.options.yaml_file is not None:
+            if not os.path.exists(self.options.yaml_file):
+                print_("%s does not appear to be a valid file" % self.options.yaml_file)
+                exit(1)
+
     def run(self):
         self.setting['hinted_handoff_enabled'] = self.options.hinted_handoff
+
+        if self.options.yaml_file is not None:
+            self.setting["yaml_file"] = self.options.yaml_file
+
         if self.options.rpc_timeout is not None:
             if self.cluster.version() < "1.2":
                 self.setting['rpc_timeout_in_ms'] = self.options.rpc_timeout
