@@ -2,8 +2,8 @@
 from __future__ import with_statement
 
 from six import print_
-from six.moves import urllib
 
+from six.moves import urllib
 import os
 import shutil
 import subprocess
@@ -17,8 +17,9 @@ import re
 from distutils.version import LooseVersion
 
 from ccmlib.common import (ArgumentError, CCMError, get_default_path,
-                           platform_binary, validate_cassandra_dir)
+                           platform_binary, validate_install_dir)
 
+DSE_ARCHIVE="http://downloads.datastax.com/enterprise/dse-%s-bin.tar.gz"
 ARCHIVE="http://archive.apache.org/dist/cassandra"
 GIT_REPO="http://git-wip-us.apache.org/repos/asf/cassandra.git"
 GITHUB_TAGS="https://api.github.com/repos/apache/cassandra/git/refs/tags"
@@ -26,7 +27,7 @@ GITHUB_TAGS="https://api.github.com/repos/apache/cassandra/git/refs/tags"
 def setup(version, verbose=False):
     binary = False
     if version.startswith('git:'):
-        clone_development(version, verbose=verbose)
+        clone_development(GIT_REPO, version, verbose=verbose)
         return (version_directory(version), None)
     elif version.startswith('binary:'):
         version = version.replace('binary:','')
@@ -39,12 +40,19 @@ def setup(version, verbose=False):
         cdir = version_directory(version)
     return (cdir, version)
 
+def setup_dse(version, username, password, verbose=False):
+    cdir = version_directory(version)
+    if cdir is None:
+        download_dse_version(version, username, password, verbose=verbose)
+        cdir = version_directory(version)
+    return (cdir, version)
+
 def validate(path):
     if path.startswith(__get_dir()):
         _, version = os.path.split(os.path.normpath(path))
         setup(version)
 
-def clone_development(version, verbose=False):
+def clone_development(git_repo, version, verbose=False):
     local_git_cache = os.path.join(__get_dir(), '_git_cache')
     target_dir = os.path.join(__get_dir(), version.replace(':', '_')) # handle git branches like 'git:trunk'.
     git_branch = version[4:] # the part of the version after the 'git:'
@@ -57,7 +65,7 @@ def clone_development(version, verbose=False):
                 if verbose:
                     print_("Cloning Cassandra...")
                 out = subprocess.call(
-                    ['git', 'clone', '--mirror', GIT_REPO, local_git_cache],
+                    ['git', 'clone', '--mirror', git_repo, local_git_cache],
                     cwd=__get_dir(), stdout=lf, stderr=lf)
                 assert out == 0, "Could not do a git clone"
             else:
@@ -112,6 +120,27 @@ def clone_development(version, verbose=False):
                 raise CCMError("Building C* version %s failed. Attempted to delete %s but failed. This will need to be manually deleted" % (version, target_dir))
             raise
 
+def download_dse_version(version, username, password, verbose=False):
+    url = DSE_ARCHIVE % version
+    _, target = tempfile.mkstemp(suffix=".tar.gz", prefix="ccm-")
+    try:
+        __download(url, target, username=username, password=password, show_progress=verbose)
+        if verbose:
+            print_("Extracting %s as version %s ..." % (target, version))
+        tar = tarfile.open(target)
+        dir = tar.next().name.split("/")[0]
+        tar.extractall(path=__get_dir())
+        tar.close()
+        target_dir = os.path.join(__get_dir(), version)
+        if os.path.exists(target_dir):
+            shutil.rmtree(target_dir)
+        shutil.move(os.path.join(__get_dir(), dir), target_dir)
+    except urllib.error.URLError as e:
+        msg = "Invalid version %s" % version if url is None else "Invalid url %s" % url
+        msg = msg + " (underlying error is: %s)" % str(e)
+        raise ArgumentError(msg)
+    except tarfile.ReadError as e:
+        raise ArgumentError("Unable to uncompress downloaded file: %s" % str(e))
 
 def download_version(version, url=None, verbose=False, binary=False):
     """Download, extract, and build Cassandra tarball.
@@ -166,7 +195,7 @@ def compile_version(version, target_dir, verbose=False):
     if verbose:
         print_("Compiling Cassandra %s ..." % version)
     with open(logfile, 'w') as lf:
-        lf.write("--- Cassandra build -------------------\n")
+        lf.write("--- Cassandra Build -------------------\n")
         try:
             # Patch for pending Cassandra issue: https://issues.apache.org/jira/browse/CASSANDRA-5543
             # Similar patch seen with buildbot
@@ -210,7 +239,7 @@ def version_directory(version):
     dir = os.path.join(__get_dir(), version)
     if os.path.exists(dir):
         try:
-            validate_cassandra_dir(dir)
+            validate_install_dir(dir)
             return dir
         except ArgumentError as e:
             shutil.rmtree(dir)
@@ -257,7 +286,14 @@ def get_tagged_version_numbers(series='stable'):
     else:
         raise AssertionError("unknown release series: {series}".format(series=series))
 
-def __download(url, target, show_progress=False):
+def __download(url, target, username=None, password=None, show_progress=False):
+    if username is not None:
+        password_mgr = urllib.request.HTTPPasswordMgrWithDefaultRealm()
+        password_mgr.add_password(None, url, username, password)
+        handler = urllib.request.HTTPBasicAuthHandler(password_mgr)
+        opener = urllib.request.build_opener(handler)
+        urllib.request.install_opener(opener)
+
     u = urllib.request.urlopen(url)
     f = open(target, 'wb')
     meta = u.info()

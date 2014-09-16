@@ -35,7 +35,10 @@ def node_cmds():
         "status",
         "setdir",
         "version",
-        "nodetool"
+        "nodetool",
+        "dsetool",
+        "setworkload",
+        "hive"
     ]
 
 class NodeShowCmd(Cmd):
@@ -215,6 +218,20 @@ class _NodeToolCmd(Cmd):
     def run(self):
         self.node.nodetool(self.nodetool_cmd)
 
+class _NodeToolCmd(Cmd):
+    def get_parser(self):
+        parser = self._get_default_parser(self.usage, self.description())
+        return parser
+
+    def description(self):
+        return self.descr_text
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
+
+    def run(self):
+        self.node.nodetool(self.nodetool_cmd)
+
 class NodeNodetoolCmd(_NodeToolCmd):
     usage = "usage: ccm node_name nodetool [options]"
     descr_text = "Run nodetool (connecting to node name)"
@@ -274,6 +291,27 @@ class NodeScrubCmd(_NodeToolCmd):
     usage = "usage: ccm node_name scrub [options]"
     nodetool_cmd = 'scrub'
     descr_text = "Run scrub on node name"
+
+class _DseToolCmd(Cmd):
+    def get_parser(self):
+        parser = self._get_default_parser(self.usage, self.description())
+        return parser
+
+    def description(self):
+        return self.descr_text
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
+
+    def run(self):
+        self.node.dsetool(self.dsetool_cmd)
+
+class NodeDsetoolCmd(_DseToolCmd):
+    usage = "usage: ccm node_name dsetool [options]"
+    descr_text = "Run dsetool (connecting to node name)"
+
+    def run(self):
+        self.node.dsetool(" ".join(self.args[1:]))
 
 class NodeCliCmd(Cmd):
     def description(self):
@@ -432,7 +470,7 @@ class NodeUpdateconfCmd(Cmd):
     def run(self):
         self.setting['hinted_handoff_enabled'] = self.options.hinted_handoff
         if self.options.rpc_timeout is not None:
-            if self.node.cluster.version() < "1.2":
+            if self.node.cluster.cassandra_version() < "1.2":
                 self.setting['rpc_timeout_in_ms'] = self.options.rpc_timeout
             else:
                 self.setting['read_request_timeout_in_ms'] = self.options.rpc_timeout
@@ -522,10 +560,10 @@ class NodeSetdirCmd(Cmd):
     def get_parser(self):
         usage = "usage: ccm node_name setdir [options]"
         parser =  self._get_default_parser(usage, self.description())
-        parser.add_option('-v', "--cassandra-version", type="string", dest="cassandra_version",
-            help="Download and use provided cassandra version. If version is of the form 'git:<branch name>', then the specified branch will be downloaded from the git repo and compiled. (takes precedence over --cassandra-dir)", default=None)
-        parser.add_option("--cassandra-dir", type="string", dest="cassandra_dir",
-            help="Path to the cassandra directory to use [default %default]", default="./")
+        parser.add_option('-v', "--version", type="string", dest="version",
+            help="Download and use provided cassandra or dse version. If version is of the form 'git:<branch name>', then the specified branch will be downloaded from the git repo and compiled. (takes precedence over --install-dir)", default=None)
+        parser.add_option("--install-dir", type="string", dest="install_dir",
+            help="Path to the cassandra or dse directory to use [default %default]", default="./")
         return parser
 
     def validate(self, parser, options, args):
@@ -533,8 +571,49 @@ class NodeSetdirCmd(Cmd):
 
     def run(self):
         try:
-            self.node.set_cassandra_dir(cassandra_dir=self.options.cassandra_dir, cassandra_version=self.options.cassandra_version, verbose=True)
+            self.node.set_install_dir(install_dir=self.options.install_dir, version=self.options.version, verbose=True)
         except common.ArgumentError as e:
             print_(str(e), file=sys.stderr)
             exit(1)
 
+class NodeSetworkloadCmd(Cmd):
+    def description(self):
+        return "Sets the workload for a DSE node"
+
+    def get_parser(self):
+        usage = "usage: ccm node_name setworkload [cassandra|solr|hadoop|spark|cfs]"
+        parser = self._get_default_parser(usage, self.description())
+        return parser
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
+        self.workload = args[1]
+        workloads = ['cassandra','solr','hadoop','spark','cfs']
+        if not self.workload in workloads:
+            print_(self.workload, ' is not a valid workload')
+            exit(1)
+
+    def run(self):
+        try:
+            self.node.set_workload(workload=self.workload)
+        except common.ArgumentError as e:
+            print_(str(e), file=sys.stderr)
+            exit(1)
+
+class NodeHiveCmd(Cmd):
+    def description(self):
+        return "Launch a hive session connected to this node"
+
+    def get_parser(self):
+        usage = "usage: ccm node_name hive [options] [hive_options]"
+        parser = self._get_default_parser(usage, self.description(), ignore_unknown_options=True)
+        parser.add_option('-v', '--verbose', action="store_true", dest="verbose",
+                          help="With --exec, show cli output after completion", default=False)
+        return parser
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
+        self.hive_options = parser.get_ignored() + args[1:]
+
+    def run(self):
+        self.node.hive(self.options.verbose, self.hive_options)

@@ -7,6 +7,8 @@ from ccmlib import common, repository
 from ccmlib.node import Node, NodeError
 from ccmlib.cluster import Cluster
 from ccmlib.cmds.command import Cmd
+from ccmlib.dse_cluster import DseCluster
+from ccmlib.cluster_factory import ClusterFactory
 
 def cluster_cmds():
     return [
@@ -53,10 +55,16 @@ class ClusterCreateCmd(Cmd):
             help="Don't switch to the newly created cluster", default=False)
         parser.add_option('-p', '--partitioner', type="string", dest="partitioner",
             help="Set the cluster partitioner class")
-        parser.add_option('-v', "--cassandra-version", type="string", dest="cassandra_version",
-            help="Download and use provided cassandra version. If version is of the form 'git:<branch name>', then the specified branch will be downloaded from the git repo and compiled. (takes precedence over --cassandra-dir)", default=None)
-        parser.add_option("--cassandra-dir", type="string", dest="cassandra_dir",
-            help="Path to the cassandra directory to use [default %default]", default="./")
+        parser.add_option('-v', "--version", type="string", dest="version",
+            help="Download and use provided cassandra or dse version. If version is of the form 'git:<branch name>', then the specified cassandra branch will be downloaded from the git repo and compiled. (takes precedence over --install-dir)", default=None)
+        parser.add_option("--dse", action="store_true", dest="dse",
+            help="Use with -v to indicate that the version being loaded is DSE")
+        parser.add_option("--dse-username", type="string", dest="dse_username",
+            help="The username to use to download DSE with", default=None)
+        parser.add_option("--dse-password", type="string", dest="dse_password",
+            help="The password to use to download DSE with", default=None)
+        parser.add_option("--install-dir", type="string", dest="install_dir",
+            help="Path to the cassandra or dse directory to use [default %default]", default="./")
         parser.add_option('-n', '--nodes', type="string", dest="nodes",
             help="Populate the new cluster with that number of nodes (a single int or a colon-separate list of ints for multi-dc setups)")
         parser.add_option('-i', '--ipprefix', type="string", dest="ipprefix",
@@ -96,7 +104,10 @@ class ClusterCreateCmd(Cmd):
 
     def run(self):
         try:
-            cluster = Cluster(self.path, self.name, cassandra_dir=self.options.cassandra_dir, cassandra_version=self.options.cassandra_version, verbose=True)
+            if common.isDse(self.options.install_dir) or self.options.dse:
+                cluster = DseCluster(self.path, self.name, install_dir=self.options.install_dir, version=self.options.version, dse_username=self.options.dse_username, dse_password=self.options.dse_password, verbose=True)
+            else:
+                cluster = Cluster(self.path, self.name, install_dir=self.options.install_dir, version=self.options.version, verbose=True)
         except OSError as e:
             cluster_dir = os.path.join(self.path, self.name)
             import traceback
@@ -106,12 +117,12 @@ class ClusterCreateCmd(Cmd):
         if self.options.partitioner:
             cluster.set_partitioner(self.options.partitioner)
 
-        if cluster.version() >= "1.2.5":
+        if cluster.cassandra_version() >= "1.2.5":
             self.options.binary_protocol = True
         if self.options.binary_protocol:
             cluster.set_configuration_options({ 'start_native_transport' : True })
 
-        if cluster.version() >= "1.2" and self.options.vnodes:
+        if cluster.cassandra_version() >= "1.2" and self.options.vnodes:
             cluster.set_configuration_options({ 'num_tokens' : 256 })
 
         if not self.options.no_switch:
@@ -243,7 +254,7 @@ class ClusterPopulateCmd(Cmd):
 
     def run(self):
         try:
-            if self.cluster.version() >= "1.2" and self.options.vnodes:
+            if self.cluster.cassandra_version() >= "1.2" and self.options.vnodes:
                 self.cluster.set_configuration_options({ 'num_tokens' : 256 })
 
             if not (self.options.ipprefix or self.options.ipformat):
@@ -338,7 +349,7 @@ class ClusterRemoveCmd(Cmd):
     def run(self):
         if self.other_cluster:
             # Remove the specified cluster:
-            cluster = Cluster.load(self.path, self.other_cluster)
+            cluster = ClusterFactory.load(self.path, self.other_cluster)
             cluster.remove()
             # Remove CURRENT flag if the specified cluster is the current cluster:
             if self.other_cluster == common.current_cluster_name(self.path):
@@ -381,15 +392,15 @@ class ClusterLivesetCmd(Cmd):
 
 class ClusterSetdirCmd(Cmd):
     def description(self):
-        return "Set the cassandra directory to use"
+        return "Set the install directory (cassandra or dse) to use"
 
     def get_parser(self):
         usage = "usage: ccm setdir [options]"
         parser =  self._get_default_parser(usage, self.description())
-        parser.add_option('-v', "--cassandra-version", type="string", dest="cassandra_version",
-            help="Download and use provided cassandra version. If version is of the form 'git:<branch name>', then the specified branch will be downloaded from the git repo and compiled. (takes precedence over --cassandra-dir)", default=None)
-        parser.add_option("--cassandra-dir", type="string", dest="cassandra_dir",
-            help="Path to the cassandra directory to use [default %default]", default="./")
+        parser.add_option('-v', "--version", type="string", dest="version",
+            help="Download and use provided cassandra or dse version. If version is of the form 'git:<branch name>', then the specified cassandra branch will be downloaded from the git repo and compiled. (takes precedence over --install-dir)", default=None)
+        parser.add_option("--install-dir", type="string", dest="install_dir",
+            help="Path to the cassandra or dse directory to use [default %default]", default="./")
         return parser
 
     def validate(self, parser, options, args):
@@ -397,7 +408,7 @@ class ClusterSetdirCmd(Cmd):
 
     def run(self):
         try:
-            self.cluster.set_cassandra_dir(cassandra_dir=self.options.cassandra_dir, cassandra_version=self.options.cassandra_version, verbose=True)
+            self.cluster.set_install_dir(install_dir=self.options.install_dir, version=self.options.version, verbose=True)
         except common.ArgumentError as e:
             print_(str(e), file=sys.stderr)
             exit(1)
@@ -583,7 +594,7 @@ class ClusterUpdateconfCmd(Cmd):
             self.setting["yaml_file"] = self.options.yaml_file
 
         if self.options.rpc_timeout is not None:
-            if self.cluster.version() < "1.2":
+            if self.cluster.cassandra_version() < "1.2":
                 self.setting['rpc_timeout_in_ms'] = self.options.rpc_timeout
             else:
                 self.setting['read_request_timeout_in_ms'] = self.options.rpc_timeout
