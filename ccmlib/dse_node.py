@@ -8,6 +8,7 @@ import shutil
 import stat
 import subprocess
 import time
+import yaml
 
 from ccmlib.node import Node
 from ccmlib import common
@@ -189,11 +190,22 @@ class DseNode(Node):
         p = subprocess.Popen(args, env=env)
         p.wait()
 
+    def import_dse_config_files(self):
+        self._update_config()
+        if not os.path.isdir(os.path.join(self.get_path(), 'resources', 'dse', 'conf')):
+            os.makedirs(os.path.join(self.get_path(), 'resources', 'dse', 'conf'))
+        common.copy_directory(os.path.join(self.get_install_dir(), 'resources', 'dse', 'conf'), os.path.join(self.get_path(), 'resources', 'dse', 'conf'))
+        self.__update_yaml()
+
     def copy_config_files(self):
-        os.makedirs(os.path.join(self.get_path(), 'resources', 'dse', 'conf'))
-        os.makedirs(os.path.join(self.get_path(), 'resources', 'cassandra', 'conf'))
-        os.makedirs(os.path.join(self.get_path(), 'resources', 'hadoop', 'conf'))
-        os.makedirs(os.path.join(self.get_path(), 'resources', 'hive', 'conf'))
+        if not os.path.isdir(os.path.join(self.get_path(), 'resources', 'dse', 'conf')):
+            os.makedirs(os.path.join(self.get_path(), 'resources', 'dse', 'conf'))
+        if not os.path.isdir(os.path.join(self.get_path(), 'resources', 'cassandra', 'conf')):
+            os.makedirs(os.path.join(self.get_path(), 'resources', 'cassandra', 'conf'))
+        if not os.path.isdir(os.path.join(self.get_path(), 'resources', 'hadoop', 'conf')):
+            os.makedirs(os.path.join(self.get_path(), 'resources', 'hadoop', 'conf'))
+        if not os.path.isdir(os.path.join(self.get_path(), 'resources', 'hive', 'conf')):
+            os.makedirs(os.path.join(self.get_path(), 'resources', 'hive', 'conf'))
         common.copy_directory(os.path.join(self.get_install_dir(), 'resources', 'dse', 'conf'), os.path.join(self.get_path(), 'resources', 'dse', 'conf'))
         common.copy_directory(os.path.join(self.get_install_dir(), 'resources', 'cassandra', 'conf'), os.path.join(self.get_path(), 'resources', 'cassandra', 'conf'))
         common.copy_directory(os.path.join(self.get_install_dir(), 'resources', 'hive', 'conf'), os.path.join(self.get_path(), 'resources', 'hive', 'conf'))
@@ -202,3 +214,37 @@ class DseNode(Node):
         os.makedirs(os.path.join(self.get_path(), 'resources', 'cassandra', 'bin'))
         common.copy_directory(os.path.join(self.get_install_dir(), 'bin'), self.get_bin_dir())
         common.copy_directory(os.path.join(self.get_install_dir(), 'resources', 'cassandra', 'bin'), os.path.join(self.get_path(), 'resources', 'cassandra', 'bin'))
+
+    def __update_yaml(self):
+        conf_file = os.path.join(self.get_path(), 'resources', 'dse', 'conf', 'dse.yaml')
+        with open(conf_file, 'r') as f:
+            data = yaml.load(f)
+
+        data['system_key_directory'] = os.path.join(self.get_path(), 'keys')
+
+        full_options = dict(list(self.cluster._dse_config_options.items()))
+        for name in full_options:
+            if not name is 'dse_yaml_file':
+                value = full_options[name]
+                if value is None:
+                    try:
+                        del data[name]
+                    except KeyError:
+                        # it is fine to remove a key not there:w
+                        pass
+                else:
+                    data[name] = full_options[name]
+
+        if 'dse_yaml_file' in full_options:
+            with open(full_options['dse_yaml_file'], 'r') as f:
+                user_yaml = yaml.load(f)
+                data = common.yaml_merge(user_yaml, data)
+
+        with open(conf_file, 'w') as f:
+            yaml.safe_dump(data, f, default_flow_style=False)
+
+    def _get_directories(self):
+        dirs = {}
+        for i in ['data', 'commitlogs', 'saved_caches', 'logs', 'bin', 'keys', 'resources']:
+            dirs[i] = os.path.join(self.get_path(), i)
+        return dirs

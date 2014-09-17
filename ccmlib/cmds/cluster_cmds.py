@@ -27,6 +27,7 @@ def cluster_cmds():
         "compact",
         "stress",
         "updateconf",
+        "updatedseconf",
         "updatelog4j",
         "cli",
         "setdir",
@@ -604,6 +605,35 @@ class ClusterUpdateconfCmd(Cmd):
                 self.setting['request_timeout_in_ms'] = self.options.rpc_timeout
 
         self.cluster.set_configuration_options(values=self.setting, batch_commitlog=self.options.cl_batch)
+
+class ClusterUpdatedseconfCmd(Cmd):
+    def description(self):
+        return "Update the dse config files for all nodes"
+
+    def get_parser(self):
+        usage = "usage: ccm updatedseconf [options] [ new_setting | ...  ], where new_setting should be a string of the form 'max_solr_concurrency_per_core: 2'"
+        parser = self._get_default_parser(usage, self.description())
+        parser.add_option('-y', '--yaml', action="store", type="string", dest="yaml_file", help="Path to a yaml file containing options to be copied into each node's dse.yaml. Useful for defining nested structures.", default=None)
+        return parser
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, load_cluster=True)
+        try:
+            self.setting = common.parse_settings(args)
+        except common.ArgumentError as e:
+            print_(str(e), file=sys.stderr)
+            exit(1)
+
+        if self.options.yaml_file is not None:
+            if not os.path.exists(self.options.yaml_file):
+                print_("%s does not appear to be a valid file" % self.options.yaml_file)
+                exit(1)
+
+    def run(self):
+        if self.options.yaml_file is not None:
+            self.setting["dse_yaml_file"] = self.options.yaml_file
+
+        self.cluster.set_dse_configuration_options(values=self.setting)
 
 #
 # Class implements the functionality of updating log4j-server.properties

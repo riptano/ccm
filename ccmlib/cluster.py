@@ -21,6 +21,7 @@ class Cluster(object):
         self.seeds = []
         self.partitioner = partitioner
         self._config_options = {}
+        self._dse_config_options = {}
         self.__log_level = "INFO"
         self.__path = path
         self.__version = None
@@ -46,7 +47,7 @@ class Cluster(object):
 
             if create_directory:
                 common.validate_install_dir(self.__install_dir)
-                self.__update_config()
+                self._update_config()
         except:
             if create_directory:
                 shutil.rmtree(self.get_path())
@@ -57,7 +58,7 @@ class Cluster(object):
 
     def set_partitioner(self, partitioner):
         self.partitioner = partitioner
-        self.__update_config()
+        self._update_config()
         return self
 
     def set_install_dir(self, install_dir=None, version=None, verbose=False):
@@ -69,7 +70,7 @@ class Cluster(object):
             dir, v = repository.setup(version, verbose)
             self.__install_dir = dir
             self.__version = v if v is not None else self.__get_version_from_build()
-        self.__update_config()
+        self._update_config()
         for node in list(self.nodes.values()):
             node.import_config_files()
 
@@ -98,7 +99,7 @@ class Cluster(object):
         self.nodes[node.name] = node
         if is_seed:
             self.seeds.append(node)
-        self.__update_config()
+        self._update_config()
         node.data_center = data_center
         node.set_log_level(self.__log_level)
         if data_center is not None:
@@ -154,7 +155,7 @@ class Cluster(object):
                         tk,
                         binary_interface=binary)
             self.add(node, True, dc)
-            self.__update_config()
+            self._update_config()
         return self
 
     def create_node(self, name, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save=True, binary_interface=None):
@@ -192,7 +193,7 @@ class Cluster(object):
             del self.nodes[node.name]
             if node in self.seeds:
                 self.seeds.remove(node)
-            self.__update_config()
+            self._update_config()
             node.stop(gently=False)
             shutil.rmtree(node.get_path())
         else:
@@ -286,7 +287,7 @@ class Cluster(object):
             raise common.ArgumentError("Unknown log level %s (use one of %s)" % (new_level, " ".join(known_level)))
 
         self.__log_level = new_level
-        self.__update_config()
+        self._update_config()
 
         for node in self.nodelist():
             node.set_log_level(new_level, class_name)
@@ -334,10 +335,13 @@ class Cluster(object):
                 self._config_options["commitlog_sync_period_in_ms"] = 10000
                 self._config_options["commitlog_sync_batch_window_in_ms"] = None
 
-        self.__update_config()
+        self._update_config()
         for node in list(self.nodes.values()):
             node.import_config_files()
         return self
+
+    def set_dse_configuration_options(self, values=None):
+        raise common.ArgumentError('Cannot set DSE configuration options on a Cassandra cluster')
 
     def flush(self):
         self.nodetool("flush")
@@ -383,7 +387,7 @@ class Cluster(object):
     def __get_version_from_build(self):
         return common.get_version_from_build(self.get_install_dir())
 
-    def __update_config(self):
+    def _update_config(self):
         node_list = [ node.name for node in list(self.nodes.values()) ]
         seed_list = [ node.name for node in self.seeds ]
         filename = os.path.join(self.__path, self.name, 'cluster.conf')
@@ -395,6 +399,7 @@ class Cluster(object):
                 'partitioner' : self.partitioner,
                 'install_dir' : self.__install_dir,
                 'config_options' : self._config_options,
+                'dse_config_options' : self._dse_config_options,
                 'log_level' : self.__log_level,
                 'use_vnodes' : self.use_vnodes
             }, f)

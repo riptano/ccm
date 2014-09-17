@@ -1,5 +1,6 @@
 # ccm clusters
 
+from six import iteritems
 from ccmlib import repository
 from ccmlib.cluster import Cluster
 from ccmlib.dse_node import DseNode
@@ -19,3 +20,13 @@ class DseCluster(Cluster):
 
     def cassandra_version(self):
         return common.get_dse_cassandra_version(self.get_install_dir())
+
+    def set_dse_configuration_options(self, values=None):
+        if values is not None:
+            for k, v in iteritems(values):
+                self._dse_config_options[k] = v
+        self._update_config()
+        for node in list(self.nodes.values()):
+            node.import_dse_config_files()
+        return self
+
