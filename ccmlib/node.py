@@ -883,6 +883,9 @@ class Node(object):
             self.__update_logback()
         self.__update_envfile()
 
+    def import_dse_config_files(self):
+        raise common.ArgumentError('Cannot import DSE configuration files on a Cassandra node')
+
     def copy_config_files(self):
         conf_dir = os.path.join(self.get_install_dir(), 'conf')
         for name in os.listdir(conf_dir):
@@ -952,7 +955,7 @@ class Node(object):
         dir_name = self.get_path()
         if not os.path.exists(dir_name):
             os.mkdir(dir_name)
-            for dir in self.__get_directories():
+            for dir in self._get_directories():
                 os.mkdir(os.path.join(dir_name, dir))
 
         filename = os.path.join(dir_name, 'node.conf')
@@ -1140,7 +1143,7 @@ class Node(object):
             if self.status == Status.DOWN or self.status == Status.UNINITIALIZED:
                 self.status = Status.UP
 
-    def __get_directories(self):
+    def _get_directories(self):
         dirs = {}
         for i in ['data', 'commitlogs', 'saved_caches', 'logs', 'conf', 'bin']:
             dirs[i] = os.path.join(self.get_path(), i)
