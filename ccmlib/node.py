@@ -468,8 +468,8 @@ class Node():
 
             self._update_pid(process)
 
-            if not self.is_running():
-                raise NodeError("Error starting node %s" % self.name, process)
+        if not self.is_running():
+            raise NodeError("Error starting node %s" % self.name, process)
 
         if wait_other_notice:
             for node, mark in marks:
