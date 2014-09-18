@@ -382,7 +382,7 @@ class Node():
               replace_token=None,
               replace_address=None,
               jvm_args=[],
-              wait_for_binary_proto=False,
+              wait_for_binary_proto=True,
               profile_options=None,
               use_jna=False):
         """
@@ -475,7 +475,7 @@ class Node():
             for node, mark in marks:
                 node.watch_log_for_alive(self, from_mark=mark)
 
-        if wait_for_binary_proto:
+        if wait_for_binary_proto and self.cluster.version() >= '1.2':
             self.watch_log_for("Starting listening for CQL clients")
             # we're probably fine at that point but just wait some tiny bit more because
             # the msg is logged just before starting the binary protocol server
