@@ -15,6 +15,7 @@ Requirements
 - pyYAML (http://pyyaml.org/ -- `sudo easy_install pyYaml`)
 - six (https://pypi.python.org/pypi/six -- `sudo easy_install six`)
 - ant (http://ant.apache.org/, on Mac OS X, `brew install ant`)
+- psutil (https://pypi.python.org/pypi/psutil)
 - Java (which version depends on the version of Cassandra you plan to use. If
   unsure, use Java 7 as it is known to work with current versions of Cassandra).
 - ccm only works on localhost for now. If you want to create multiple
@@ -36,6 +37,7 @@ Windows only:
   - cli and cqlsh started from ccm show incorrect prompts on command-prompt
   - non nodetool-based command-line options fail (sstablesplit, scrub, etc)
   - cli_session does not accept commands.
+  - To install psutil, you must use the .msi from pypi. pip install psutil will not work
 
 Installation
 ------------
