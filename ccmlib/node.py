@@ -1106,8 +1106,18 @@ class Node():
             self.__update_config()
 
     def __update_status_win(self):
-        import psutil
-        found = psutil.pid_exists(self.pid)
+        try:
+            import psutil
+            found = psutil.pid_exists(self.pid)
+        except ImportError:
+            print_("WARN: psutil not installed. Pid tracking functionality will suffer. See README for details.")
+            cmd = 'tasklist /fi "PID eq ' + str(self.pid) + '"'
+            proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+
+            found = False
+            for line in proc.stdout:
+                if re.match("Image", line):
+                    found = True
         if not found:
             self.status = Status.DOWN
         else:
