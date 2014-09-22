@@ -16,7 +16,6 @@ import sys
 import time
 import yaml
 import shlex
-import psutil
 
 from ccmlib.repository import setup
 from ccmlib.cli_session import CliSession
@@ -1107,6 +1106,7 @@ class Node():
             self.__update_config()
 
     def __update_status_win(self):
+        import psutil
         found = psutil.pid_exists(self.pid)
         if not found:
             self.status = Status.DOWN
