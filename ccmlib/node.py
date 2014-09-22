@@ -16,6 +16,7 @@ import sys
 import time
 import yaml
 import shlex
+import psutil
 
 from ccmlib.repository import setup
 from ccmlib.cli_session import CliSession
@@ -1106,13 +1107,7 @@ class Node():
             self.__update_config()
 
     def __update_status_win(self):
-        cmd = 'tasklist /fi "PID eq ' + str(self.pid) + '"'
-        proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-
-        found = False
-        for line in proc.stdout:
-            if re.match("Image", line):
-                found = True
+        found = psutil.pid_exists(self.pid)
         if not found:
             self.status = Status.DOWN
         else:
