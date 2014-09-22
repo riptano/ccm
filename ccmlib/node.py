@@ -996,10 +996,13 @@ class Node():
                     # it is fine to remove a key not there:w
                     pass
             else:
-                if isinstance(data[name], dict):
-                    for option in full_options[name]:
-                        data[name][option] = full_options[name][option]
-                else:
+                try:
+                    if isinstance(data[name], dict):
+                        for option in full_options[name]:
+                            data[name][option] = full_options[name][option]
+                    else:
+                        data[name] = full_options[name]
+                except KeyError:
                     data[name] = full_options[name]
 
         with open(conf_file, 'w') as f:
