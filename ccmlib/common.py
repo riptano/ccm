@@ -310,10 +310,11 @@ def parse_settings(args):
             val = True
         elif val.lower() == "false":
             val = False
-        try:
-            val = int(val)
-        except ValueError:
-            pass
+        else:
+            try:
+                val = int(val)
+            except ValueError:
+                pass
         splitted = key.split('.')
         if len(splitted) == 2:
             try:
