@@ -998,12 +998,6 @@ class Node():
             else:
                 data[name] = full_options[name]
 
-        if 'yaml_file' in full_options:
-            with open(full_options['yaml_file'], 'r') as f:
-                user_yaml = yaml.load(f)
-                data = common.yaml_merge(user_yaml, data)
-                data.pop('yaml_file')
-
         with open(conf_file, 'w') as f:
             yaml.safe_dump(data, f, default_flow_style=False)
 
