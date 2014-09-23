@@ -689,6 +689,15 @@ class Node(object):
                         print_(log, end='')
                     i = i + 1
 
+    def cli(self):
+        cdir = self.get_cassandra_dir()
+        cli = common.join_bin(cdir, 'bin', 'cassandra-cli')
+        env = common.make_cassandra_env(cdir, self.get_path())
+        host = self.network_interfaces['thrift'][0]
+        port = self.network_interfaces['thrift'][1]
+        args = [ '-h', host, '-p', str(port) , '--jmxport', str(self.jmx_port) ]
+        return CliSession(subprocess.Popen([ cli ] + args, env=env, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE))
+
     def set_log_level(self, new_level, class_name=None):
         known_level = [ 'TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR' ]
         if new_level not in known_level:
