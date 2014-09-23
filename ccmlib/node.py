@@ -500,8 +500,8 @@ class Node(object):
 
             self._update_pid(process)
 
-            if not self.is_running():
-                raise NodeError("Error starting node %s" % self.name, process)
+        if not self.is_running():
+            raise NodeError("Error starting node %s" % self.name, process)
 
         if wait_other_notice:
             for node, mark in marks:
@@ -572,44 +572,25 @@ class Node(object):
             args = [ cass_bin, '-p', pidfile]
 
             if not gently:
-                args.append('-f')
-            proc = subprocess.Popen(args, cwd= self.get_bin_dir(), shell=True, stdout=subprocess.PIPE)
-
-            pidfile = self.get_path() + "/cassandra.pid"
-            if (os.path.isfile(pidfile)):
-                os.remove(pidfile)
-
-            still_running = self.is_running()
-            if still_running and wait:
-                wait_time_sec = 1
-                for i in xrange(0, 4):
-                    time.sleep(wait_time_sec)
-                    if not self.is_running():
-                        return True
-                    wait_time_sec = wait_time_sec * 2
+                if self.cluster.version() == "2.1.0":
+                    os.system("taskkill /F /PID " + str(self.pid))
+                else:
+                    args.append('-f')
+                    proc = subprocess.Popen(args, cwd= self.get_bin_dir(), shell=True, stdout=subprocess.PIPE)
+                    proc.communicate()
             else:
-                return True
+                proc = subprocess.Popen(args, cwd= self.get_bin_dir(), shell=True, stdout=subprocess.PIPE)
+                proc.communicate()
 
-        if gently:
-            os.system("taskkill /PID " + str(self.pid))
-        else:
-            os.system("taskkill /F /PID " + str(self.pid))
 
-        # no graceful shutdown on windows means it should be immediate
-        cmd = 'tasklist /fi "PID eq ' + str(self.pid) + '"'
-        proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-
-        found = False
-        for line in proc.stdout:
-            if re.match("Image", line):
-                found = True
-        if found:
-            return False
-        else:
             pidfile = self.get_path() + "/cassandra.pid"
             if (os.path.isfile(pidfile)):
                 os.remove(pidfile)
-            return True
+        else:
+            if gently:
+                os.system("taskkill /PID " + str(self.pid))
+            else:
+                os.system("taskkill /F /PID " + str(self.pid))
 
     def nodetool(self, cmd, capture_output=False):
         env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
