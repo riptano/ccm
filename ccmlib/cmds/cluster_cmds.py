@@ -105,7 +105,7 @@ class ClusterCreateCmd(Cmd):
 
     def run(self):
         try:
-            if common.isDse(self.options.install_dir) or self.options.dse:
+            if self.options.dse or (not self.options.version and common.isDse(self.options.install_dir)):
                 cluster = DseCluster(self.path, self.name, install_dir=self.options.install_dir, version=self.options.version, dse_username=self.options.dse_username, dse_password=self.options.dse_password, verbose=True)
             else:
                 cluster = Cluster(self.path, self.name, install_dir=self.options.install_dir, version=self.options.version, verbose=True)

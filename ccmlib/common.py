@@ -266,7 +266,7 @@ def isDse(install_dir):
     bin_dir = os.path.join(install_dir, BIN_DIR)
 
     if not os.path.exists(bin_dir):
-        raise ArgumentError('Installation directory does not contain a bin directory')
+        raise ArgumentError('Installation directory does not contain a bin directory: %s' % install_dir)
 
     dse_script = os.path.join(bin_dir, 'dse')
     return os.path.exists(dse_script)
