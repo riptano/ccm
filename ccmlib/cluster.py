@@ -15,7 +15,7 @@ from ccmlib.node import Node, NodeError
 from ccmlib.bulkloader import BulkLoader
 
 class Cluster(object):
-    def __init__(self, path, name, partitioner=None, install_dir=None, create_directory=True, version=None, verbose=False):
+    def __init__(self, path, name, partitioner=None, install_dir=None, create_directory=True, version=None, verbose=False, **kwargs):
         self.name = name
         self.nodes = {}
         self.seeds = []
@@ -26,6 +26,13 @@ class Cluster(object):
         self.__path = path
         self.__version = None
         self.use_vnodes = False
+
+        ##This is incredibly important for
+        ##backwards compatibility.
+        if 'cassandra_version' in kwargs:
+            version = kwargs['cassandra_version']
+        if 'cassandra_dir' in kwargs:
+            install_dir = kwargs['cassandra_dir']
         if create_directory:
             # we create the dir before potentially downloading to throw an error sooner if need be
             os.mkdir(self.get_path())
