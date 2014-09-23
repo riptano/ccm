@@ -671,7 +671,7 @@ class Node(object):
                     i = i + 1
 
     def cli(self):
-        cdir = self.get_cassandra_dir()
+        cdir = self.get_install_dir()
         cli = common.join_bin(cdir, 'bin', 'cassandra-cli')
         env = common.make_cassandra_env(cdir, self.get_path())
         host = self.network_interfaces['thrift'][0]
@@ -752,7 +752,7 @@ class Node(object):
             print_("")
 
     def run_json2sstable(self, in_file, ks, cf, keyspace=None, datafile=None, column_families=None, enumerate_keys=False):
-        cdir = self.get_cassandra_dir()
+        cdir = self.get_install_dir()
         if self.get_base_cassandra_version() >= 2.1:
             json2sstable = common.join_bin(cdir, os.path.join('tools', 'bin'), 'json2sstable')
         else:
@@ -766,7 +766,7 @@ class Node(object):
             subprocess.call(args, env=env)
 
     def run_sstablesplit(self, datafile=None,  size=None, keyspace=None, column_families=None):
-        cdir = self.get_cassandra_dir()
+        cdir = self.get_install_dir()
         if self.get_base_cassandra_version() >= 2.1:
             sstablesplit = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstablesplit')
         else:
@@ -805,7 +805,7 @@ class Node(object):
         return files
 
     def stress(self, stress_options=[]):
-        stress = common.get_stress_bin(self.get_cassandra_dir())
+        stress = common.get_stress_bin(self.get_install_dir())
         args = [ stress ] + stress_options
         try:
             subprocess.call(args, cwd=common.parse_path(stress))
@@ -813,7 +813,7 @@ class Node(object):
             pass
 
     def shuffle(self, cmd):
-        cdir = self.get_cassandra_dir()
+        cdir = self.get_install_dir()
         shuffle = common.join_bin(cdir, 'bin', 'cassandra-shuffle')
         host = self.address()
         args = [ shuffle, '-h', host, '-p', str(self.jmx_port) ] + [ cmd ]
@@ -904,7 +904,7 @@ class Node(object):
 
         # Split binaries from conf
         home_pattern="if NOT DEFINED CASSANDRA_HOME set CASSANDRA_HOME=%CD%"
-        common.replace_in_file(bat_file, home_pattern, "set CASSANDRA_HOME=" + self.get_cassandra_dir())
+        common.replace_in_file(bat_file, home_pattern, "set CASSANDRA_HOME=" + self.get_install_dir())
 
         classpath_pattern="set CLASSPATH=\\\"%CASSANDRA_HOME%\\\\conf\\\""
         common.replace_in_file(bat_file, classpath_pattern, "set CLASSPATH=\\\"" + self.get_conf_dir() + "\\\"")

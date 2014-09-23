@@ -27,7 +27,7 @@ class BulkLoader(Node):
             if itf:
                 common.check_socket_available(itf)
 
-        cdir = self.get_cassandra_dir()
+        cdir = self.get_install_dir()
         loader_bin = common.join_bin(cdir, 'bin', 'sstableloader')
         env = common.make_cassandra_env(cdir, self.get_path())
         if not "-d" in options:
