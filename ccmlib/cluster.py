@@ -232,7 +232,7 @@ class Cluster(object):
             else:
                 node.show(only_status=True)
 
-    def start(self, no_wait=False, verbose=False, wait_for_binary_proto=False, wait_other_notice=False, jvm_args=[], profile_options=None):
+    def start(self, no_wait=False, verbose=False, wait_for_binary_proto=True, wait_other_notice=False, jvm_args=[], profile_options=None):
         if wait_other_notice:
             marks = [ (node, node.mark_log()) for node in list(self.nodes.values()) if node.is_running() ]
 
@@ -274,7 +274,7 @@ class Cluster(object):
                 for node, _, _ in started:
                     old_node.watch_log_for_alive(node, from_mark=mark)
 
-        if wait_for_binary_proto:
+        if wait_for_binary_proto and self.version() >= '1.2':
             for node, _, mark in started:
                 node.watch_log_for("Starting listening for CQL clients", process=p, verbose=verbose, from_mark=mark)
             time.sleep(0.2)
