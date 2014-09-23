@@ -333,17 +333,27 @@ def parse_settings(args):
         splitted = s.split(':')
         if len(splitted) != 2:
             raise ArgumentError("A new setting should be of the form 'key: value', got" + s)
+        key = splitted[0].strip()
         val = splitted[1].strip()
         # ok, that's not super beautiful
         if val.lower() == "true":
             val = True
         elif val.lower() == "false":
             val = False
-        try:
-            val = int(val)
-        except ValueError:
-            pass
-        settings[splitted[0].strip()] = val
+        else:
+            try:
+                val = int(val)
+            except ValueError:
+                pass
+        splitted = key.split('.')
+        if len(splitted) == 2:
+            try:
+                settings[splitted[0]][splitted[1]] = val
+            except KeyError:
+                settings[splitted[0]] = {}
+                settings[splitted[0]][splitted[1]] = val
+        else:
+            settings[key] = val
     return settings
 
 #
@@ -409,13 +419,6 @@ def get_install_dir_from_cluster_conf(node_path):
             if match:
                 return match.group(1)
     return None
-
-def yaml_merge(primary, secondary):
-    merged = secondary.copy()
-    for k, v in primary.items():
-        if k not in merged:
-            merged[k] = v
-    return merged
 
 def is_dse_cluster(path):
     try:
