@@ -579,6 +579,7 @@ class ClusterUpdateconfCmd(Cmd):
 
     def run(self):
         self.setting['hinted_handoff_enabled'] = self.options.hinted_handoff
+
         if self.options.rpc_timeout is not None:
             if self.cluster.version() < "1.2":
                 self.setting['rpc_timeout_in_ms'] = self.options.rpc_timeout

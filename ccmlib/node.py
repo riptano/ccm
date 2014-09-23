@@ -996,7 +996,14 @@ class Node():
                     # it is fine to remove a key not there:w
                     pass
             else:
-                data[name] = full_options[name]
+                try:
+                    if isinstance(data[name], dict):
+                        for option in full_options[name]:
+                            data[name][option] = full_options[name][option]
+                    else:
+                        data[name] = full_options[name]
+                except KeyError:
+                    data[name] = full_options[name]
 
         with open(conf_file, 'w') as f:
             yaml.safe_dump(data, f, default_flow_style=False)
@@ -1099,13 +1106,18 @@ class Node():
             self.__update_config()
 
     def __update_status_win(self):
-        cmd = 'tasklist /fi "PID eq ' + str(self.pid) + '"'
-        proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+        try:
+            import psutil
+            found = psutil.pid_exists(self.pid)
+        except ImportError:
+            print_("WARN: psutil not installed. Pid tracking functionality will suffer. See README for details.")
+            cmd = 'tasklist /fi "PID eq ' + str(self.pid) + '"'
+            proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
 
-        found = False
-        for line in proc.stdout:
-            if re.match("Image", line):
-                found = True
+            found = False
+            for line in proc.stdout:
+                if re.match("Image", line):
+                    found = True
         if not found:
             self.status = Status.DOWN
         else:
