@@ -105,10 +105,10 @@ class ClusterCreateCmd(Cmd):
             exit(1)
         if not options.version:
             try:
-                common.validate_cassandra_dir(options.install_dir)
+                common.validate_install_dir(options.install_dir)
             except ArgumentError:
                 parser.print_help()
-                parser.error("%s is not a valid cassandra directory. You must define a cassandra dir or version." % options.cassandra_dir)
+                parser.error("%s is not a valid cassandra directory. You must define a cassandra dir or version." % options.install_dir)
 
     def run(self):
         try:
