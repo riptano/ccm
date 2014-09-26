@@ -1233,3 +1233,13 @@ class Node():
             common.replace_in_file(dst,'CASSANDRA_PARAMS=','    $env:CASSANDRA_PARAMS=\'-Dcassandra' +    # -Dcassandra
               ' -Dlogback.configurationFile=/"\' + "$env:CASSANDRA_CONF" + \'/logback.xml"\'' +            # -Dlogback.configurationFile=/"$env:CASSANDRA_CONF/logback.xml"
               ' + \' -Dcassandra.config=file:"\' + "///$env:CASSANDRA_CONF" + \'/cassandra.yaml"\'')        # -Dcassandra.config=file:"///$env:CASSANDRA_CONF/cassandra.yaml"
+
+    def get_conf_option(self, option):
+        conf_file = os.path.join(self.get_conf_dir(), common.CASSANDRA_CONF)
+        with open(conf_file, 'r') as f:
+            data = yaml.load(f)
+
+        if option in data:
+            return data[option]
+        else:
+            return None
