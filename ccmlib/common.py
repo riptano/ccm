@@ -139,8 +139,8 @@ def make_cassandra_env(install_dir, node_path):
     if is_win() and get_version_from_build(node_path=node_path) >= '2.1':
         replacements = [
             ('env:CASSANDRA_HOME =', '        $env:CASSANDRA_HOME="%s"' % install_dir),
-            ('env:CASSANDRA_CONF =', '    $env:CASSANDRA_CONF="%s"' % os.path.join(node_path, 'conf')),
-            ('cp = ".*?env:CASSANDRA_HOME.conf', '    $cp = "$env:CASSANDRA_CONF"')
+            ('env:CASSANDRA_CONF =', '    $env:CCM_DIR="' + node_path + '\\conf"\n    $env:CASSANDRA_CONF="$env:CCM_DIR"'),
+            ('cp = ".*?env:CASSANDRA_HOME.conf', '    $cp = """$env:CASSANDRA_CONF"""')
         ]
     else:
         replacements = [

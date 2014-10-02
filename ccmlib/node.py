@@ -907,7 +907,7 @@ class Node(object):
         common.replace_in_file(bat_file, home_pattern, "set CASSANDRA_HOME=" + self.get_install_dir())
 
         classpath_pattern="set CLASSPATH=\\\"%CASSANDRA_HOME%\\\\conf\\\""
-        common.replace_in_file(bat_file, classpath_pattern, "set CLASSPATH=\\\"" + self.get_conf_dir() + "\\\"")
+        common.replace_in_file(bat_file, classpath_pattern, "set CCM_DIR=\"" + self.get_path() + "\"\nset CLASSPATH=\"%CCM_DIR%\\conf\"")
 
         # escape the double quotes in name of the lib files in the classpath
         jar_file_pattern="do call :append \"%%i\""
