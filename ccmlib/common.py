@@ -332,7 +332,7 @@ def parse_settings(args):
     for s in args:
         splitted = s.split(':')
         if len(splitted) != 2:
-            raise ArgumentError("A new setting should be of the form 'key: value', got" + s)
+            raise ArgumentError("A new setting should be of the form 'key: value', got " + s)
         key = splitted[0].strip()
         val = splitted[1].strip()
         # ok, that's not super beautiful
