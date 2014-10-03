@@ -429,3 +429,14 @@ class Cluster(object):
             topology_file = os.path.join(node.get_conf_dir(), 'cassandra-topology.properties')
             with open(topology_file, 'w') as f:
                 f.write(content)
+
+    def enable_ssl(self, ssl_path):
+        shutil.copyfile(os.path.join(ssl_path, 'keystore.jks'), os.path.join(self.get_path(), 'keystore.jks'))
+        shutil.copyfile(os.path.join(ssl_path, 'cassandra.crt'), os.path.join(self.get_path(), 'cassandra.crt'))
+
+        ssl_options = {'enabled' : True,
+            'keystore' : os.path.join(self.get_path(), 'keystore.jks'),
+            'keystore_password' : 'cassandra'
+            }
+        self._config_options['client_encryption_options'] = ssl_options
+        self._update_config()

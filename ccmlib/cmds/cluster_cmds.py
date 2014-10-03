@@ -91,6 +91,8 @@ class ClusterCreateCmd(Cmd):
             help="Start the nodes with yourkit agent (only valid with -s)", default=False)
         parser.add_option('--profile-opts', type="string", action="store", dest="profile_options",
             help="Yourkit options when profiling", default=None)
+        parser.add_option('--ssl', type="string", dest="ssl_path",
+            help="Path to keystore.jks and cassandra.crt files", default=None)
         return parser
 
     def validate(self, parser, options, args):
@@ -139,6 +141,9 @@ class ClusterCreateCmd(Cmd):
 
         if not (self.options.ipprefix or self.options.ipformat):
             self.options.ipformat = '127.0.0.%d'
+
+        if self.options.ssl_path:
+            cluster.enable_ssl(self.options.ssl_path)
 
         if self.nodes is not None:
             try:
