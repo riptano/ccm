@@ -297,7 +297,7 @@ def __download(url, target, username=None, password=None, show_progress=False):
     u = urllib.request.urlopen(url)
     f = open(target, 'wb')
     meta = u.info()
-    file_size = int(meta.getheaders("Content-Length")[0])
+    file_size = int(meta.get("Content-Length"))
     if show_progress:
         print_("Downloading %s to %s (%.3fMB)" % (url, target, float(file_size) / (1024 * 1024)))
 
