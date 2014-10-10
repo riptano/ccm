@@ -631,6 +631,9 @@ class Node(object):
     def hive(self, show_output=False, hive_options=[]):
         raise common.ArgumentError('Cassandra nodes do not support hive')
 
+    def sqoop(self, show_output=False, sqoop_options=[]):
+        raise common.ArgumentError('Cassandra nodes do not support sqoop')
+
     def scrub(self, options):
         scrub_bin = self.get_tool('sstablescrub')
         env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())

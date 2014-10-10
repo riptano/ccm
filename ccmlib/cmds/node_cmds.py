@@ -38,7 +38,8 @@ def node_cmds():
         "nodetool",
         "dsetool",
         "setworkload",
-        "hive"
+        "hive",
+        "sqoop"
     ]
 
 class NodeShowCmd(Cmd):
@@ -617,3 +618,21 @@ class NodeHiveCmd(Cmd):
 
     def run(self):
         self.node.hive(self.options.verbose, self.hive_options)
+
+class NodeSqoopCmd(Cmd):
+    def description(self):
+        return "Launch a sqoop session connected to this node"
+
+    def get_parser(self):
+        usage = "usage: ccm node_name sqoop [options] [hive_options]"
+        parser = self._get_default_parser(usage, self.description(), ignore_unknown_options=True)
+        parser.add_option('-v', '--verbose', action="store_true", dest="verbose",
+                          help="With --exec, show cli output after completion", default=False)
+        return parser
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
+        self.sqoop_options = args[1:] + parser.get_ignored()
+
+    def run(self):
+        self.node.sqoop(self.options.verbose, self.sqoop_options)

@@ -190,6 +190,14 @@ class DseNode(Node):
         p = subprocess.Popen(args, env=env)
         p.wait()
 
+    def sqoop(self, show_output=False, sqoop_options=[]):
+        env = common.make_dse_env(self.get_install_dir(), self.get_path())
+        dse = common.join_bin(self.get_install_dir(), 'bin', 'dse')
+        args = [dse, 'sqoop']
+        args += sqoop_options
+        p = subprocess.Popen(args, env=env)
+        p.wait()
+
     def import_dse_config_files(self):
         self._update_config()
         if not os.path.isdir(os.path.join(self.get_path(), 'resources', 'dse', 'conf')):
@@ -238,7 +246,7 @@ class DseNode(Node):
         if 'dse_yaml_file' in full_options:
             with open(full_options['dse_yaml_file'], 'r') as f:
                 user_yaml = yaml.load(f)
-                data = common.yaml_merge(user_yaml, data)
+                data = common.yaml_merge(data, user_yaml)
 
         with open(conf_file, 'w') as f:
             yaml.safe_dump(data, f, default_flow_style=False)
