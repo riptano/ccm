@@ -628,10 +628,16 @@ class Node(object):
     def dsetool(self, cmd):
         raise common.ArgumentError('Cassandra nodes do not support dsetool')
 
-    def hive(self, show_output=False, hive_options=[]):
+    def hadoop(self, hadoop_options=[]):
+        raise common.ArgumentError('Cassandra nodes do not support hadoop')
+
+    def hive(self, hive_options=[]):
         raise common.ArgumentError('Cassandra nodes do not support hive')
 
-    def sqoop(self, show_output=False, sqoop_options=[]):
+    def pig(self, pig_options=[]):
+        raise common.ArgumentError('Cassandra nodes do not support pig')
+
+    def sqoop(self, sqoop_options=[]):
         raise common.ArgumentError('Cassandra nodes do not support sqoop')
 
     def scrub(self, options):

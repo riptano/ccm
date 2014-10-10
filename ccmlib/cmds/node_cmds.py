@@ -38,7 +38,9 @@ def node_cmds():
         "nodetool",
         "dsetool",
         "setworkload",
+        "hadoop",
         "hive",
+        "pig",
         "sqoop"
     ]
 
@@ -601,6 +603,22 @@ class NodeSetworkloadCmd(Cmd):
             print_(str(e), file=sys.stderr)
             exit(1)
 
+class NodeHadoopCmd(Cmd):
+    def description(self):
+        return "Launch a hadoop session connected to this node"
+
+    def get_parser(self):
+        usage = "usage: ccm node_name hadoop [options] [hadoop_options]"
+        parser = self._get_default_parser(usage, self.description(), ignore_unknown_options=True)
+        return parser
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
+        self.hadoop_options = args[1:]
+
+    def run(self):
+        self.node.hadoop(self.hadoop_options)
+
 class NodeHiveCmd(Cmd):
     def description(self):
         return "Launch a hive session connected to this node"
@@ -608,8 +626,6 @@ class NodeHiveCmd(Cmd):
     def get_parser(self):
         usage = "usage: ccm node_name hive [options] [hive_options]"
         parser = self._get_default_parser(usage, self.description(), ignore_unknown_options=True)
-        parser.add_option('-v', '--verbose', action="store_true", dest="verbose",
-                          help="With --exec, show cli output after completion", default=False)
         return parser
 
     def validate(self, parser, options, args):
@@ -617,17 +633,31 @@ class NodeHiveCmd(Cmd):
         self.hive_options = parser.get_ignored() + args[1:]
 
     def run(self):
-        self.node.hive(self.options.verbose, self.hive_options)
+        self.node.hive(self.hive_options)
+
+class NodePigCmd(Cmd):
+    def description(self):
+        return "Launch a pig session connected to this node"
+
+    def get_parser(self):
+        usage = "usage: ccm node_name pig [options] [pig_options]"
+        parser = self._get_default_parser(usage, self.description(), ignore_unknown_options=True)
+        return parser
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
+        self.pig_options = parser.get_ignored() + args[1:]
+
+    def run(self):
+        self.node.pig(self.pig_options)
 
 class NodeSqoopCmd(Cmd):
     def description(self):
         return "Launch a sqoop session connected to this node"
 
     def get_parser(self):
-        usage = "usage: ccm node_name sqoop [options] [hive_options]"
+        usage = "usage: ccm node_name sqoop [options] [sqoop_options]"
         parser = self._get_default_parser(usage, self.description(), ignore_unknown_options=True)
-        parser.add_option('-v', '--verbose', action="store_true", dest="verbose",
-                          help="With --exec, show cli output after completion", default=False)
         return parser
 
     def validate(self, parser, options, args):
@@ -635,4 +665,4 @@ class NodeSqoopCmd(Cmd):
         self.sqoop_options = args[1:] + parser.get_ignored()
 
     def run(self):
-        self.node.sqoop(self.options.verbose, self.sqoop_options)
+        self.node.sqoop(self.sqoop_options)

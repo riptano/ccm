@@ -182,7 +182,15 @@ class DseNode(Node):
         p = subprocess.Popen(args, env=env)
         p.wait()
 
-    def hive(self, show_output=False, hive_options=[]):
+    def hadoop(self, hadoop_options=[]):
+        env = common.make_dse_env(self.get_install_dir(), self.get_path())
+        dse = common.join_bin(self.get_install_dir(), 'bin', 'dse')
+        args = [dse, 'hadoop']
+        args += hadoop_options
+        p = subprocess.Popen(args, env=env)
+        p.wait()
+
+    def hive(self, hive_options=[]):
         env = common.make_dse_env(self.get_install_dir(), self.get_path())
         dse = common.join_bin(self.get_install_dir(), 'bin', 'dse')
         args = [dse, 'hive']
@@ -190,7 +198,15 @@ class DseNode(Node):
         p = subprocess.Popen(args, env=env)
         p.wait()
 
-    def sqoop(self, show_output=False, sqoop_options=[]):
+    def pig(self, pig_options=[]):
+        env = common.make_dse_env(self.get_install_dir(), self.get_path())
+        dse = common.join_bin(self.get_install_dir(), 'bin', 'dse')
+        args = [dse, 'pig']
+        args += pig_options
+        p = subprocess.Popen(args, env=env)
+        p.wait()
+
+    def sqoop(self, sqoop_options=[]):
         env = common.make_dse_env(self.get_install_dir(), self.get_path())
         dse = common.join_bin(self.get_install_dir(), 'bin', 'dse')
         args = [dse, 'sqoop']
@@ -206,17 +222,10 @@ class DseNode(Node):
         self.__update_yaml()
 
     def copy_config_files(self):
-        if not os.path.isdir(os.path.join(self.get_path(), 'resources', 'dse', 'conf')):
-            os.makedirs(os.path.join(self.get_path(), 'resources', 'dse', 'conf'))
-        if not os.path.isdir(os.path.join(self.get_path(), 'resources', 'cassandra', 'conf')):
-            os.makedirs(os.path.join(self.get_path(), 'resources', 'cassandra', 'conf'))
-        if not os.path.isdir(os.path.join(self.get_path(), 'resources', 'hadoop', 'conf')):
-            os.makedirs(os.path.join(self.get_path(), 'resources', 'hadoop', 'conf'))
-        if not os.path.isdir(os.path.join(self.get_path(), 'resources', 'hive', 'conf')):
-            os.makedirs(os.path.join(self.get_path(), 'resources', 'hive', 'conf'))
-        common.copy_directory(os.path.join(self.get_install_dir(), 'resources', 'dse', 'conf'), os.path.join(self.get_path(), 'resources', 'dse', 'conf'))
-        common.copy_directory(os.path.join(self.get_install_dir(), 'resources', 'cassandra', 'conf'), os.path.join(self.get_path(), 'resources', 'cassandra', 'conf'))
-        common.copy_directory(os.path.join(self.get_install_dir(), 'resources', 'hive', 'conf'), os.path.join(self.get_path(), 'resources', 'hive', 'conf'))
+        for product in ['dse', 'cassandra', 'hadoop', 'hive', 'tomcat', 'spark', 'shark', 'mahout', 'pig']:
+            if not os.path.isdir(os.path.join(self.get_path(), 'resources', product, 'conf')):
+                os.makedirs(os.path.join(self.get_path(), 'resources', product, 'conf'))
+            common.copy_directory(os.path.join(self.get_install_dir(), 'resources', product, 'conf'), os.path.join(self.get_path(), 'resources', product, 'conf'))
 
     def import_bin_files(self):
         os.makedirs(os.path.join(self.get_path(), 'resources', 'cassandra', 'bin'))
