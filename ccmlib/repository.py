@@ -101,7 +101,7 @@ def clone_development(git_repo, version, verbose=False):
                 out = subprocess.call(['git', 'fetch', 'origin'], cwd=target_dir, stdout=lf, stderr=lf)
                 assert out == 0, "Could not do a git fetch"
                 status = subprocess.Popen(['git', 'status', '-sb'], cwd=target_dir, stdout=subprocess.PIPE, stderr=lf).communicate()[0]
-                if status.find('[behind') > -1:
+                if str(status).find('[behind') > -1:
                     if verbose:
                         print_("Branch is behind, recompiling")
                     out = subprocess.call(['git', 'pull'], cwd=target_dir, stdout=lf, stderr=lf)
