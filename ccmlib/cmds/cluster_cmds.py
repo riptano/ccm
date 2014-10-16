@@ -263,12 +263,12 @@ class ClusterPopulateCmd(Cmd):
         if options.ipprefix and options.ipformat:
             parser.print_help()
             parser.error("%s and %s may not be used together" % (parser.get_option('-i'), parser.get_option('-I')))
-            exit(1)
-        if options.nodes is None or not isinstance(options.nodes, int):
-            parser.print_help()
-            parser.error("%s is not a valid number of nodes. Did you use -n?" % options.nodes)
-            exit(1)
+
         self.nodes = parse_populate_count(options.nodes)
+        if self.nodes is None:
+            parser.print_help()
+            parser.error("Not a valid number of nodes. Did you use -n?")
+            exit(1)
 
     def run(self):
         try:
