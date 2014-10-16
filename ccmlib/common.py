@@ -174,8 +174,14 @@ def make_dse_env(install_dir, node_path):
     env['DSE_CONF'] = os.path.join(node_path, 'resources', 'dse', 'conf')
     env['CASSANDRA_HOME'] = os.path.join(install_dir, 'resources', 'cassandra')
     env['CASSANDRA_CONF'] = os.path.join(node_path, 'resources', 'cassandra', 'conf')
-    env['HADOOP_CONF'] = os.path.join(node_path, 'resources', 'hadoop', 'conf')
-    env['HIVE_CONF'] = os.path.join(node_path, 'resources', 'hive', 'conf')
+    env['HADOOP_CONF_DIR'] = os.path.join(node_path, 'resources', 'hadoop', 'conf')
+    env['HIVE_CONF_DIR'] = os.path.join(node_path, 'resources', 'hive', 'conf')
+    env['SQOOP_CONF_DIR'] = os.path.join(node_path, 'resources', 'sqoop', 'conf')
+    env['TOMCAT_CONF_DIR'] = os.path.join(node_path, 'resources', 'tomcat', 'conf')
+    env['PIG_CONF_DIR'] = os.path.join(node_path, 'resources', 'pig', 'conf')
+    env['MAHOUT_CONF_DIR'] = os.path.join(node_path, 'resources', 'mahout', 'conf')
+    env['SPARK_CONF_DIR'] = os.path.join(node_path, 'resources', 'spark', 'conf')
+    env['SHARK_CONF_DIR'] = os.path.join(node_path, 'resources', 'shark', 'conf')
     return env
 
 def check_win_requirements():
