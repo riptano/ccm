@@ -11,6 +11,7 @@ import time
 import yaml
 
 from ccmlib.node import Node
+from ccmlib.node import NodeError
 from ccmlib import common
 
 class DseNode(Node):
@@ -74,7 +75,7 @@ class DseNode(Node):
         """
 
         if self.is_running():
-            raise Node.NodeError("%s is already running" % self.name)
+            raise NodeError("%s is already running" % self.name)
 
         for itf in list(self.network_interfaces.values()):
             if itf is not None and replace_address is None:
@@ -97,7 +98,7 @@ class DseNode(Node):
         if profile_options is not None:
             config = common.get_config()
             if not 'yourkit_agent' in config:
-                raise Node.NodeError("Cannot enable profile. You need to set 'yourkit_agent' to the path of your agent in a ~/.ccm/config")
+                raise NodeError("Cannot enable profile. You need to set 'yourkit_agent' to the path of your agent in a ~/.ccm/config")
             cmd = '-agentpath:%s' % config['yourkit_agent']
             if 'options' in profile_options:
                 cmd = cmd + '=' + profile_options['options']
@@ -159,7 +160,7 @@ class DseNode(Node):
             self._update_pid(process)
 
             if not self.is_running():
-                raise Node.NodeError("Error starting node %s" % self.name, process)
+                raise NodeError("Error starting node %s" % self.name, process)
 
         if wait_other_notice:
             for node, mark in marks:
@@ -182,11 +183,35 @@ class DseNode(Node):
         p = subprocess.Popen(args, env=env)
         p.wait()
 
-    def hive(self, show_output=False, hive_options=[]):
+    def hadoop(self, hadoop_options=[]):
+        env = common.make_dse_env(self.get_install_dir(), self.get_path())
+        dse = common.join_bin(self.get_install_dir(), 'bin', 'dse')
+        args = [dse, 'hadoop']
+        args += hadoop_options
+        p = subprocess.Popen(args, env=env)
+        p.wait()
+
+    def hive(self, hive_options=[]):
         env = common.make_dse_env(self.get_install_dir(), self.get_path())
         dse = common.join_bin(self.get_install_dir(), 'bin', 'dse')
         args = [dse, 'hive']
         args += hive_options
+        p = subprocess.Popen(args, env=env)
+        p.wait()
+
+    def pig(self, pig_options=[]):
+        env = common.make_dse_env(self.get_install_dir(), self.get_path())
+        dse = common.join_bin(self.get_install_dir(), 'bin', 'dse')
+        args = [dse, 'pig']
+        args += pig_options
+        p = subprocess.Popen(args, env=env)
+        p.wait()
+
+    def sqoop(self, sqoop_options=[]):
+        env = common.make_dse_env(self.get_install_dir(), self.get_path())
+        dse = common.join_bin(self.get_install_dir(), 'bin', 'dse')
+        args = [dse, 'sqoop']
+        args += sqoop_options
         p = subprocess.Popen(args, env=env)
         p.wait()
 
@@ -198,17 +223,10 @@ class DseNode(Node):
         self.__update_yaml()
 
     def copy_config_files(self):
-        if not os.path.isdir(os.path.join(self.get_path(), 'resources', 'dse', 'conf')):
-            os.makedirs(os.path.join(self.get_path(), 'resources', 'dse', 'conf'))
-        if not os.path.isdir(os.path.join(self.get_path(), 'resources', 'cassandra', 'conf')):
-            os.makedirs(os.path.join(self.get_path(), 'resources', 'cassandra', 'conf'))
-        if not os.path.isdir(os.path.join(self.get_path(), 'resources', 'hadoop', 'conf')):
-            os.makedirs(os.path.join(self.get_path(), 'resources', 'hadoop', 'conf'))
-        if not os.path.isdir(os.path.join(self.get_path(), 'resources', 'hive', 'conf')):
-            os.makedirs(os.path.join(self.get_path(), 'resources', 'hive', 'conf'))
-        common.copy_directory(os.path.join(self.get_install_dir(), 'resources', 'dse', 'conf'), os.path.join(self.get_path(), 'resources', 'dse', 'conf'))
-        common.copy_directory(os.path.join(self.get_install_dir(), 'resources', 'cassandra', 'conf'), os.path.join(self.get_path(), 'resources', 'cassandra', 'conf'))
-        common.copy_directory(os.path.join(self.get_install_dir(), 'resources', 'hive', 'conf'), os.path.join(self.get_path(), 'resources', 'hive', 'conf'))
+        for product in ['dse', 'cassandra', 'hadoop', 'sqoop', 'hive', 'tomcat', 'spark', 'shark', 'mahout', 'pig']:
+            if not os.path.isdir(os.path.join(self.get_path(), 'resources', product, 'conf')):
+                os.makedirs(os.path.join(self.get_path(), 'resources', product, 'conf'))
+            common.copy_directory(os.path.join(self.get_install_dir(), 'resources', product, 'conf'), os.path.join(self.get_path(), 'resources', product, 'conf'))
 
     def import_bin_files(self):
         os.makedirs(os.path.join(self.get_path(), 'resources', 'cassandra', 'bin'))
@@ -238,7 +256,7 @@ class DseNode(Node):
         if 'dse_yaml_file' in full_options:
             with open(full_options['dse_yaml_file'], 'r') as f:
                 user_yaml = yaml.load(f)
-                data = common.yaml_merge(user_yaml, data)
+                data = common.yaml_merge(data, user_yaml)
 
         with open(conf_file, 'w') as f:
             yaml.safe_dump(data, f, default_flow_style=False)
