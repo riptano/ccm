@@ -20,6 +20,7 @@ from ccmlib.common import (ArgumentError, CCMError, get_default_path,
                            platform_binary, validate_install_dir)
 
 DSE_ARCHIVE="http://downloads.datastax.com/enterprise/dse-%s-bin.tar.gz"
+OPSC_ARCHIVE="http://downloads.datastax.com/community/opscenter-%s.tar.gz"
 ARCHIVE="http://archive.apache.org/dist/cassandra"
 GIT_REPO="http://git-wip-us.apache.org/repos/asf/cassandra.git"
 GITHUB_TAGS="https://api.github.com/repos/apache/cassandra/git/refs/tags"
@@ -46,6 +47,14 @@ def setup_dse(version, username, password, verbose=False):
         download_dse_version(version, username, password, verbose=verbose)
         cdir = version_directory(version)
     return (cdir, version)
+
+def setup_opscenter(opscenter, verbose=False):
+    ops_version = 'opsc' + opscenter
+    odir = version_directory(ops_version)
+    if odir is None:
+        download_opscenter_version(opscenter, ops_version, verbose = verbose)
+        odir = version_directory(ops_version)
+    return odir
 
 def validate(path):
     if path.startswith(__get_dir()):
@@ -132,6 +141,28 @@ def download_dse_version(version, username, password, verbose=False):
         tar.extractall(path=__get_dir())
         tar.close()
         target_dir = os.path.join(__get_dir(), version)
+        if os.path.exists(target_dir):
+            shutil.rmtree(target_dir)
+        shutil.move(os.path.join(__get_dir(), dir), target_dir)
+    except urllib.error.URLError as e:
+        msg = "Invalid version %s" % version if url is None else "Invalid url %s" % url
+        msg = msg + " (underlying error is: %s)" % str(e)
+        raise ArgumentError(msg)
+    except tarfile.ReadError as e:
+        raise ArgumentError("Unable to uncompress downloaded file: %s" % str(e))
+
+def download_opscenter_version(version, target_version, verbose=False):
+    url = OPSC_ARCHIVE % version
+    _, target = tempfile.mkstemp(suffix=".tar.gz", prefix="ccm-")
+    try:
+        __download(url, target, show_progress=verbose)
+        if verbose:
+            print_("Extracting %s as version %s ..." % (target, target_version))
+        tar = tarfile.open(target)
+        dir = tar.next().name.split("/")[0]
+        tar.extractall(path=__get_dir())
+        tar.close()
+        target_dir = os.path.join(__get_dir(), target_version)
         if os.path.exists(target_dir):
             shutil.rmtree(target_dir)
         shutil.move(os.path.join(__get_dir(), dir), target_dir)

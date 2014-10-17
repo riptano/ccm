@@ -59,6 +59,8 @@ class ClusterCreateCmd(Cmd):
             help="Set the cluster partitioner class")
         parser.add_option('-v', "--version", type="string", dest="version",
             help="Download and use provided cassandra or dse version. If version is of the form 'git:<branch name>', then the specified cassandra branch will be downloaded from the git repo and compiled. (takes precedence over --install-dir)", default=None)
+        parser.add_option('-o', "--opsc", type="string", dest="opscenter",
+            help="Download and use provided opscenter version to install with DSE. Will have no effect on cassandra installs)", default=None)
         parser.add_option("--dse", action="store_true", dest="dse",
             help="Use with -v to indicate that the version being loaded is DSE")
         parser.add_option("--dse-username", type="string", dest="dse_username",
@@ -115,7 +117,7 @@ class ClusterCreateCmd(Cmd):
     def run(self):
         try:
             if self.options.dse or (not self.options.version and common.isDse(self.options.install_dir)):
-                cluster = DseCluster(self.path, self.name, install_dir=self.options.install_dir, version=self.options.version, dse_username=self.options.dse_username, dse_password=self.options.dse_password, verbose=True)
+                cluster = DseCluster(self.path, self.name, install_dir=self.options.install_dir, version=self.options.version, dse_username=self.options.dse_username, dse_password=self.options.dse_password, opscenter=self.options.opscenter, verbose=True)
             else:
                 cluster = Cluster(self.path, self.name, install_dir=self.options.install_dir, version=self.options.version, verbose=True)
         except OSError as e:

@@ -91,6 +91,9 @@ class Cluster(object):
         common.validate_install_dir(self.__install_dir)
         return self.__install_dir
 
+    def hasOpscenter(self):
+        return False
+
     def nodelist(self):
         return [ self.nodes[name] for name in sorted(self.nodes.keys()) ]
 

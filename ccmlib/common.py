@@ -18,6 +18,7 @@ import fnmatch
 BIN_DIR= "bin"
 CASSANDRA_CONF_DIR= "conf"
 DSE_CASSANDRA_CONF_DIR="resources/cassandra/conf"
+OPSCENTER_CONF_DIR= "conf"
 
 CASSANDRA_CONF = "cassandra.yaml"
 LOG4J_CONF = "log4j-server.properties"
@@ -277,6 +278,18 @@ def isDse(install_dir):
     dse_script = os.path.join(bin_dir, 'dse')
     return os.path.exists(dse_script)
 
+def isOpscenter(install_dir):
+    if install_dir is None:
+        raise ArgumentError('Undefined installation directory')
+
+    bin_dir = os.path.join(install_dir, BIN_DIR)
+
+    if not os.path.exists(bin_dir):
+        raise ArgumentError('Installation directory does not contain a bin directory')
+
+    opscenter_script = os.path.join(bin_dir, 'opscenter')
+    return os.path.exists(opscenter_script)
+
 def validate_install_dir(install_dir):
     if install_dir is None:
         raise ArgumentError('Undefined installation directory')
@@ -289,11 +302,14 @@ def validate_install_dir(install_dir):
     bin_dir = os.path.join(install_dir, BIN_DIR)
     if isDse(install_dir):
         conf_dir = os.path.join(install_dir, DSE_CASSANDRA_CONF_DIR)
+    elif isOpscenter(install_dir):
+        conf_dir = os.path.join(install_dir, OPSCENTER_CONF_DIR)
     else:
         conf_dir = os.path.join(install_dir, CASSANDRA_CONF_DIR)
     cnd = os.path.exists(bin_dir)
     cnd = cnd and os.path.exists(conf_dir)
-    cnd = cnd and os.path.exists(os.path.join(conf_dir, CASSANDRA_CONF))
+    if not isOpscenter(install_dir):
+        cnd = cnd and os.path.exists(os.path.join(conf_dir, CASSANDRA_CONF))
     if not cnd:
         raise ArgumentError('%s does not appear to be a cassandra or dse installation directory' % install_dir)
 
