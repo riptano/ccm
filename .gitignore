@@ -2,3 +2,6 @@
 build/
 dist/
 venv/
+ccm.iml
+.idea/
+ccm.egg-info/

@@ -9,6 +9,7 @@ import stat
 import subprocess
 import time
 import yaml
+import signal
 
 from ccmlib.node import Node
 from ccmlib.node import NodeError
@@ -22,6 +23,8 @@ class DseNode(Node):
     def __init__(self, name, cluster, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save=True, binary_interface=None):
         super(DseNode, self).__init__(name, cluster, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save, binary_interface)
         self.get_cassandra_version()
+        if self.cluster.hasOpscenter():
+            self._copy_agent()
 
     def get_install_cassandra_root(self):
         return os.path.join(self.get_install_dir(), 'resources', 'cassandra')
@@ -172,7 +175,16 @@ class DseNode(Node):
             # the msg is logged just before starting the binary protocol server
             time.sleep(0.2)
 
+        if self.cluster.hasOpscenter():
+            self._start_agent()
+
         return process
+
+    def stop(self, wait=True, wait_other_notice=False, gently=True):
+        stopped = super(DseNode, self).stop(wait, wait_other_notice, gently)
+        if self.cluster.hasOpscenter():
+            self._stop_agent()
+        return stopped
 
     def dsetool(self, cmd):
         env = common.make_dse_env(self.get_install_dir(), self.get_path())
@@ -266,3 +278,63 @@ class DseNode(Node):
         for i in ['data', 'commitlogs', 'saved_caches', 'logs', 'bin', 'keys', 'resources']:
             dirs[i] = os.path.join(self.get_path(), i)
         return dirs
+
+    def _copy_agent(self):
+        agent_source = os.path.join(self.get_install_dir(), 'datastax-agent')
+        agent_target = os.path.join(self.get_path(), 'datastax-agent')
+        if os.path.exists(agent_source) and not os.path.exists(agent_target):
+            shutil.copytree(agent_source, agent_target)
+
+    def _start_agent(self):
+        agent_dir = os.path.join(self.get_path(), 'datastax-agent')
+        if os.path.exists(agent_dir):
+            self._write_agent_address_yaml(agent_dir)
+            self._write_agent_log4j_properties(agent_dir)
+            args = [os.path.join(agent_dir, 'bin', common.platform_binary('datastax-agent'))]
+            subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    def _stop_agent(self):
+        agent_dir = os.path.join(self.get_path(), 'datastax-agent')
+        if os.path.exists(agent_dir):
+            pidfile = os.path.join(agent_dir, 'datastax-agent.pid')
+        if os.path.exists(pidfile):
+            with open(pidfile, 'r') as f:
+                pid = int(f.readline().strip())
+                f.close()
+            if pid is not None:
+                try:
+                    os.kill(pid, signal.SIGKILL)
+                except OSError:
+                    pass
+            os.remove(pidfile)
+
+    def _write_agent_address_yaml(self, agent_dir):
+        address_yaml = os.path.join(agent_dir, 'conf', 'address.yaml')
+        if not os.path.exists(address_yaml):
+            with open(address_yaml, 'w+') as f:
+                (ip, port) = self.network_interfaces['thrift']
+                jmx = self.jmx_port
+                f.write('stomp_interface: 127.0.0.1\n')
+                f.write('local_interface: %s\n' % ip)
+                f.write('agent_rpc_interface: %s\n' % ip)
+                f.write('agent_rpc_broadcast_address: %s\n' % ip)
+                f.write('cassandra_conf: %s\n' % os.path.join(self.get_path(), 'resources', 'cassandra', 'conf', 'cassandra.yaml'))
+                f.write('cassandra_install: %s\n' % self.get_path())
+                f.write('cassandra_logs: %s\n' % os.path.join(self.get_path(), 'logs'))
+                f.write('thrift_port: %s\n' % port)
+                f.write('jmx_port: %s\n' % jmx)
+                f.close()
+
+    def _write_agent_log4j_properties(self, agent_dir):
+        log4j_properties = os.path.join(agent_dir, 'conf', 'log4j.properties')
+        with open(log4j_properties, 'w+') as f:
+            f.write('log4j.rootLogger=INFO,R\n')
+            f.write('log4j.logger.org.apache.http=OFF\n')
+            f.write('log4j.logger.org.eclipse.jetty.util.log=WARN,R\n')
+            f.write('log4j.appender.R=org.apache.log4j.RollingFileAppender\n')
+            f.write('log4j.appender.R.maxFileSize=20MB\n')
+            f.write('log4j.appender.R.maxBackupIndex=5\n')
+            f.write('log4j.appender.R.layout=org.apache.log4j.PatternLayout\n')
+            f.write('log4j.appender.R.layout.ConversionPattern=%5p [%t] %d{ISO8601} %m%n\n')
+            f.write('log4j.appender.R.File=./log/agent.log\n')
+            f.close()
