@@ -239,6 +239,8 @@ class DseNode(Node):
             if not os.path.isdir(os.path.join(self.get_path(), 'resources', product, 'conf')):
                 os.makedirs(os.path.join(self.get_path(), 'resources', product, 'conf'))
             common.copy_directory(os.path.join(self.get_install_dir(), 'resources', product, 'conf'), os.path.join(self.get_path(), 'resources', product, 'conf'))
+            if product == 'cassandra':
+                os.mkdir(os.path.join(self.get_path(), 'resources', product, 'conf', 'triggers'))
 
     def import_bin_files(self):
         os.makedirs(os.path.join(self.get_path(), 'resources', 'cassandra', 'bin'))
