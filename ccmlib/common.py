@@ -454,3 +454,6 @@ def is_dse_cluster(path):
                 return True
     except IOError:
         return False
+
+def invalidate_cache():
+    shutil.rmtree(os.path.join(get_default_path(), 'repository'))

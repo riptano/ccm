@@ -35,6 +35,7 @@ def cluster_cmds():
         "bulkload",
         "setlog",
         "scrub",
+        "invalidatecache",
     ]
 
 def parse_populate_count(v):
@@ -759,4 +760,24 @@ class ClusterSetlogCmd(Cmd):
             self.cluster.set_log_level(self.level, self.options.class_name)
         except common.ArgumentError as e:
             print_(str(e), file=sys.stderr)
+            exit(1)
+
+class ClusterInvalidatecacheCmd(Cmd):
+    def description(self):
+        return "Destroys ccm's local git cache."
+
+    def get_parser(self):
+        usage = "usage: ccm invalidatecache"
+        parser = self._get_default_parser(usage, self.description())
+        return parser
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args)
+
+    def run(self):
+        try:
+            common.invalidate_cache()
+        except Exception as e:
+            print_(str(e), file=sys.stderr)
+            print_("Error while deleting cache. Please attempt manually.")
             exit(1)
