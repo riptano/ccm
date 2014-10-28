@@ -139,6 +139,13 @@ Where things are stored
 By default, ccm stores all the node data and configuration files under `~/.ccm/cluster_name/`.
 This can be overridden using the `--config-dir` option with each command.
 
+DataStax Enterprise
+-------------------
+
+CCM 2.0 supports creating and interacting with DSE clusters. The --dse
+option must be used with the `ccm create` command. See the `ccm create -h`
+help for assistance.
+
 CCM Lib
 -------
 
