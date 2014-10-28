@@ -5,7 +5,7 @@ from six import print_
 from optparse import OptionParser, BadOptionError, Option
 
 from ccmlib import common
-from ccmlib.cluster import Cluster
+from ccmlib.cluster_factory import ClusterFactory
 
 # This is fairly fragile, but handy for now
 class ForgivingParser(OptionParser):
@@ -82,7 +82,7 @@ class Cmd(object):
             help="Directory for the cluster files [default to ~/.ccm]")
         return parser
 
-    def description():
+    def description(self):
         return ""
 
     def _load_current_cluster(self):
@@ -91,7 +91,7 @@ class Cmd(object):
             print_('No currently active cluster (use ccm cluster switch)')
             exit(1)
         try:
-            return Cluster.load(self.path, name)
+            return ClusterFactory.load(self.path, name)
         except common.LoadError as e:
             print_(str(e))
             exit(1)

@@ -14,59 +14,70 @@ from ccmlib import common, repository
 from ccmlib.node import Node, NodeError
 from ccmlib.bulkloader import BulkLoader
 
-class Cluster():
-    def __init__(self, path, name, partitioner=None, cassandra_dir=None, create_directory=True, cassandra_version=None, verbose=False):
+class Cluster(object):
+    def __init__(self, path, name, partitioner=None, install_dir=None, create_directory=True, version=None, verbose=False, **kwargs):
         self.name = name
         self.nodes = {}
         self.seeds = []
         self.partitioner = partitioner
         self._config_options = {}
+        self._dse_config_options = {}
         self.__log_level = "INFO"
         self.__path = path
         self.__version = None
         self.use_vnodes = False
+
+        ##This is incredibly important for
+        ##backwards compatibility.
+        if 'cassandra_version' in kwargs:
+            version = kwargs['cassandra_version']
+        if 'cassandra_dir' in kwargs:
+            install_dir = kwargs['cassandra_dir']
         if create_directory:
             # we create the dir before potentially downloading to throw an error sooner if need be
             os.mkdir(self.get_path())
 
         try:
-            if cassandra_version is None:
-                # at this point, cassandra_dir should always not be None, but
+            if version is None:
+                # at this point, install_dir should always not be None, but
                 # we keep this for backward compatibility (in loading old cluster)
-                if cassandra_dir is not None:
+                if install_dir is not None:
                     if common.is_win():
-                        self.__cassandra_dir = cassandra_dir
+                        self.__install_dir = install_dir
                     else:
-                        self.__cassandra_dir = os.path.abspath(cassandra_dir)
+                        self.__install_dir = os.path.abspath(install_dir)
                     self.__version = self.__get_version_from_build()
             else:
-                dir, v = repository.setup(cassandra_version, verbose)
-                self.__cassandra_dir = dir
+                dir, v = self.load_from_repository(version, verbose)
+                self.__install_dir = dir
                 self.__version = v if v is not None else self.__get_version_from_build()
 
             if create_directory:
-                common.validate_cassandra_dir(self.__cassandra_dir)
-                self.__update_config()
+                common.validate_install_dir(self.__install_dir)
+                self._update_config()
         except:
             if create_directory:
                 shutil.rmtree(self.get_path())
             raise
 
+    def load_from_repository(self, version, verbose):
+        return repository.setup(version, verbose)
+
     def set_partitioner(self, partitioner):
         self.partitioner = partitioner
-        self.__update_config()
+        self._update_config()
         return self
 
-    def set_cassandra_dir(self, cassandra_dir=None, cassandra_version=None, verbose=False):
-        if cassandra_version is None:
-            self.__cassandra_dir = cassandra_dir
-            common.validate_cassandra_dir(cassandra_dir)
+    def set_install_dir(self, install_dir=None, version=None, verbose=False):
+        if version is None:
+            self.__install_dir = install_dir
+            common.validate_install_dir(install_dir)
             self.__version = self.__get_version_from_build()
         else:
-            dir, v = repository.setup(cassandra_version, verbose)
-            self.__cassandra_dir = dir
+            dir, v = repository.setup(version, verbose)
+            self.__install_dir = dir
             self.__version = v if v is not None else self.__get_version_from_build()
-        self.__update_config()
+        self._update_config()
         for node in list(self.nodes.values()):
             node.import_config_files()
 
@@ -76,9 +87,12 @@ class Cluster():
 
         return self
 
-    def get_cassandra_dir(self):
-        common.validate_cassandra_dir(self.__cassandra_dir)
-        return self.__cassandra_dir
+    def get_install_dir(self):
+        common.validate_install_dir(self.__install_dir)
+        return self.__install_dir
+
+    def hasOpscenter(self):
+        return False
 
     def nodelist(self):
         return [ self.nodes[name] for name in sorted(self.nodes.keys()) ]
@@ -86,38 +100,8 @@ class Cluster():
     def version(self):
         return self.__version
 
-    @staticmethod
-    def load(path, name):
-        cluster_path = os.path.join(path, name)
-        filename = os.path.join(cluster_path, 'cluster.conf')
-        with open(filename, 'r') as f:
-            data = yaml.load(f)
-        try:
-            cassandra_dir = None
-            if 'cassandra_dir' in data:
-                cassandra_dir = data['cassandra_dir']
-                repository.validate(cassandra_dir)
-
-            cluster = Cluster(path, data['name'], cassandra_dir=cassandra_dir, create_directory=False)
-            node_list = data['nodes']
-            seed_list = data['seeds']
-            if 'partitioner' in data:
-                cluster.partitioner = data['partitioner']
-            if 'config_options' in data:
-                cluster._config_options = data['config_options']
-            if 'log_level' in data:
-                cluster.__log_level = data['log_level']
-            if 'use_vnodes' in data:
-                cluster.use_vnodes = data['use_vnodes']
-        except KeyError as k:
-            raise common.LoadError("Error Loading " + filename + ", missing property:" + k)
-
-        for node_name in node_list:
-            cluster.nodes[node_name] = Node.load(cluster_path, node_name, cluster)
-        for seed_name in seed_list:
-            cluster.seeds.append(cluster.nodes[seed_name])
-
-        return cluster
+    def cassandra_version(self):
+        return self.version()
 
     def add(self, node, is_seed, data_center=None):
         if node.name in self.nodes:
@@ -125,7 +109,7 @@ class Cluster():
         self.nodes[node.name] = node
         if is_seed:
             self.seeds.append(node)
-        self.__update_config()
+        self._update_config()
         node.data_center = data_center
         node.set_log_level(self.__log_level)
         if data_center is not None:
@@ -170,10 +154,9 @@ class Cluster():
             dc = dcs[i-1] if i-1 < len(dcs) else None
 
             binary = None
-            if self.version() >= '1.2':
+            if self.cassandra_version() >= '1.2':
                 binary = (ipformat % i, 9042)
-            node = Node('node%s' % i,
-                        self,
+            node = self.create_node('node%s' % i,
                         False,
                         (ipformat % i, 9160),
                         (ipformat % i, 7000),
@@ -182,11 +165,14 @@ class Cluster():
                         tk,
                         binary_interface=binary)
             self.add(node, True, dc)
-            self.__update_config()
+            self._update_config()
         return self
 
+    def create_node(self, name, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save=True, binary_interface=None):
+        return Node(name, self, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save, binary_interface)
+
     def balanced_tokens(self, node_count):
-        if self.version() >= '1.2' and not self.partitioner:
+        if self.cassandra_version() >= '1.2' and not self.partitioner:
             ptokens = [(i*(2**64//node_count)) for i in xrange(0, node_count)]
             return [int(t - 2**63) for t in ptokens]
         return [ int(i*(2**127//node_count)) for i in range(0, node_count) ]
@@ -217,7 +203,7 @@ class Cluster():
             del self.nodes[node.name]
             if node in self.seeds:
                 self.seeds.remove(node)
-            self.__update_config()
+            self._update_config()
             node.stop(gently=False)
             shutil.rmtree(node.get_path())
         else:
@@ -249,7 +235,7 @@ class Cluster():
             else:
                 node.show(only_status=True)
 
-    def start(self, no_wait=False, verbose=False, wait_for_binary_proto=False, wait_other_notice=False, jvm_args=[], profile_options=None):
+    def start(self, no_wait=False, verbose=False, wait_for_binary_proto=True, wait_other_notice=False, jvm_args=[], profile_options=None):
         if wait_other_notice:
             marks = [ (node, node.mark_log()) for node in list(self.nodes.values()) if node.is_running() ]
 
@@ -278,7 +264,7 @@ class Cluster():
             if not node.is_running():
                 raise NodeError("Error starting {0}.".format(node.name), p)
 
-        if not no_wait and self.version() >= "0.8":
+        if not no_wait and self.cassandra_version() >= "0.8":
             # 0.7 gossip messages seems less predictible that from 0.8 onwards and
             # I don't care enough
             for node, _, mark in started:
@@ -291,7 +277,7 @@ class Cluster():
                 for node, _, _ in started:
                     old_node.watch_log_for_alive(node, from_mark=mark)
 
-        if wait_for_binary_proto:
+        if wait_for_binary_proto and self.version() >= '1.2':
             for node, _, mark in started:
                 node.watch_log_for("Starting listening for CQL clients", process=p, verbose=verbose, from_mark=mark)
             time.sleep(0.2)
@@ -311,7 +297,7 @@ class Cluster():
             raise common.ArgumentError("Unknown log level %s (use one of %s)" % (new_level, " ".join(known_level)))
 
         self.__log_level = new_level
-        self.__update_config()
+        self._update_config()
 
         for node in self.nodelist():
             node.set_log_level(new_level, class_name)
@@ -323,7 +309,7 @@ class Cluster():
         return self
 
     def stress(self, stress_options):
-        stress = common.get_stress_bin(self.get_cassandra_dir())
+        stress = common.get_stress_bin(self.get_install_dir())
         livenodes = [ node.network_interfaces['storage'][0] for node in list(self.nodes.values()) if node.is_live() ]
         if len(livenodes) == 0:
             print_("No live node")
@@ -359,10 +345,13 @@ class Cluster():
                 self._config_options["commitlog_sync_period_in_ms"] = 10000
                 self._config_options["commitlog_sync_batch_window_in_ms"] = None
 
-        self.__update_config()
+        self._update_config()
         for node in list(self.nodes.values()):
             node.import_config_files()
         return self
+
+    def set_dse_configuration_options(self, values=None):
+        raise common.ArgumentError('Cannot set DSE configuration options on a Cassandra cluster')
 
     def flush(self):
         self.nodetool("flush")
@@ -406,9 +395,9 @@ class Cluster():
             node.update_logback(new_logback_config)
 
     def __get_version_from_build(self):
-        return common.get_version_from_build(self.get_cassandra_dir())
+        return common.get_version_from_build(self.get_install_dir())
 
-    def __update_config(self):
+    def _update_config(self):
         node_list = [ node.name for node in list(self.nodes.values()) ]
         seed_list = [ node.name for node in self.seeds ]
         filename = os.path.join(self.__path, self.name, 'cluster.conf')
@@ -418,8 +407,9 @@ class Cluster():
                 'nodes' : node_list,
                 'seeds' : seed_list,
                 'partitioner' : self.partitioner,
-                'cassandra_dir' : self.__cassandra_dir,
+                'install_dir' : self.__install_dir,
                 'config_options' : self._config_options,
+                'dse_config_options' : self._dse_config_options,
                 'log_level' : self.__log_level,
                 'use_vnodes' : self.use_vnodes
             }, f)
@@ -442,3 +432,14 @@ class Cluster():
             topology_file = os.path.join(node.get_conf_dir(), 'cassandra-topology.properties')
             with open(topology_file, 'w') as f:
                 f.write(content)
+
+    def enable_ssl(self, ssl_path):
+        shutil.copyfile(os.path.join(ssl_path, 'keystore.jks'), os.path.join(self.get_path(), 'keystore.jks'))
+        shutil.copyfile(os.path.join(ssl_path, 'cassandra.crt'), os.path.join(self.get_path(), 'cassandra.crt'))
+
+        ssl_options = {'enabled' : True,
+            'keystore' : os.path.join(self.get_path(), 'keystore.jks'),
+            'keystore_password' : 'cassandra'
+            }
+        self._config_options['client_encryption_options'] = ssl_options
+        self._update_config()

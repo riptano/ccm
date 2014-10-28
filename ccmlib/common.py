@@ -13,9 +13,12 @@ import sys
 from six import print_
 import time
 import yaml
+import fnmatch
 
-CASSANDRA_BIN_DIR= "bin"
+BIN_DIR= "bin"
 CASSANDRA_CONF_DIR= "conf"
+DSE_CASSANDRA_CONF_DIR="resources/cassandra/conf"
+OPSCENTER_CONF_DIR= "conf"
 
 CASSANDRA_CONF = "cassandra.yaml"
 LOG4J_CONF = "log4j-server.properties"
@@ -125,24 +128,24 @@ def replaces_or_add_into_file_tail(file, replacement_list):
 
     shutil.move(file_tmp, file)
 
-def make_cassandra_env(cassandra_dir, node_path):
+def make_cassandra_env(install_dir, node_path):
     if is_win() and get_version_from_build(node_path=node_path) >= '2.1':
         sh_file = os.path.join(CASSANDRA_CONF_DIR, CASSANDRA_WIN_ENV)
     else:
-        sh_file = os.path.join(CASSANDRA_BIN_DIR, CASSANDRA_SH)
-    orig = os.path.join(cassandra_dir, sh_file)
+        sh_file = os.path.join(BIN_DIR, CASSANDRA_SH)
+    orig = os.path.join(install_dir, sh_file)
     dst = os.path.join(node_path, sh_file)
     shutil.copy(orig, dst)
     replacements = ""
     if is_win() and get_version_from_build(node_path=node_path) >= '2.1':
         replacements = [
-            ('env:CASSANDRA_HOME =', '        $env:CASSANDRA_HOME="%s"' % cassandra_dir),
-            ('env:CASSANDRA_CONF =', '    $env:CASSANDRA_CONF="%s"' % os.path.join(node_path, 'conf')),
-            ('cp = ".*?env:CASSANDRA_HOME.conf', '    $cp = "$env:CASSANDRA_CONF"')
+            ('env:CASSANDRA_HOME =', '        $env:CASSANDRA_HOME="%s"' % install_dir),
+            ('env:CASSANDRA_CONF =', '    $env:CCM_DIR="' + node_path + '\\conf"\n    $env:CASSANDRA_CONF="$env:CCM_DIR"'),
+            ('cp = ".*?env:CASSANDRA_HOME.conf', '    $cp = """$env:CASSANDRA_CONF"""')
         ]
     else:
         replacements = [
-            ('CASSANDRA_HOME=', '\tCASSANDRA_HOME=%s' % cassandra_dir),
+            ('CASSANDRA_HOME=', '\tCASSANDRA_HOME=%s' % install_dir),
             ('CASSANDRA_CONF=', '\tCASSANDRA_CONF=%s' % os.path.join(node_path, 'conf'))
         ]
     replaces_in_file(dst, replacements)
@@ -162,6 +165,24 @@ def make_cassandra_env(cassandra_dir, node_path):
     env['MAX_HEAP_SIZE'] = os.environ.get('CCM_MAX_HEAP_SIZE', '500M')
     env['HEAP_NEWSIZE'] = os.environ.get('CCM_HEAP_NEWSIZE', '50M')
 
+    return env
+
+def make_dse_env(install_dir, node_path):
+    env = os.environ.copy()
+    env['MAX_HEAP_SIZE'] = os.environ.get('CCM_MAX_HEAP_SIZE', '500M')
+    env['HEAP_NEWSIZE'] = os.environ.get('CCM_HEAP_NEWSIZE', '50M')
+    env['DSE_HOME'] = os.path.join(install_dir)
+    env['DSE_CONF'] = os.path.join(node_path, 'resources', 'dse', 'conf')
+    env['CASSANDRA_HOME'] = os.path.join(install_dir, 'resources', 'cassandra')
+    env['CASSANDRA_CONF'] = os.path.join(node_path, 'resources', 'cassandra', 'conf')
+    env['HADOOP_CONF_DIR'] = os.path.join(node_path, 'resources', 'hadoop', 'conf')
+    env['HIVE_CONF_DIR'] = os.path.join(node_path, 'resources', 'hive', 'conf')
+    env['SQOOP_CONF_DIR'] = os.path.join(node_path, 'resources', 'sqoop', 'conf')
+    env['TOMCAT_CONF_DIR'] = os.path.join(node_path, 'resources', 'tomcat', 'conf')
+    env['PIG_CONF_DIR'] = os.path.join(node_path, 'resources', 'pig', 'conf')
+    env['MAHOUT_CONF_DIR'] = os.path.join(node_path, 'resources', 'mahout', 'conf')
+    env['SPARK_CONF_DIR'] = os.path.join(node_path, 'resources', 'spark', 'conf')
+    env['SHARK_CONF_DIR'] = os.path.join(node_path, 'resources', 'shark', 'conf')
     return env
 
 def check_win_requirements():
@@ -209,12 +230,13 @@ def parse_bin(executable):
     tokens = re.split(os.sep, executable)
     return tokens[-1]
 
-def get_stress_bin(cassandra_dir):
+def get_stress_bin(install_dir):
     candidates = [
-        os.path.join(cassandra_dir, 'contrib', 'stress', 'bin', 'stress'),
-        os.path.join(cassandra_dir, 'tools', 'stress', 'bin', 'stress'),
-        os.path.join(cassandra_dir, 'tools', 'bin', 'stress'),
-        os.path.join(cassandra_dir, 'tools', 'bin', 'cassandra-stress')
+        os.path.join(install_dir, 'contrib', 'stress', 'bin', 'stress'),
+        os.path.join(install_dir, 'tools', 'stress', 'bin', 'stress'),
+        os.path.join(install_dir, 'tools', 'bin', 'stress'),
+        os.path.join(install_dir, 'tools', 'bin', 'cassandra-stress'),
+        os.path.join(install_dir, 'resources', 'cassandra', 'tools', 'bin', 'cassandra-stress')
     ]
     candidates = [platform_binary(s) for s in candidates]
 
@@ -244,22 +266,52 @@ def get_stress_bin(cassandra_dir):
 
     return stress
 
-def validate_cassandra_dir(cassandra_dir):
-    if cassandra_dir is None:
-        raise ArgumentError('Undefined cassandra directory')
+def isDse(install_dir):
+    if install_dir is None:
+        raise ArgumentError('Undefined installation directory')
 
-    # Windows requires absolute pathing on cassandra dir - abort if specified cygwin style
+    bin_dir = os.path.join(install_dir, BIN_DIR)
+
+    if not os.path.exists(bin_dir):
+        raise ArgumentError('Installation directory does not contain a bin directory: %s' % install_dir)
+
+    dse_script = os.path.join(bin_dir, 'dse')
+    return os.path.exists(dse_script)
+
+def isOpscenter(install_dir):
+    if install_dir is None:
+        raise ArgumentError('Undefined installation directory')
+
+    bin_dir = os.path.join(install_dir, BIN_DIR)
+
+    if not os.path.exists(bin_dir):
+        raise ArgumentError('Installation directory does not contain a bin directory')
+
+    opscenter_script = os.path.join(bin_dir, 'opscenter')
+    return os.path.exists(opscenter_script)
+
+def validate_install_dir(install_dir):
+    if install_dir is None:
+        raise ArgumentError('Undefined installation directory')
+
+    # Windows requires absolute pathing on installation dir - abort if specified cygwin style
     if is_win():
-        if ':' not in cassandra_dir:
-            raise ArgumentError('%s does not appear to be a cassandra source directory.  Please use absolute pathing (e.g. C:/cassandra.' % cassandra_dir)
+        if ':' not in install_dir:
+            raise ArgumentError('%s does not appear to be a cassandra or dse installation directory.  Please use absolute pathing (e.g. C:/cassandra.' % install_dir)
 
-    bin_dir = os.path.join(cassandra_dir, CASSANDRA_BIN_DIR)
-    conf_dir = os.path.join(cassandra_dir, CASSANDRA_CONF_DIR)
+    bin_dir = os.path.join(install_dir, BIN_DIR)
+    if isDse(install_dir):
+        conf_dir = os.path.join(install_dir, DSE_CASSANDRA_CONF_DIR)
+    elif isOpscenter(install_dir):
+        conf_dir = os.path.join(install_dir, OPSCENTER_CONF_DIR)
+    else:
+        conf_dir = os.path.join(install_dir, CASSANDRA_CONF_DIR)
     cnd = os.path.exists(bin_dir)
     cnd = cnd and os.path.exists(conf_dir)
-    cnd = cnd and os.path.exists(os.path.join(conf_dir, CASSANDRA_CONF))
+    if not isOpscenter(install_dir):
+        cnd = cnd and os.path.exists(os.path.join(conf_dir, CASSANDRA_CONF))
     if not cnd:
-        raise ArgumentError('%s does not appear to be a cassandra source directory' % cassandra_dir)
+        raise ArgumentError('%s does not appear to be a cassandra or dse installation directory' % install_dir)
 
 def check_socket_available(itf):
     info = socket.getaddrinfo(itf[0], itf[1], socket.AF_UNSPEC, socket.SOCK_STREAM)
@@ -302,7 +354,7 @@ def parse_settings(args):
     for s in args:
         splitted = s.split(':')
         if len(splitted) != 2:
-            raise ArgumentError("A new setting should be of the form 'key: value', got" + s)
+            raise ArgumentError("A new setting should be of the form 'key: value', got " + s)
         key = splitted[0].strip()
         val = splitted[1].strip()
         # ok, that's not super beautiful
@@ -336,17 +388,27 @@ def copy_file(src_file, dst_file):
         print_(str(e), file=sys.stderr)
         exit(1)
 
-def get_version_from_build(cassandra_dir=None, node_path=None):
-    if cassandra_dir is None and node_path is not None:
-        cassandra_dir = get_cassandra_dir_from_cluster_conf(node_path)
-    if cassandra_dir is not None:
-        # Binary installs will have a 0.version.txt file
-        version_file = os.path.join(cassandra_dir, '0.version.txt')
+def copy_directory(src_dir, dst_dir):
+    for name in os.listdir(src_dir):
+        filename = os.path.join(src_dir, name)
+        if os.path.isfile(filename):
+            shutil.copy(filename, dst_dir)
+
+def get_version_from_build(install_dir=None, node_path=None):
+    if install_dir is None and node_path is not None:
+        install_dir = get_install_dir_from_cluster_conf(node_path)
+    if install_dir is not None:
+        # Binary cassandra installs will have a 0.version.txt file
+        version_file = os.path.join(install_dir, '0.version.txt')
         if os.path.exists(version_file):
             with open(version_file) as f:
                 return f.read().strip()
-        # Source installs we can read from build.xml
-        build = os.path.join(cassandra_dir, 'build.xml')
+        # For DSE look for a dse*.jar and extract the version number
+        dse_version = get_dse_version(install_dir)
+        if (dse_version is not None):
+            return dse_version
+        # Source cassandra installs we can read from build.xml
+        build = os.path.join(install_dir, 'build.xml')
         with open(build) as f:
             for line in f:
                 match = re.search('name="base\.version" value="([0-9.]+)[^"]*"', line)
@@ -354,11 +416,44 @@ def get_version_from_build(cassandra_dir=None, node_path=None):
                     return match.group(1)
     raise CCMError("Cannot find version")
 
-def get_cassandra_dir_from_cluster_conf(node_path):
-    file = os.path.join(os.path.dirname(node_path), "cluster.conf")
-    with open(file) as f:
-        for line in f:
-            match = re.search('cassandra_dir: (.*?)$', line)
+def get_dse_version(install_dir):
+    for root, dirs, files in os.walk(install_dir):
+        for file in files:
+            match = re.search('^dse-([0-9.]+)(?:-SNAPSHOT)?\.jar', file)
             if match:
                 return match.group(1)
     return None
+
+def get_dse_cassandra_version(install_dir):
+    clib = os.path.join(install_dir, 'resources', 'cassandra', 'lib')
+    for file in os.listdir(clib):
+        if fnmatch.fnmatch(file, 'cassandra-all*.jar'):
+            match = re.search('cassandra-all-([0-9.]+)\.jar', file)
+            if match:
+                return match.group(1)
+    raise ArgumentError("Unable to determine Cassandra version")
+
+def get_install_dir_from_cluster_conf(node_path):
+    file = os.path.join(os.path.dirname(node_path), "cluster.conf")
+    with open(file) as f:
+        for line in f:
+            match = re.search('install_dir: (.*?)$', line)
+            if match:
+                return match.group(1)
+    return None
+
+def is_dse_cluster(path):
+    try:
+        with open(os.path.join(path, 'CURRENT'), 'r') as f:
+            name = f.readline().strip()
+            cluster_path = os.path.join(path, name)
+            filename = os.path.join(cluster_path, 'cluster.conf')
+            with open(filename, 'r') as f:
+                data = yaml.load(f)
+            if 'dse_dir' in data:
+                return True
+    except IOError:
+        return False
+
+def invalidate_cache():
+    shutil.rmtree(os.path.join(get_default_path(), 'repository'))
