@@ -36,6 +36,8 @@ def cluster_cmds():
         "setlog",
         "scrub",
         "invalidatecache",
+        "adduser",
+        "deleteuser"
     ]
 
 def parse_populate_count(v):
@@ -62,6 +64,10 @@ class ClusterCreateCmd(Cmd):
             help="Download and use provided cassandra or dse version. If version is of the form 'git:<branch name>', then the specified cassandra branch will be downloaded from the git repo and compiled. (takes precedence over --install-dir)", default=None)
         parser.add_option('-o', "--opsc", type="string", dest="opscenter",
             help="Download and use provided opscenter version to install with DSE. Will have no effect on cassandra installs)", default=None)
+        parser.add_option('-a', "--authn", type="string", dest="authn",
+            help="Configure the cluster for authentication. [transitional, permissive, password, ldap, kerberos]", default=None)
+        parser.add_option('-z', "--authz", type="string", dest="authz",
+            help="Configure the cluster for authorization. [transitional, cassandra]", default=None)
         parser.add_option("--dse", action="store_true", dest="dse",
             help="Use with -v to indicate that the version being loaded is DSE")
         parser.add_option("--dse-username", type="string", dest="dse_username",
@@ -120,9 +126,11 @@ class ClusterCreateCmd(Cmd):
     def run(self):
         try:
             if self.options.dse or (not self.options.version and common.isDse(self.options.install_dir)):
-                cluster = DseCluster(self.path, self.name, install_dir=self.options.install_dir, version=self.options.version, dse_username=self.options.dse_username, dse_password=self.options.dse_password, opscenter=self.options.opscenter, verbose=True)
+                cluster = DseCluster(self.path, self.name, install_dir=self.options.install_dir, version=self.options.version,
+                                     authn=self.options.authn, authz=self.options.authz, dse_username=self.options.dse_username, dse_password=self.options.dse_password,
+                                     opscenter=self.options.opscenter, verbose=True)
             else:
-                cluster = Cluster(self.path, self.name, install_dir=self.options.install_dir, version=self.options.version, verbose=True)
+                cluster = Cluster(self.path, self.name, install_dir=self.options.install_dir, version=self.options.version, authn=self.options.authn, authz=self.options.authz, verbose=True)
         except OSError as e:
             cluster_dir = os.path.join(self.path, self.name)
             import traceback
@@ -626,7 +634,6 @@ class ClusterUpdatedseconfCmd(Cmd):
     def get_parser(self):
         usage = "usage: ccm updatedseconf [options] [ new_setting | ...  ], where new_setting should be a string of the form 'max_solr_concurrency_per_core: 2'"
         parser = self._get_default_parser(usage, self.description())
-        parser.add_option('-y', '--yaml', action="store", type="string", dest="yaml_file", help="Path to a yaml file containing options to be copied into each node's dse.yaml. Useful for defining nested structures.", default=None)
         return parser
 
     def validate(self, parser, options, args):
@@ -637,15 +644,7 @@ class ClusterUpdatedseconfCmd(Cmd):
             print_(str(e), file=sys.stderr)
             exit(1)
 
-        if self.options.yaml_file is not None:
-            if not os.path.exists(self.options.yaml_file):
-                print_("%s does not appear to be a valid file" % self.options.yaml_file)
-                exit(1)
-
     def run(self):
-        if self.options.yaml_file is not None:
-            self.setting["dse_yaml_file"] = self.options.yaml_file
-
         self.cluster.set_dse_configuration_options(values=self.setting)
 
 #
@@ -782,4 +781,57 @@ class ClusterInvalidatecacheCmd(Cmd):
         except Exception as e:
             print_(str(e), file=sys.stderr)
             print_("Error while deleting cache. Please attempt manually.")
+            exit(1)
+
+class ClusterAdduserCmd(Cmd):
+    def description(self):
+        return "Add a user to the directory server. For use with LDAP and kerberos authentication"
+
+
+    def get_parser(self):
+        usage = "usage: ccm adduser userid password"
+        parser = self._get_default_parser(usage, self.description())
+        return parser
+
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, load_cluster=True)
+        if len(args) < 2:
+            print_('Missing userid and password', file=sys.stderr)
+            parser.print_help()
+            exit(1)
+        self.userid = args[0]
+        self.password = args[1]
+
+    def run(self):
+        try:
+            self.cluster.add_ldap_user(self.userid, self.password)
+        except common.ArgumentError as e:
+            print_(str(e), file=sys.stderr)
+            exit(1)
+
+class ClusterDeleteuserCmd(Cmd):
+    def description(self):
+        return "Delete a user from the directory server. For use with LDAP and kerberos authentication"
+
+
+    def get_parser(self):
+        usage = "usage: ccm deleteuser userid"
+        parser = self._get_default_parser(usage, self.description())
+        return parser
+
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, load_cluster=True)
+        if len(args) < 1:
+            print_('Missing userid', file=sys.stderr)
+            parser.print_help()
+            exit(1)
+        self.userid = args[0]
+
+    def run(self):
+        try:
+            self.cluster.delete_ldap_user(self.userid)
+        except common.ArgumentError as e:
+            print_(str(e), file=sys.stderr)
             exit(1)

@@ -44,7 +44,10 @@ def node_cmds():
         "hive",
         "pig",
         "sqoop",
-        "spark"
+        "spark",
+        "kinit",
+        "klist",
+        "kdestroy"
     ]
 
 class NodeShowCmd(Cmd):
@@ -709,3 +712,49 @@ class NodeSparkCmd(Cmd):
 
     def run(self):
         self.node.spark(self.spark_options)
+
+class NodeKinitCmd(Cmd):
+    def description(self):
+        return "Create a kerberos ticket for a user on this node"
+
+    def get_parser(self):
+        usage = "usage: ccm node_name kinit principal"
+        parser = self._get_default_parser(usage, self.description(), ignore_unknown_options=True)
+        return parser
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
+        self.principal = args[1]
+
+    def run(self):
+        self.node.kinit(self.principal)
+
+class NodeKlistCmd(Cmd):
+    def description(self):
+        return "List the entries in the kerberos ticket cache on this node"
+
+    def get_parser(self):
+        usage = "usage: ccm node_name klist"
+        parser = self._get_default_parser(usage, self.description(), ignore_unknown_options=True)
+        return parser
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
+
+    def run(self):
+        self.node.klist()
+
+class NodeKdestroyCmd(Cmd):
+    def description(self):
+        return "Remove all entries from the kerberos ticket cache on this node"
+
+    def get_parser(self):
+        usage = "usage: ccm node_name kdestroy"
+        parser = self._get_default_parser(usage, self.description(), ignore_unknown_options=True)
+        return parser
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
+
+    def run(self):
+        self.node.kdestroy()

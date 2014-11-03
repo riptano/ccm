@@ -38,6 +38,10 @@ class ClusterFactory():
                 cluster.__log_level = data['log_level']
             if 'use_vnodes' in data:
                 cluster.use_vnodes = data['use_vnodes']
+            if 'authn' in data:
+                cluster.authn = data['authn']
+            if 'authz' in data:
+                cluster.authz = data['authz']
         except KeyError as k:
             raise common.LoadError("Error Loading " + filename + ", missing property:" + k)
 

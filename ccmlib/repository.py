@@ -24,6 +24,7 @@ OPSC_ARCHIVE="http://downloads.datastax.com/community/opscenter-%s.tar.gz"
 ARCHIVE="http://archive.apache.org/dist/cassandra"
 GIT_REPO="http://git-wip-us.apache.org/repos/asf/cassandra.git"
 GITHUB_TAGS="https://api.github.com/repos/apache/cassandra/git/refs/tags"
+APACHEDS_URL="http://www.mirrorservice.org/sites/ftp.apache.org//directory/apacheds/dist/2.0.0-M17/apacheds-2.0.0-M17.tar.gz"
 
 def setup(version, verbose=False):
     binary = False
@@ -55,6 +56,31 @@ def setup_opscenter(opscenter, verbose=False):
         download_opscenter_version(opscenter, ops_version, verbose = verbose)
         odir = version_directory(ops_version)
     return odir
+
+def setup_apacheds(verbose=False):
+    adir = os.path.join(__get_dir(), 'apacheds')
+    if not os.path.exists(adir):
+        url = os.environ.get("APACHEDS_URL", APACHEDS_URL)
+        _, target = tempfile.mkstemp(suffix=".tar.gz", prefix="ads-")
+        try:
+            __download(url, target, show_progress=verbose)
+            if verbose:
+                print_("Extracting %s as version apacheds ..." % (target))
+            tar = tarfile.open(target)
+            dir = tar.next().name.split("/")[0]
+            tar.extractall(path=__get_dir())
+            tar.close()
+            target_dir = adir
+            shutil.move(os.path.join(__get_dir(), dir), target_dir)
+        except urllib.error.URLError as e:
+            msg = "Invalid url %s" % url
+            msg = msg + " (underlying error is: %s)" % str(e)
+            raise ArgumentError(msg)
+        except tarfile.ReadError as e:
+            raise ArgumentError("Unable to uncompress downloaded file: %s" % str(e))
+    return adir
+
+
 
 def validate(path):
     if path.startswith(__get_dir()):
