@@ -397,7 +397,7 @@ class NodeJsonCmd(Cmd):
             if self.keyspace is None:
                 print_("You need a keyspace specified (option -k) if you specify a file", file=sys.stderr)
                 exit(1)
-        elif options.cfs is not None:
+        if options.cfs is not None:
             if self.keyspace is None:
                 print_("You need a keyspace specified (option -k) if you specify column families", file=sys.stderr)
                 exit(1)
@@ -405,7 +405,10 @@ class NodeJsonCmd(Cmd):
 
     def run(self):
         try:
-            self.node.run_sstable2json(self.keyspace, self.datafile, self.column_families, self.options.enumerate_keys)
+            self.node.run_sstable2json(keyspace=self.keyspace,
+                datafile=self.datafile,
+                column_families=self.column_families,
+                enumerate_keys=self.options.enumerate_keys)
         except common.ArgumentError as e:
             print_(e, file=sys.stderr)
 
