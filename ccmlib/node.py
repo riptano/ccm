@@ -742,8 +742,10 @@ class Node(object):
                 shutil.rmtree(full_dir)
                 os.mkdir(full_dir)
 
-    def run_sstable2json(self, out_file=sys.__stdout__, keyspace=None, datafile=None, column_families=None, enumerate_keys=False):
+    def run_sstable2json(self, out_file=None, keyspace=None, datafile=None, column_families=None, enumerate_keys=False):
         print_("running")
+        if out_file is None:
+            out_file = sys.stdout
         cdir = self.get_install_cassandra_root()
         if self.get_base_cassandra_version() >= 2.1:
             sstable2json = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstable2json')

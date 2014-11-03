@@ -391,9 +391,9 @@ class NodeJsonCmd(Cmd):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
         self.keyspace = options.keyspace
         self.column_families = None
-        self.datafile = None
+        self.outfile = None
         if len(args) > 1:
-            self.datafile = args[1]
+            self.outfile = args[1]
             if self.keyspace is None:
                 print_("You need a keyspace specified (option -k) if you specify a file", file=sys.stderr)
                 exit(1)
@@ -405,10 +405,11 @@ class NodeJsonCmd(Cmd):
 
     def run(self):
         try:
-            self.node.run_sstable2json(keyspace=self.keyspace,
-                datafile=self.datafile,
-                column_families=self.column_families,
-                enumerate_keys=self.options.enumerate_keys)
+            with open(self.outfile, 'w') as f:
+                self.node.run_sstable2json(keyspace=self.keyspace,
+                    out_file=f,
+                    column_families=self.column_families,
+                    enumerate_keys=self.options.enumerate_keys)
         except common.ArgumentError as e:
             print_(e, file=sys.stderr)
 
