@@ -41,7 +41,8 @@ def node_cmds():
         "hadoop",
         "hive",
         "pig",
-        "sqoop"
+        "sqoop",
+        "spark"
     ]
 
 class NodeShowCmd(Cmd):
@@ -670,3 +671,19 @@ class NodeSqoopCmd(Cmd):
 
     def run(self):
         self.node.sqoop(self.sqoop_options)
+
+class NodeSparkCmd(Cmd):
+    def description(self):
+        return "Launch a spark session connected to this node"
+
+    def get_parser(self):
+        usage = "usage: ccm node_name spark [options] [spark_options]"
+        parser = self._get_default_parser(usage, self.description(), ignore_unknown_options=True)
+        return parser
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
+        self.spark_options = args[1:] + parser.get_ignored()
+
+    def run(self):
+        self.node.spark(self.spark_options)

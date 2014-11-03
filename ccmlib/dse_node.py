@@ -227,6 +227,14 @@ class DseNode(Node):
         p = subprocess.Popen(args, env=env)
         p.wait()
 
+    def spark(self, spark_options=[]):
+        env = common.make_dse_env(self.get_install_dir(), self.get_path())
+        dse = common.join_bin(self.get_install_dir(), 'bin', 'dse')
+        args = [dse, 'spark']
+        args += spark_options
+        p = subprocess.Popen(args, env=env)
+        p.wait()
+
     def import_dse_config_files(self):
         self._update_config()
         if not os.path.isdir(os.path.join(self.get_path(), 'resources', 'dse', 'conf')):
