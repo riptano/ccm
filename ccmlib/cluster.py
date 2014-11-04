@@ -433,13 +433,23 @@ class Cluster(object):
             with open(topology_file, 'w') as f:
                 f.write(content)
 
-    def enable_ssl(self, ssl_path):
+    def enable_ssl(self, ssl_path, require_client_auth):
         shutil.copyfile(os.path.join(ssl_path, 'keystore.jks'), os.path.join(self.get_path(), 'keystore.jks'))
         shutil.copyfile(os.path.join(ssl_path, 'cassandra.crt'), os.path.join(self.get_path(), 'cassandra.crt'))
-
         ssl_options = {'enabled' : True,
             'keystore' : os.path.join(self.get_path(), 'keystore.jks'),
             'keystore_password' : 'cassandra'
             }
+	
+	# determine if truststore client encryption options should be enabled
+	truststore_file = os.path.join(ssl_path, 'truststore.jks')
+        if os.path.isfile(truststore_file):
+            shutil.copyfile(truststore_file, os.path.join(self.get_path(), 'truststore.jks'))
+            truststore_ssl_options = {'require_client_auth' : require_client_auth,
+                'truststore' : os.path.join(self.get_path(), 'truststore.jks'),
+                'truststore_password' : 'cassandra'
+                }
+            ssl_options.update(truststore_ssl_options)
+
         self._config_options['client_encryption_options'] = ssl_options
         self._update_config()
