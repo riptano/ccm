@@ -95,7 +95,9 @@ class ClusterCreateCmd(Cmd):
         parser.add_option('--profile-opts', type="string", action="store", dest="profile_options",
             help="Yourkit options when profiling", default=None)
         parser.add_option('--ssl', type="string", dest="ssl_path",
-            help="Path to keystore.jks and cassandra.crt files", default=None)
+            help="Path to keystore.jks and cassandra.crt files (and truststore.jks [not required])", default=None)
+        parser.add_option('--require_client_auth', action="store_true", dest="require_client_auth",
+            help="Enable client authentication (only vaid with --ssl)", default=False)
         return parser
 
     def validate(self, parser, options, args):
@@ -146,7 +148,7 @@ class ClusterCreateCmd(Cmd):
             self.options.ipformat = '127.0.0.%d'
 
         if self.options.ssl_path:
-            cluster.enable_ssl(self.options.ssl_path)
+            cluster.enable_ssl(self.options.ssl_path, self.options.require_client_auth)
 
         if self.nodes is not None:
             try:
