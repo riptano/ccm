@@ -39,6 +39,7 @@ Windows only:
   - cli_session does not accept commands.
   - To install psutil, you must use the .msi from pypi. pip install psutil will not work
   - You will need ant.bat in your PATH in order to build C* from source
+  - Until #191 is fixed, you need to run with an Unrestricted Powershell Execution-Policy
 
 Installation
 ------------
