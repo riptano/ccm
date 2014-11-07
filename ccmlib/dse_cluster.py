@@ -5,7 +5,6 @@ import subprocess
 import signal
 
 from six import iteritems
-from lxml import etree
 from ccmlib import repository
 from ccmlib.cluster import Cluster
 from ccmlib.dse_node import DseNode
@@ -52,36 +51,6 @@ class DseCluster(Cluster):
         for node in list(self.nodes.values()):
             node.import_dse_config_files()
         return self
-
-    def set_xml_configuration_options(self, product=None, values=None):
-        for node in self.nodes.values():
-            if product == 'hadoop':
-                site_xml = os.path.join(node.get_path(), 'resources', 'hadoop', 'conf', 'dse-core.xml')
-            elif product == 'hive':
-                site_xml = os.path.join(node.get_path(), 'resources', 'hive', 'conf', 'hive-site.xml')
-            elif product == 'sqoop':
-                site_xml = os.path.join(node.get_path(), 'resources', 'sqoop', 'conf', 'sqoop-site.xml')
-            tree = etree.parse(site_xml, etree.XMLParser(remove_blank_text=True))
-            configuration = tree.getroot()
-            for name, value in iteritems(values):
-                properties = configuration.xpath('./property/name[text()="%s"]/..' % name)
-                if len(properties) > 0:
-                    property = properties[0]
-                    if value is None or len(value) == 0:
-                        configuration.remove(property)
-                    else:
-                        property.xpath('./value')[0].text = value
-                else:
-                    property = etree.Element('property')
-                    nameElement = etree.Element('name')
-                    nameElement.text = name
-                    valueElement = etree.Element('value')
-                    valueElement.text = value
-                    property.append(nameElement)
-                    property.append(valueElement)
-                    configuration.append(property)
-            with open(site_xml, 'w') as fout:
-                fout.write(etree.tostring(tree, pretty_print=True, encoding='utf8'))
 
     def start_opscenter(self):
         if self.hasOpscenter():
