@@ -353,9 +353,6 @@ class Cluster(object):
     def set_dse_configuration_options(self, values=None):
         raise common.ArgumentError('Cannot set DSE configuration options on a Cassandra cluster')
 
-    def set_xml_configuration_options(self, product=None, values=None):
-        raise common.ArgumentError('Cannot set hadoop configuration options on a Cassandra cluster')
-
     def flush(self):
         self.nodetool("flush")
 
