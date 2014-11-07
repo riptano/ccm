@@ -619,7 +619,7 @@ class NodeHadoopCmd(Cmd):
 
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
-        self.hadoop_options = args[1:]
+        self.hadoop_options = args[1:] + parser.get_ignored()
 
     def run(self):
         self.node.hadoop(self.hadoop_options)
