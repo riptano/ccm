@@ -1,6 +1,5 @@
 import os
 import sys
-import tailer
 
 from six import print_
 
@@ -103,6 +102,11 @@ class NodeTaillogCmd(Cmd):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
 
     def run(self):
+        try:
+            import tailer
+        except ImportError:
+            print_("You must install tailer.", file=sys.stderr)
+            exit(1)
         log = self.node.logfilename()
         try:
             for line in tailer.follow(open(log), delay=0.1):
