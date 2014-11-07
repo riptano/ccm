@@ -1,7 +1,4 @@
-# ccm node
 from __future__ import with_statement
-
-from six import print_
 
 import os
 import shutil
@@ -11,6 +8,7 @@ import time
 import yaml
 import signal
 
+from six import print_, iteritems
 from ccmlib.node import Node
 from ccmlib.node import NodeError
 from ccmlib import common
@@ -23,6 +21,7 @@ class DseNode(Node):
     def __init__(self, name, cluster, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save=True, binary_interface=None):
         super(DseNode, self).__init__(name, cluster, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save, binary_interface)
         self.get_cassandra_version()
+        _dse_config_options = {}
         if self.cluster.hasOpscenter():
             self._copy_agent()
 
@@ -53,6 +52,12 @@ class DseNode(Node):
     def set_workload(self, workload):
         self.workload = workload
         self._update_config()
+
+    def set_dse_configuration_options(self, values=None):
+        if values is not None:
+            for k, v in iteritems(values):
+                self._dse_config_options[k] = v
+        self.import_dse_config_files()
 
     def start(self,
               join_ring=True,
@@ -129,6 +134,7 @@ class DseNode(Node):
                 args.append('-k')
             if 'cfs' in self.workload:
                 args.append('-c')
+
         args += [ '-p', pidfile, '-Dcassandra.join_ring=%s' % str(join_ring) ]
         if replace_token is not None:
             args.append('-Dcassandra.replace_token=%s' % str(replace_token))
@@ -136,6 +142,9 @@ class DseNode(Node):
             args.append('-Dcassandra.replace_address=%s' % str(replace_address))
         if use_jna is False:
             args.append('-Dcassandra.boot_without_jna=true')
+        if self.cluster.authn == 'kerberos':
+            env['JVM_OPTS'] = '-Djava.security.krb5.conf=%s' % os.path.join(self.cluster.get_path(), 'krb5.conf')
+
         args = args + jvm_args
 
         process = None
@@ -235,12 +244,42 @@ class DseNode(Node):
         p = subprocess.Popen(args, env=env)
         p.wait()
 
+    def kinit(self, principal):
+        if not self.cluster.authn == 'kerberos':
+            raise common.ArgumentError('kinit can only be run if kerberos authentication is enabled')
+        env = common.make_dse_env(self.get_install_dir(), self.get_path())
+        env['KRB5_CONFIG'] = os.path.join(self.cluster.get_path(), 'krb5.conf')
+        env['KRB5CCNAME'] = os.path.join(self.get_path(), 'krb5_ticket')
+        args = ['kinit', principal]
+        p = subprocess.Popen(args, env=env)
+        p.wait()
+
+    def klist(self):
+        if not self.cluster.authn == 'kerberos':
+            raise common.ArgumentError('klist can only be run if kerberos authentication is enabled')
+        env = common.make_dse_env(self.get_install_dir(), self.get_path())
+        env['KRB5_CONFIG'] = os.path.join(self.cluster.get_path(), 'krb5.conf')
+        env['KRB5CCNAME'] = os.path.join(self.get_path(), 'krb5_ticket')
+        args = ['klist']
+        p = subprocess.Popen(args, env=env)
+        p.wait()
+
+    def kdestroy(self):
+        if not self.cluster.authn == 'kerberos':
+            raise common.ArgumentError('kdestroy can only be run if kerberos authentication is enabled')
+        env = common.make_dse_env(self.get_install_dir(), self.get_path())
+        env['KRB5_CONFIG'] = os.path.join(self.cluster.get_path(), 'krb5.conf')
+        env['KRB5CCNAME'] = os.path.join(self.get_path(), 'krb5_ticket')
+        args = ['kdestroy']
+        p = subprocess.Popen(args, env=env)
+        p.wait()
+
     def import_dse_config_files(self):
         self._update_config()
         if not os.path.isdir(os.path.join(self.get_path(), 'resources', 'dse', 'conf')):
             os.makedirs(os.path.join(self.get_path(), 'resources', 'dse', 'conf'))
         common.copy_directory(os.path.join(self.get_install_dir(), 'resources', 'dse', 'conf'), os.path.join(self.get_path(), 'resources', 'dse', 'conf'))
-        self.__update_yaml()
+        self._update_dse_yaml()
 
     def copy_config_files(self):
         for product in ['dse', 'cassandra', 'hadoop', 'sqoop', 'hive', 'tomcat', 'spark', 'shark', 'mahout', 'pig']:
@@ -255,30 +294,31 @@ class DseNode(Node):
         common.copy_directory(os.path.join(self.get_install_dir(), 'bin'), self.get_bin_dir())
         common.copy_directory(os.path.join(self.get_install_dir(), 'resources', 'cassandra', 'bin'), os.path.join(self.get_path(), 'resources', 'cassandra', 'bin'))
 
-    def __update_yaml(self):
+    def _update_dse_yaml(self):
         conf_file = os.path.join(self.get_path(), 'resources', 'dse', 'conf', 'dse.yaml')
         with open(conf_file, 'r') as f:
             data = yaml.load(f)
 
         data['system_key_directory'] = os.path.join(self.get_path(), 'keys')
 
-        full_options = dict(list(self.cluster._dse_config_options.items()))
+        full_options = dict(list(self.cluster._dse_config_options.items()) + list(self._dse_config_options.items()))
         for name in full_options:
-            if not name is 'dse_yaml_file':
-                value = full_options[name]
-                if value is None:
-                    try:
-                        del data[name]
-                    except KeyError:
-                        # it is fine to remove a key not there:w
-                        pass
-                else:
+            value = full_options[name]
+            if value is None:
+                try:
+                    del data[name]
+                except KeyError:
+                    # it is fine to remove a key not there:w
+                    pass
+            else:
+                try:
+                    if isinstance(data[name], dict):
+                        for option in full_options[name]:
+                            data[name][option] = full_options[name][option]
+                    else:
+                        data[name] = full_options[name]
+                except KeyError:
                     data[name] = full_options[name]
-
-        if 'dse_yaml_file' in full_options:
-            with open(full_options['dse_yaml_file'], 'r') as f:
-                user_yaml = yaml.load(f)
-                data = common.yaml_merge(data, user_yaml)
 
         with open(conf_file, 'w') as f:
             yaml.safe_dump(data, f, default_flow_style=False)

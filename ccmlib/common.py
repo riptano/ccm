@@ -164,7 +164,6 @@ def make_cassandra_env(install_dir, node_path):
     env['CASSANDRA_INCLUDE'] = os.path.join(dst)
     env['MAX_HEAP_SIZE'] = os.environ.get('CCM_MAX_HEAP_SIZE', '500M')
     env['HEAP_NEWSIZE'] = os.environ.get('CCM_HEAP_NEWSIZE', '50M')
-
     return env
 
 def make_dse_env(install_dir, node_path):
@@ -457,3 +456,11 @@ def is_dse_cluster(path):
 
 def invalidate_cache():
     shutil.rmtree(os.path.join(get_default_path(), 'repository'))
+
+def check_process(pid):
+    try:
+        os.kill(pid, 0)
+    except OSError:
+        return False
+    else:
+        return True

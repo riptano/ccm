@@ -15,7 +15,7 @@ from ccmlib.node import Node, NodeError
 from ccmlib.bulkloader import BulkLoader
 
 class Cluster(object):
-    def __init__(self, path, name, partitioner=None, install_dir=None, create_directory=True, version=None, verbose=False, **kwargs):
+    def __init__(self, path, name, partitioner=None, install_dir=None, create_directory=True, version=None, authn=None, authz=None, verbose=False, **kwargs):
         self.name = name
         self.nodes = {}
         self.seeds = []
@@ -26,6 +26,8 @@ class Cluster(object):
         self.__path = path
         self.__version = None
         self.use_vnodes = False
+        self.authn = authn
+        self.authz = authz
 
         ##This is incredibly important for
         ##backwards compatibility.
@@ -55,6 +57,8 @@ class Cluster(object):
             if create_directory:
                 common.validate_install_dir(self.__install_dir)
                 self._update_config()
+
+            self.install_extras(verbose)
         except:
             if create_directory:
                 shutil.rmtree(self.get_path())
@@ -62,6 +66,13 @@ class Cluster(object):
 
     def load_from_repository(self, version, verbose):
         return repository.setup(version, verbose)
+
+    def install_extras(self, verbose):
+        if self.authn == 'password':
+            self.set_configuration_options(values={'authenticator' : 'PasswordAuthenticator'})
+        if self.authz == 'cassandra':
+            self.set_configuration_options(values={'authorizer' : 'CassandraAuthorizer'})
+        pass
 
     def set_partitioner(self, partitioner):
         self.partitioner = partitioner
@@ -394,6 +405,12 @@ class Cluster(object):
         for node in self.nodelist():
             node.update_logback(new_logback_config)
 
+    def add_ldap_user(self, userid, password):
+        raise common.ArgumentError("LDAP and Kerberos authentication are not supported on Cassandra clusters")
+
+    def delete_ldap_user(self, userid):
+        raise common.ArgumentError("LDAP and Kerberos authentication are not supported on Cassandra clusters")
+
     def __get_version_from_build(self):
         return common.get_version_from_build(self.get_install_dir())
 
@@ -411,7 +428,9 @@ class Cluster(object):
                 'config_options' : self._config_options,
                 'dse_config_options' : self._dse_config_options,
                 'log_level' : self.__log_level,
-                'use_vnodes' : self.use_vnodes
+                'use_vnodes' : self.use_vnodes,
+                'authn' : self.authn,
+                'authz' : self.authz
             }, f)
 
     def __update_pids(self, started):
