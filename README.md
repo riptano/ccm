@@ -71,7 +71,7 @@ tell ccm how to find the sources:
   1. If you have downloaded *and* compiled Cassandra sources, you can ask ccm
      to use those by initiating a new cluster with:
 
-        ccm create test --cassandra-dir=<path/to/cassandra-sources>
+        ccm create test --install-dir=<path/to/cassandra-sources>
 
      or, from that source tree directory, simply
 
