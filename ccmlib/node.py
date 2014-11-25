@@ -808,8 +808,10 @@ class Node(object):
         # data directory layout is changed from 1.1
         if self.get_base_cassandra_version() < 1.1:
             files = glob.glob(os.path.join(keyspace_dir, "{0}*-Data.db".format(column_family)))
-        else:
+        elif self.get_base_cassandra_version() < 3.0:
             files = glob.glob(os.path.join(keyspace_dir, column_family or "*", "%s-%s*-Data.db" % (keyspace, column_family)))
+        else:
+            files = glob.glob(os.path.join(keyspace_dir, column_family or "*", "*big-Data.db"))
         for f in files:
             if os.path.exists(f.replace('Data.db', 'Compacted')):
                 files.remove(f)
