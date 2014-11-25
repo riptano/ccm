@@ -235,7 +235,7 @@ class Cluster(object):
             else:
                 node.show(only_status=True)
 
-    def start(self, no_wait=False, verbose=False, wait_for_binary_proto=True, wait_other_notice=False, jvm_args=[], profile_options=None):
+    def start(self, no_wait=False, verbose=False, wait_for_binary_proto=False, wait_other_notice=False, jvm_args=[], profile_options=None):
         if wait_other_notice:
             marks = [ (node, node.mark_log()) for node in list(self.nodes.values()) if node.is_running() ]
 
