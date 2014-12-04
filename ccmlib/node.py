@@ -1170,19 +1170,19 @@ class Node(object):
     def __clean_win_pid(self):
         start = common.now_ms()
         if self.get_base_cassandra_version() >= 2.1:
-            # Spin for 5s waiting for .bat to write the pid file
+            # Spin for 15s waiting for .bat to write the pid file
             pidfile = self.get_path() + "/cassandra.pid"
             while (not os.path.isfile(pidfile)):
                 now = common.now_ms()
-                if (now - start > 5000):
+                if (now - start > 15000):
                     raise Exception('Timed out waiting for pid file.')
                 else:
                     time.sleep(.001)
-            # Spin for 5s waiting for .bat to fill the pid file
+            # Spin for 15s waiting for .bat to fill the pid file
             start = common.now_ms()
             while (os.stat(pidfile).st_size == 0):
                 now = common.now_ms()
-                if (now - start > 5000):
+                if (now - start > 15000):
                     raise Exception('Timed out waiting for pid file to be filled.')
                 else:
                     time.sleep(.001)
