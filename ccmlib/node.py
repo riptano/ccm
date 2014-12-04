@@ -855,8 +855,10 @@ class Node(object):
     def drain(self):
         self.nodetool("drain")
 
-    def repair(self):
-        self.nodetool("repair")
+    def repair(self, options=[], **kwargs):
+        args = ["repair"] + options
+        cmd = ' '.join(args)
+        return self.nodetool(cmd, **kwargs)
 
     def move(self, new_token):
         self.nodetool("move " + str(new_token))
