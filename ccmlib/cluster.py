@@ -254,6 +254,10 @@ class Cluster(object):
         else:
             for node, p, mark in started:
                 try:
+                    if verbose:
+                        print "[" + node.name + "] ------------------------------"
+                        print p.stdout.read()
+                        print p.stderr.read()
                     node.watch_log_for("Listening for thrift clients...", process=p, verbose=verbose, from_mark=mark)
                 except RuntimeError:
                     return None
