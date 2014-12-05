@@ -464,7 +464,7 @@ class Node(object):
         env = common.make_cassandra_env(cdir, self.get_path())
 
         if common.is_win():
-            self._clean_win_jmx();
+            self._clean_win_jmx()
 
         pidfile = os.path.join(self.get_path(), 'cassandra.pid')
         args = [ launch_bin, '-p', pidfile, '-Dcassandra.join_ring=%s' % str(join_ring) ]
@@ -1084,7 +1084,7 @@ class Node(object):
             common.replace_or_add_into_file_tail(conf_file, full_logger_pattern, logger_pattern + class_name + '" level="' + self.__classes_log_level[class_name] + '"/>')
 
     def __update_envfile(self):
-        jmx_port_pattern='JMX_PORT='
+        jmx_port_pattern='^\s+\$JMX_PORT='
         remote_debug_port_pattern='-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address='
         conf_file = os.path.join(self.get_conf_dir(), common.CASSANDRA_ENV)
         common.replace_in_file(conf_file, jmx_port_pattern, jmx_port_pattern + self.jmx_port)
@@ -1258,7 +1258,7 @@ class Node(object):
         if self.get_base_cassandra_version() >= 2.1:
             sh_file = os.path.join(common.CASSANDRA_CONF_DIR, common.CASSANDRA_WIN_ENV)
             dst = os.path.join(self.get_path(), sh_file)
-            common.replace_in_file(dst, "JMX_PORT=", "    $JMX_PORT=\"" + self.jmx_port + "\"")
+            common.replace_in_file(dst, "^\s+\$JMX_PORT=", "    $JMX_PORT=\"" + self.jmx_port + "\"")
 
             # properly use single and double quotes to count for single quotes in the CASSANDRA_CONF path
             common.replace_in_file(dst,'CASSANDRA_PARAMS=','    $env:CASSANDRA_PARAMS=\'-Dcassandra' +    # -Dcassandra
