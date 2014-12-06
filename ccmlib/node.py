@@ -662,7 +662,10 @@ class Node(object):
         args = cqlsh_options + [ host, str(port) ]
         sys.stdout.flush()
         if cmds is None:
-            os.execve(cqlsh, [ common.platform_binary('cqlsh') ] + args, env)
+            if common.is_win():
+                subprocess.Popen([ cqlsh ] + args, env=env, creationflags=subprocess.CREATE_NEW_CONSOLE)
+            else:
+                os.execve(cqlsh, [ common.platform_binary('cqlsh') ] + args, env)
         else:
             p = subprocess.Popen([ cqlsh ] + args, env=env, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
             for cmd in cmds.split(';'):
