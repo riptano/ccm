@@ -751,6 +751,11 @@ class Node(object):
             sstable2json = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstable2json')
         else:
             sstable2json = common.join_bin(cdir, 'bin', 'sstable2json')
+        try:
+            os.chmod(sstable2json, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
+        except:
+            print_("WARN: Couldn't change permissions to use sstable2json.")
+            print_("WARN: If it didn't work, you will have to do so manually.")
         env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
         datafiles = self.__gather_sstables(datafile,keyspace,column_families)
         print_(datafiles)

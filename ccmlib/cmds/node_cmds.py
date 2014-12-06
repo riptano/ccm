@@ -417,18 +417,16 @@ class NodeJsonCmd(Cmd):
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
         self.keyspace = options.keyspace
-        self.column_families = None
-        self.outfile = None
-        if len(args) > 1:
-            self.outfile = args[1]
-            if self.keyspace is None:
-                print_("You need a keyspace specified (option -k) if you specify a file", file=sys.stderr)
-                exit(1)
-        if options.cfs is not None:
-            if self.keyspace is None:
-                print_("You need a keyspace specified (option -k) if you specify column families", file=sys.stderr)
-                exit(1)
-            self.column_families = options.cfs.split(',')
+        if len(args) < 2:
+            print_("You must specify an output file.")
+            parser.print_help()
+            exit(1)
+        if self.keyspace is None:
+            print_("You must specify a keyspace.")
+            parser.print_help()
+            exit(1)
+        self.outfile = args[-1]
+        self.column_families = options.cfs.split(',') if options.cfs else None
 
     def run(self):
         try:
