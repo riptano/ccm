@@ -1084,7 +1084,10 @@ class Node(object):
             common.replace_or_add_into_file_tail(conf_file, full_logger_pattern, logger_pattern + class_name + '" level="' + self.__classes_log_level[class_name] + '"/>')
 
     def __update_envfile(self):
-        jmx_port_pattern='^\s+\$JMX_PORT='
+        if common.is_win():
+            jmx_port_pattern='^\s+\$JMX_PORT='
+        else:
+            jmx_port_pattern='JMX_PORT='
         remote_debug_port_pattern='-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address='
         conf_file = os.path.join(self.get_conf_dir(), common.CASSANDRA_ENV)
         common.replace_in_file(conf_file, jmx_port_pattern, jmx_port_pattern + self.jmx_port)
