@@ -827,6 +827,12 @@ class Node(object):
 
     def stress(self, stress_options=[]):
         stress = common.get_stress_bin(self.get_install_dir())
+        if self.cluster.version() <= '2.1':
+            stress_options.append('-d')
+            stress_options.append(self.address())
+        else:
+            stress_options.append('-node')
+            stress_options.append(self.address())
         args = [ stress ] + stress_options
         try:
             subprocess.call(args, cwd=common.parse_path(stress))
