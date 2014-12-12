@@ -474,7 +474,7 @@ class Node(object):
             args.append('-Dcassandra.replace_address=%s' % str(replace_address))
         if use_jna is False:
             args.append('-Dcassandra.boot_without_jna=true')
-        args = args + jvm_args
+        env['JVM_EXTRA_OPTS'] = " ".join(jvm_args)
 
         process = None
         if common.is_win():
