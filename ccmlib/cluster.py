@@ -318,7 +318,10 @@ class Cluster(object):
         if len(livenodes) == 0:
             print_("No live node")
             return
-        args = [ stress, '-d', ",".join(livenodes) ] + stress_options
+        if self.version() <= '2.1':
+            args = [ stress, '-d', ",".join(livenodes) ] + stress_options
+        else:
+            args = [ stress ] + stress_options + ['-node', ','.join(livenodes) ]
         try:
             # need to set working directory for env on Windows
             if common.is_win():
