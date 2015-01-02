@@ -66,8 +66,8 @@ class DseNode(Node):
               wait_other_notice=False,
               replace_token=None,
               replace_address=None,
-              jvm_args=None,
-              wait_for_binary_proto=False,
+              jvm_args=[],
+              wait_for_binary_proto=True,
               profile_options=None,
               use_jna=False,
               quiet_start=False,
@@ -94,6 +94,7 @@ class DseNode(Node):
 
         if wait_other_notice:
             marks = [(node, node.mark_log()) for node in list(self.cluster.nodes.values()) if node.is_running()]
+        logmark = self.mark_log()
 
         cdir = self.get_install_dir()
         launch_bin = common.join_bin(cdir, 'bin', 'dse')
@@ -149,6 +150,7 @@ class DseNode(Node):
         args = args + jvm_args
 
         process = None
+
         if common.is_win():
             # clean up any old dirty_pid files from prior runs
             if (os.path.isfile(self.get_path() + "/dirty_pid.tmp")):
@@ -166,6 +168,7 @@ class DseNode(Node):
             if no_wait:
                 time.sleep(2)  # waiting 2 seconds nevertheless to check for early errors and for the pid to be set
             else:
+                # for line in fstdout:
                 for line in process.stdout:
                     if verbose:
                         print_(line.rstrip('\n'))
@@ -180,7 +183,15 @@ class DseNode(Node):
                 node.watch_log_for_alive(self, from_mark=mark)
 
         if wait_for_binary_proto:
-            self.wait_for_binary_interface()
+            try:
+                self.watch_log_for("Starting listening for CQL clients", logmark, timeout=150, process=process)
+            except:
+                self._update_pid(process)
+                os.kill(self.pid, signal.SIGKILL)
+                raise
+            # we're probably fine at that point but just wait some tiny bit more because
+            # the msg is logged just before starting the binary protocol server
+            time.sleep(0.2)
 
         if self.cluster.hasOpscenter():
             self._start_agent()

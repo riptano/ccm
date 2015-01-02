@@ -17,11 +17,11 @@ from datetime import datetime
 
 import yaml
 from six import iteritems, print_, string_types
-from six.moves import xrange
 
 from ccmlib import common
 from ccmlib.cli_session import CliSession
 from ccmlib.repository import setup
+from six.moves import xrange
 
 
 class Status():
@@ -416,8 +416,13 @@ class Node(object):
                             return None
                     else:
                         process.poll()
-                        if process.returncode == 0:
+                        if process.returncode is not None and process.returncode == 0:
                             return None
+                    # Pull from process io so they don't block
+                    if process.stdout:
+                        process.stdout.readline()
+                    if process.stderr:
+                        process.stderr.readline()
 
     def watch_log_for_death(self, nodes, from_mark=None, timeout=600, filename='system.log'):
         """
@@ -1410,12 +1415,12 @@ class Node(object):
             common.replace_in_file(conf_file, remote_debug_port_pattern, remote_debug_options)
 
         if self.byteman_port != '0':
-            byteman_jar = glob.glob(os.path.join( self.get_install_dir(), 'build', 'lib', 'jars', 'byteman-[0-9]*.jar'))[0]
+            byteman_jar = glob.glob(os.path.join(self.get_install_dir(), 'build', 'lib', 'jars', 'byteman-[0-9]*.jar'))[0]
             agent_string = "-javaagent:{}=listener:true,boot:{},port:{}".format(byteman_jar, byteman_jar, str(self.byteman_port))
             if common.is_win() and self.get_base_cassandra_version() >= 2.1:
                 with open(conf_file, "r+") as conf_rewrite:
                     conf_lines = conf_rewrite.readlines()
-                    #Remove trailing brace, will be replaced
+                    # Remove trailing brace, will be replaced
                     conf_lines = conf_lines[:-1]
                     conf_lines.append("    $env:JVM_OPTS=\"$env:JVM_OPTS {}\"\n}}\n".format(agent_string))
                     conf_rewrite.seek(0)
@@ -1704,7 +1709,7 @@ class Node(object):
                                                        'bin',
                                                        'java'))
         byteman_cmd.append('-cp')
-        byteman_cmd.append(glob.glob(os.path.join(cdir, 'build', 'lib', 'jars','byteman-submit-[0-9]*.jar'))[0])
+        byteman_cmd.append(glob.glob(os.path.join(cdir, 'build', 'lib', 'jars', 'byteman-submit-[0-9]*.jar'))[0])
         byteman_cmd.append('org.jboss.byteman.agent.submit.Submit')
         byteman_cmd.append('-p')
         byteman_cmd.append(self.byteman_port)
