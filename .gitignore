@@ -5,3 +5,4 @@ venv/
 ccm.iml
 .idea/
 ccm.egg-info/
+.project
