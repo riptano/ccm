@@ -37,7 +37,7 @@ class TimeoutError(Exception):
         Exception.__init__(self, str(data))
 
 # Groups: 1 = cf, 2 = tmp or none, 3 = suffix (Compacted or Data.db)
-_sstable_regexp = re.compile('(?P<cf>[\S]+)+-(?P<tmp>tmp-)?[\S]+-(?P<suffix>[a-zA-Z.]+)')
+_sstable_regexp = re.compile('(?P<keyspace>[^\s-]+)-(?P<cf>[^\s-]+)-(?P<tmp>tmp(link)?-)?(?P<version>[^\s-]+)-(?P<number>\d+)-(?P<suffix>[a-zA-Z]+)\.[a-zA-Z0-9]+$')
 
 class Node(object):
     """
@@ -745,7 +745,7 @@ class Node(object):
                 shutil.rmtree(full_dir)
                 os.mkdir(full_dir)
 
-    def run_sstable2json(self, out_file=None, keyspace=None, datafile=None, column_families=None, enumerate_keys=False):
+    def run_sstable2json(self, out_file=None, keyspace=None, datafiles=None, column_families=None, enumerate_keys=False):
         print_("running")
         if out_file is None:
             out_file = sys.stdout
@@ -760,48 +760,51 @@ class Node(object):
             print_("WARN: Couldn't change permissions to use sstable2json.")
             print_("WARN: If it didn't work, you will have to do so manually.")
         env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
-        datafiles = self.__gather_sstables(datafile,keyspace,column_families)
-        print_(datafiles)
-        for datafile in datafiles:
-            print_("-- {0} -----".format(os.path.basename(datafile)))
-            args = [ sstable2json , datafile ]
+        sstablefiles = self.__gather_sstables(datafiles,keyspace,column_families)
+        print_(sstablefiles)
+        for sstablefile in sstablefiles:
+            print_("-- {0} -----".format(os.path.basename(sstablefile)))
+            args = [ sstable2json , sstablefile ]
             if enumerate_keys:
                 args = args + ["-e"]
             subprocess.call(args, env=env, stdout=out_file)
             print_("")
 
-    def run_json2sstable(self, in_file, ks, cf, keyspace=None, datafile=None, column_families=None, enumerate_keys=False):
+    def run_json2sstable(self, in_file, ks, cf, keyspace=None, datafiles=None, column_families=None, enumerate_keys=False):
         cdir = self.get_install_dir()
         if self.get_base_cassandra_version() >= 2.1:
             json2sstable = common.join_bin(cdir, os.path.join('tools', 'bin'), 'json2sstable')
         else:
             json2sstable = common.join_bin(cdir, 'bin', 'json2sstable')
         env = common.make_cassandra_env(cdir, self.get_path())
-        datafiles = self.__gather_sstables(datafile,keyspace,column_families)
+        sstablefiles = self.__gather_sstables(datafiles,keyspace,column_families)
 
-        for datafile in datafiles:
+        for sstablefile in sstablefiles:
             in_file_name = os.path.abspath(in_file.name)
-            args = shlex.split("{json2sstable} -s -K {ks} -c {cf} {in_file_name} {datafile}".format(**locals()))
+            args = shlex.split("{json2sstable} -s -K {ks} -c {cf} {in_file_name} {sstablefile}".format(**locals()))
             subprocess.call(args, env=env)
 
-    def run_sstablesplit(self, datafile=None,  size=None, keyspace=None, column_families=None):
+    def run_sstablesplit(self, datafiles=None,  size=None, keyspace=None, column_families=None, no_snapshot=False):
         cdir = self.get_install_dir()
         if self.get_base_cassandra_version() >= 2.1:
             sstablesplit = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstablesplit')
         else:
             sstablesplit = common.join_bin(cdir, 'bin', 'sstablesplit')
         env = common.make_cassandra_env(cdir, self.get_path())
-        datafiles = self.__gather_sstables(datafile, keyspace, column_families)
+        sstablefiles = self.__gather_sstables(datafiles, keyspace, column_families)
 
         def do_split(f):
             print_("-- {0}-----".format(os.path.basename(f)))
+            cmd = [sstablesplit]
             if size is not None:
-                subprocess.call( [sstablesplit, '-s', str(size), f], cwd=os.path.join(cdir, 'bin'), env=env )
-            else:
-                subprocess.call( [sstablesplit, f], cwd=os.path.join(cdir, 'bin'), env=env )
+                cmd += ['-s', str(size)]
+            if no_snapshot:
+                cmd.append('--no-snapshot')
+            cmd.append(f)
+            subprocess.call(cmd, cwd=os.path.join(cdir, 'bin'), env=env )
 
-        for datafile in datafiles:
-            do_split(datafile)
+        for sstablefile in sstablefiles:
+            do_split(sstablefile)
 
     def list_keyspaces(self):
         keyspaces = os.listdir(os.path.join(self.get_path(), 'data'))
@@ -810,6 +813,9 @@ class Node(object):
 
     def get_sstables(self, keyspace, column_family):
         keyspace_dir = os.path.join(self.get_path(), 'data', keyspace)
+        cf_glob = '*'
+        if column_family:
+            cf_glob = column_family + '-*'
         if not os.path.exists(keyspace_dir):
             raise common.ArgumentError("Unknown keyspace {0}".format(keyspace))
 
@@ -817,9 +823,9 @@ class Node(object):
         if self.get_base_cassandra_version() < 1.1:
             files = glob.glob(os.path.join(keyspace_dir, "{0}*-Data.db".format(column_family)))
         elif self.get_base_cassandra_version() < 3.0:
-            files = glob.glob(os.path.join(keyspace_dir, column_family or "*", "%s-%s*-Data.db" % (keyspace, column_family)))
+            files = glob.glob(os.path.join(keyspace_dir, cf_glob, "%s-%s*-Data.db" % (keyspace, column_family)))
         else:
-            files = glob.glob(os.path.join(keyspace_dir, column_family or "*", "*big-Data.db"))
+            files = glob.glob(os.path.join(keyspace_dir, cf_glob, "*big-Data.db"))
         for f in files:
             if os.path.exists(f.replace('Data.db', 'Compacted')):
                 files.remove(f)
@@ -1254,22 +1260,43 @@ class Node(object):
             raise NodeError('Problem starting node %s' % self.name, process)
         self.__update_status()
 
-    def __gather_sstables(self, datafile=None, keyspace=None, columnfamilies=None):
-        datafiles = []
+    def __gather_sstables(self, datafiles=None, keyspace=None, columnfamilies=None):
+        files = []
         if keyspace is None:
             for k in self.list_keyspaces():
-                datafiles = datafiles + self.get_sstables(k, "")
-        elif datafile is None:
+                files = files + self.get_sstables(k, "")
+        elif datafiles is None:
             if columnfamilies is None:
-                datafiles = datafiles + self.get_sstables(keyspace, "")
+                files = files + self.get_sstables(keyspace, "")
             else:
                 for cf in columnfamilies:
-                    datafiles = datafiles + self.get_sstables(keyspace, cf)
+                    files = files + self.get_sstables(keyspace, cf)
         else:
-            keyspace_dir = os.path.join(self.get_path(), 'data', keyspace)
-            datafiles = [ os.path.join(keyspace_dir, datafile) ]
+            if not columnfamilies or len(columnfamilies) > 1 :
+                raise common.ArgumentError("Exactly one column family must be specified with datafiles")
 
-        return datafiles
+            cf_dir = os.path.join(os.path.realpath(self.get_path()), 'data', keyspace, columnfamilies[0]+'-')
+
+            sstables = set()
+            for datafile in datafiles:
+                if not os.path.isabs(datafile):
+                    datafile = os.path.join(os.getcwd(), datafile)
+
+                if not datafile.startswith(cf_dir):
+                    raise NodeError("File doesn't appear to belong to the specified keyspace and column familily: " + datafile)
+
+                sstable = _sstable_regexp.match(os.path.basename(datafile))
+                if not sstable:
+                    raise NodeError("File doesn't seem to be a valid sstable filename: " + datafile)
+
+                sstable = sstable.groupdict()
+                if not sstable['tmp'] and sstable['number'] not in sstables:
+                    if not os.path.exists(datafile):
+                        raise IOError("File doesn't exist: " + datafile)
+                    sstables.add(sstable['number'])
+                    files.append(datafile)
+
+        return files
 
     def _clean_win_jmx(self):
         if self.get_base_cassandra_version() >= 2.1:
