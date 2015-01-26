@@ -12,7 +12,6 @@ def node_cmds():
         "show",
         "remove",
         "showlog",
-        "taillog",
         "setlog",
         "start",
         "stop",
@@ -89,31 +88,6 @@ class NodeShowlogCmd(Cmd):
         log = self.node.logfilename()
         pager = os.environ.get('PAGER', common.platform_pager())
         os.execvp(pager, (pager, log))
-
-class NodeTaillogCmd(Cmd):
-    def description(self):
-        return "Tail the system.log of node name"
-
-    def get_parser(self):
-        usage = "usage: ccm node_name taillog"
-        return self._get_default_parser(usage, self.description())
-
-    def validate(self, parser, options, args):
-        Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
-
-    def run(self):
-        try:
-            import tailer
-        except ImportError:
-            print_("You must install tailer.", file=sys.stderr)
-            exit(1)
-        log = self.node.logfilename()
-        try:
-            for line in tailer.follow(open(log), delay=0.1):
-                print_(line)
-        except KeyboardInterrupt:
-            print_('\n')
-            pass
 
 class NodeSetlogCmd(Cmd):
     def description(self):
