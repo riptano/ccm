@@ -318,7 +318,7 @@ class Cluster(object):
         if len(livenodes) == 0:
             print_("No live node")
             return
-        if self.version() <= '2.1':
+        if self.cassandra_version() <= '2.1':
             args = [ stress, '-d', ",".join(livenodes) ] + stress_options
         else:
             args = [ stress ] + stress_options + ['-node', ','.join(livenodes) ]
