@@ -448,8 +448,8 @@ class Cluster(object):
             'keystore_password' : 'cassandra'
             }
 
-	# determine if truststore client encryption options should be enabled
-	truststore_file = os.path.join(ssl_path, 'truststore.jks')
+        # determine if truststore client encryption options should be enabled
+        truststore_file = os.path.join(ssl_path, 'truststore.jks')
         if os.path.isfile(truststore_file):
             shutil.copyfile(truststore_file, os.path.join(self.get_path(), 'truststore.jks'))
             truststore_ssl_options = {'require_client_auth' : require_client_auth,
