@@ -817,7 +817,7 @@ class Node(object):
             if output_file == None:
                 subprocess.call(cmd, env=env)
             else:
-                subprocess.call(cmd, env=env, stdout=output_file)            
+                subprocess.call(cmd, env=env, stdout=output_file)
 
     def run_sstablerepairedset(self, set_repaired=True, datafiles=None, keyspace=None, column_families=None):
         cdir = self.get_install_dir()
@@ -1344,3 +1344,9 @@ class Node(object):
             return data[option]
         else:
             return None
+
+    def pause(self):
+        os.kill(self.pid, signal.SIGSTOP)
+
+    def resume(self):
+        os.kill(self.pid, signal.SIGCONT)

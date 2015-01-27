@@ -42,7 +42,9 @@ def node_cmds():
         "hive",
         "pig",
         "sqoop",
-        "spark"
+        "spark",
+        "pause",
+        "resume"
     ]
 
 class NodeShowCmd(Cmd):
@@ -689,3 +691,33 @@ class NodeSparkCmd(Cmd):
 
     def run(self):
         self.node.spark(self.spark_options)
+
+class NodePauseCmd(Cmd):
+    def description(self):
+        return "Send a SIGSTOP to this node"
+
+    def get_parser(self):
+        usage = "usage: ccm node_name pause"
+        parser = self._get_default_parser(usage, self.description())
+        return parser
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
+
+    def run(self):
+        self.node.pause()
+
+class NodeResumeCmd(Cmd):
+    def description(self):
+        return "Send a SIGCONT to this node"
+
+    def get_parser(self):
+        usage = "usage: ccm node_name resume"
+        parser = self._get_default_parser(usage, self.description())
+        return parser
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
+
+    def run(self):
+        self.node.resume()
