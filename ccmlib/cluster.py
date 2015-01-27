@@ -255,9 +255,9 @@ class Cluster(object):
             for node, p, mark in started:
                 try:
                     if verbose:
-                        print "[" + node.name + "] ------------------------------"
-                        print p.stdout.read()
-                        print p.stderr.read()
+                        print_("[" + node.name + "] ------------------------------")
+                        print_(p.stdout.read())
+                        print_(p.stderr.read())
                     node.watch_log_for("Listening for thrift clients...", process=p, verbose=verbose, from_mark=mark)
                 except RuntimeError:
                     return None
@@ -318,7 +318,7 @@ class Cluster(object):
         if len(livenodes) == 0:
             print_("No live node")
             return
-        if self.version() <= '2.1':
+        if self.cassandra_version() <= '2.1':
             args = [ stress, '-d', ",".join(livenodes) ] + stress_options
         else:
             args = [ stress ] + stress_options + ['-node', ','.join(livenodes) ]
@@ -448,8 +448,8 @@ class Cluster(object):
             'keystore_password' : 'cassandra'
             }
 
-	# determine if truststore client encryption options should be enabled
-	truststore_file = os.path.join(ssl_path, 'truststore.jks')
+        # determine if truststore client encryption options should be enabled
+        truststore_file = os.path.join(ssl_path, 'truststore.jks')
         if os.path.isfile(truststore_file):
             shutil.copyfile(truststore_file, os.path.join(self.get_path(), 'truststore.jks'))
             truststore_ssl_options = {'require_client_auth' : require_client_auth,

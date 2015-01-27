@@ -12,7 +12,6 @@ def node_cmds():
         "show",
         "remove",
         "showlog",
-        "taillog",
         "setlog",
         "start",
         "stop",
@@ -89,31 +88,6 @@ class NodeShowlogCmd(Cmd):
         log = self.node.logfilename()
         pager = os.environ.get('PAGER', common.platform_pager())
         os.execvp(pager, (pager, log))
-
-class NodeTaillogCmd(Cmd):
-    def description(self):
-        return "Tail the system.log of node name"
-
-    def get_parser(self):
-        usage = "usage: ccm node_name taillog"
-        return self._get_default_parser(usage, self.description())
-
-    def validate(self, parser, options, args):
-        Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
-
-    def run(self):
-        try:
-            import tailer
-        except ImportError:
-            print_("You must install tailer.", file=sys.stderr)
-            exit(1)
-        log = self.node.logfilename()
-        try:
-            for line in tailer.follow(open(log), delay=0.1):
-                print_(line)
-        except KeyboardInterrupt:
-            print_('\n')
-            pass
 
 class NodeSetlogCmd(Cmd):
     def description(self):
@@ -451,29 +425,33 @@ class NodeSstablesplitCmd(Cmd):
                           help="Comma seperated list of column families ut use (requires -k to be set)")
         parser.add_option('-s', '--size', type='int', dest="size", default=None,
                           help="Maximum size in MB for the output sstables (default: 50 MB)")
+        parser.add_option('--no-snapshot', action='store_true', dest="no_snapshot", default=False,
+                          help="Don't snapshot the sstables before splitting")
         return parser
 
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
         self.keyspace = options.keyspace
         self.size = options.size
+        self.no_snapshot = options.no_snapshot
         self.column_families = None
-        self.datafile = None
+        self.datafiles = None
+        if options.cfs is not None:
+            if self.keyspace is None:
+                print_("You need a keyspace (option -k) if you specify column families", file=sys.stderr)
+                exit(1)
+            self.column_families = options.cfs.split(',')
 
         if len(args) > 1:
-            self.datafile = args[1]
-        else:
-            if options.cfs is not None:
-                if self.keyspace is None:
-                    print_("You need a keyspace (option -k) if you specify column families", file=sys.stderr)
-                    exit(1)
-                    self.column_families = options.cfs.split(',')
+            if self.column_families is None:
+                print_("You need a column family (option -c) if you specify datafiles", file=sys.stderr)
+                exit(1)
+            self.datafiles = args[1:]
 
     def run(self):
-        if self.datafile is not None:
-            self.node.run_sstablesplit(datafile=self.datafile, size=self.size)
-        else:
-            self.node.run_sstablesplit(keyspace=self.keyspace, column_families=self.column_families, size=self.size)
+        self.node.run_sstablesplit(datafiles=self.datafiles, keyspace=self.keyspace,
+                                   column_families=self.column_families, size=self.size,
+                                   no_snapshot=self.no_snapshot)
 
 class NodeUpdateconfCmd(Cmd):
     def description(self):

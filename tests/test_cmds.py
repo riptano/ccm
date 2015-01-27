@@ -45,7 +45,7 @@ class TestCCMCreate(TestCCMCmd):
         c_dir = common.get_default_path()
         c_dir = os.path.join(c_dir, 'repository')
         c_dir = os.path.join(c_dir, os.listdir(c_dir)[0])
-        args = ['--cassandra-dir', c_dir]
+        args = ['--install-dir', c_dir]
         self.validate_output(self.create_cmd(args, version=None))
 
     def cluster_create_populate_test(self):
