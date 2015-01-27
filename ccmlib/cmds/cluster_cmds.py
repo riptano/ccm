@@ -9,6 +9,7 @@ from ccmlib.node import Node, NodeError
 from ccmlib.cluster import Cluster
 from ccmlib.cmds.command import Cmd
 from ccmlib.dse_cluster import DseCluster
+from ccmlib.dse_node import DseNode
 from ccmlib.cluster_factory import ClusterFactory
 
 def cluster_cmds():
@@ -199,6 +200,8 @@ class ClusterAddCmd(Cmd):
             help="Initial token for the node", default=None)
         parser.add_option('-d', '--data-center', type="string", dest="data_center",
             help="Datacenter name this node is part of", default=None)
+        parser.add_option('--dse', action="store_true", dest="dse_node",
+            help="Add node to DSE Cluster", default=False)
         return parser
 
     def validate(self, parser, options, args):
@@ -238,7 +241,10 @@ class ClusterAddCmd(Cmd):
 
     def run(self):
         try:
-            node = Node(self.name, self.cluster, self.options.bootstrap, self.thrift, self.storage, self.jmx_port, self.remote_debug_port, self.initial_token, binary_interface=self.binary)
+            if self.options.dse_node:
+                node = DseNode(self.name, self.cluster, self.options.bootstrap, self.thrift, self.storage, self.jmx_port, self.remote_debug_port, self.initial_token, binary_interface=self.binary)
+            else:
+                node = Node(self.name, self.cluster, self.options.bootstrap, self.thrift, self.storage, self.jmx_port, self.remote_debug_port, self.initial_token, binary_interface=self.binary)
             self.cluster.add(node, self.options.is_seed, self.options.data_center)
         except common.ArgumentError as e:
             print_(str(e), file=sys.stderr)
