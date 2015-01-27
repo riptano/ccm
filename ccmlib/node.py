@@ -806,6 +806,32 @@ class Node(object):
         for sstablefile in sstablefiles:
             do_split(sstablefile)
 
+    def run_sstablemetadata(self, output_file=None, datafiles=None, keyspace=None, column_families=None):
+        cdir = self.get_install_dir()
+        sstablemetadata = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstablemetadata')
+        env = common.make_cassandra_env(cdir, self.get_path())
+        sstablefiles = self.__gather_sstables(datafiles, keyspace, column_families)
+
+        for sstable in sstablefiles:
+            cmd = [sstablemetadata, sstable]
+            if output_file == None:
+                subprocess.call(cmd, env=env)
+            else:
+                subprocess.call(cmd, env=env, stdout=output_file)            
+
+    def run_sstablerepairedset(self, set_repaired=True, datafiles=None, keyspace=None, column_families=None):
+        cdir = self.get_install_dir()
+        sstablerepairedset = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstablerepairedset')
+        env = common.make_cassandra_env(cdir, self.get_path())
+        sstablefiles = self.__gather_sstables(datafiles, keyspace, column_families)
+
+        for sstable in sstablefiles:
+            if set_repaired == True:
+                cmd = [sstablerepairedset,"--really-set", "--is-repaired", sstable]
+            else:
+                cmd = [sstablerepairedset, "--really-set", "--is-unrepaired", sstable]
+            subprocess.call(cmd, env=env)
+
     def list_keyspaces(self):
         keyspaces = os.listdir(os.path.join(self.get_path(), 'data'))
         keyspaces.remove('system')
