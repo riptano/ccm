@@ -1263,9 +1263,9 @@ class Node(object):
                                 with open (self.get_path() + "/cassandra.pid", 'w') as pidfile:
                                     found = True
                                     pidfile.write(win_pid)
-                            readEnd = common.now_ms()
                         else:
                             time.sleep(.001)
+                        readEnd = common.now_ms()
                     if not found:
                         raise Exception('Node: %s  Failed to find pid in ' +
                                         self.get_path() +
