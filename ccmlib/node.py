@@ -425,6 +425,9 @@ class Node(object):
           - replace_token: start the node with the -Dcassandra.replace_token option.
           - replace_address: start the node with the -Dcassandra.replace_address option.
         """
+        # Validate Windows env
+        if common.is_win() and not common.is_ps_unrestricted() and self.cluster.version() >= '2.1':
+            raise NodeError("PS Execution Policy must be unrestricted when running C* 2.1+")
 
         if self.is_running():
             raise NodeError("%s is already running" % self.name)
