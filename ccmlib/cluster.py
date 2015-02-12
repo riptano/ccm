@@ -186,12 +186,12 @@ class Cluster(object):
             if dc == current_dc:
                 count += 1
             else:
-                new_tokens = [tk+dc_count for tk in self.balanced_tokens(count)]
+                new_tokens = [tk+(dc_count*100) for tk in self.balanced_tokens(count)]
                 tokens.extend(new_tokens)
                 current_dc = dc
                 count = 1
                 dc_count += 1
-        new_tokens = [tk+dc_count for tk in self.balanced_tokens(count)]
+        new_tokens = [tk+(dc_count*100) for tk in self.balanced_tokens(count)]
         tokens.extend(new_tokens)
         return tokens
 
