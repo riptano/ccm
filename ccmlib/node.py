@@ -857,7 +857,7 @@ class Node(object):
                 files.remove(f)
         return files
 
-    def stress(self, stress_options=[]):
+    def stress(self, stress_options=[], **kwargs):
         stress = common.get_stress_bin(self.get_install_dir())
         if self.cluster.cassandra_version() <= '2.1':
             stress_options.append('-d')
@@ -867,7 +867,7 @@ class Node(object):
             stress_options.append(self.address())
         args = [ stress ] + stress_options
         try:
-            subprocess.call(args, cwd=common.parse_path(stress))
+            subprocess.call(args, cwd=common.parse_path(stress), **kwargs)
         except KeyboardInterrupt:
             pass
 
