@@ -787,7 +787,8 @@ class Node(object):
             args = shlex.split("{json2sstable} -s -K {ks} -c {cf} {in_file_name} {sstablefile}".format(**locals()))
             subprocess.call(args, env=env)
 
-    def run_sstablesplit(self, datafiles=None,  size=None, keyspace=None, column_families=None, no_snapshot=False):
+    def run_sstablesplit(self, datafiles=None,  size=None, keyspace=None, column_families=None,
+                         no_snapshot=False, **kwargs):
         cdir = self.get_install_dir()
         if self.get_base_cassandra_version() >= 2.1:
             sstablesplit = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstablesplit')
@@ -804,7 +805,7 @@ class Node(object):
             if no_snapshot:
                 cmd.append('--no-snapshot')
             cmd.append(f)
-            subprocess.call(cmd, cwd=os.path.join(cdir, 'bin'), env=env )
+            subprocess.call(cmd, cwd=os.path.join(cdir, 'bin'), env=env, **kwargs)
 
         for sstablefile in sstablefiles:
             do_split(sstablefile)
