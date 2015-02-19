@@ -391,6 +391,10 @@ class Cluster(object):
         for node in list(self.nodes.values()):
             node.scrub(options)
 
+    def verify(self, options):
+        for node in list(self.nodes.values()):
+            node.verify(options)
+
     def update_log4j(self, new_log4j_config):
         # iterate over all nodes
         for node in self.nodelist():
