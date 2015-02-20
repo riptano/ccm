@@ -531,9 +531,9 @@ class ClusterStopCmd(Cmd):
         try:
             not_running = self.cluster.stop(not self.options.no_wait, gently=self.options.gently)
             if self.options.verbose and len(not_running) > 0:
-                sys.out.write("The following nodes were not running: ")
+                sys.stdout.write("The following nodes were not running: ")
                 for node in not_running:
-                    sys.out.write(node.name + " ")
+                    sys.stdout.write(node.name + " ")
                 print_("")
         except NodeError as e:
             print_(str(e), file=sys.stderr)

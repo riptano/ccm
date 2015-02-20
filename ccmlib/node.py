@@ -752,16 +752,7 @@ class Node(object):
         print_("running")
         if out_file is None:
             out_file = sys.stdout
-        cdir = self.get_install_cassandra_root()
-        if self.get_base_cassandra_version() >= 2.1:
-            sstable2json = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstable2json')
-        else:
-            sstable2json = common.join_bin(cdir, 'bin', 'sstable2json')
-        try:
-            os.chmod(sstable2json, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
-        except:
-            print_("WARN: Couldn't change permissions to use sstable2json.")
-            print_("WARN: If it didn't work, you will have to do so manually.")
+        sstable2json = self._find_cmd('sstable2json')
         env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
         sstablefiles = self.__gather_sstables(datafiles,keyspace,column_families)
         print_(sstablefiles)
@@ -774,12 +765,8 @@ class Node(object):
             print_("")
 
     def run_json2sstable(self, in_file, ks, cf, keyspace=None, datafiles=None, column_families=None, enumerate_keys=False):
-        cdir = self.get_install_dir()
-        if self.get_base_cassandra_version() >= 2.1:
-            json2sstable = common.join_bin(cdir, os.path.join('tools', 'bin'), 'json2sstable')
-        else:
-            json2sstable = common.join_bin(cdir, 'bin', 'json2sstable')
-        env = common.make_cassandra_env(cdir, self.get_path())
+        json2sstable = self._find_cmd('json2sstable')
+        env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
         sstablefiles = self.__gather_sstables(datafiles,keyspace,column_families)
 
         for sstablefile in sstablefiles:
@@ -789,12 +776,8 @@ class Node(object):
 
     def run_sstablesplit(self, datafiles=None,  size=None, keyspace=None, column_families=None,
                          no_snapshot=False, **kwargs):
-        cdir = self.get_install_dir()
-        if self.get_base_cassandra_version() >= 2.1:
-            sstablesplit = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstablesplit')
-        else:
-            sstablesplit = common.join_bin(cdir, 'bin', 'sstablesplit')
-        env = common.make_cassandra_env(cdir, self.get_path())
+        sstablesplit = self._find_cmd('sstablesplit')
+        env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
         sstablefiles = self.__gather_sstables(datafiles, keyspace, column_families)
 
         def do_split(f):
@@ -805,15 +788,14 @@ class Node(object):
             if no_snapshot:
                 cmd.append('--no-snapshot')
             cmd.append(f)
-            subprocess.call(cmd, cwd=os.path.join(cdir, 'bin'), env=env, **kwargs)
+            subprocess.call(cmd, cwd=os.path.join(self.get_install_dir(), 'bin'), env=env, **kwargs)
 
         for sstablefile in sstablefiles:
             do_split(sstablefile)
 
     def run_sstablemetadata(self, output_file=None, datafiles=None, keyspace=None, column_families=None):
-        cdir = self.get_install_dir()
-        sstablemetadata = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstablemetadata')
-        env = common.make_cassandra_env(cdir, self.get_path())
+        sstablemetadata = self._find_cmd('sstablemetadata')
+        env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
         sstablefiles = self.__gather_sstables(datafiles, keyspace, column_families)
 
         for sstable in sstablefiles:
@@ -824,9 +806,8 @@ class Node(object):
                 subprocess.call(cmd, env=env, stdout=output_file)
 
     def run_sstablerepairedset(self, set_repaired=True, datafiles=None, keyspace=None, column_families=None):
-        cdir = self.get_install_dir()
-        sstablerepairedset = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstablerepairedset')
-        env = common.make_cassandra_env(cdir, self.get_path())
+        sstablerepairedset = self._find_cmd('sstablerepairedset')
+        env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
         sstablefiles = self.__gather_sstables(datafiles, keyspace, column_families)
 
         for sstable in sstablefiles:
@@ -835,6 +816,22 @@ class Node(object):
             else:
                 cmd = [sstablerepairedset, "--really-set", "--is-unrepaired", sstable]
             subprocess.call(cmd, env=env)
+
+    def _find_cmd(self, cmd):
+        """
+        Locates command under cassandra root and fixes permissions if needed
+        """
+        cdir = self.get_install_cassandra_root()
+        if self.get_base_cassandra_version() >= 2.1:
+            fcmd = common.join_bin(cdir, os.path.join('tools', 'bin'), cmd)
+        else:
+            fcmd = common.join_bin(cdir, 'bin', cmd)
+        try:
+            os.chmod(fcmd, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
+        except:
+            print_("WARN: Couldn't change permissions to use {0}.".format(cmd))
+            print_("WARN: If it didn't work, you will have to do so manually.")
+        return fcmd
 
     def list_keyspaces(self):
         keyspaces = os.listdir(os.path.join(self.get_path(), 'data'))
