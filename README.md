@@ -91,10 +91,21 @@ tell ccm how to find the sources:
      (note however that if you create a lot of clusters with
      different versions, this will take up disk space).
 
-Once the cluster is created, you can populate it (with 3 nodes) and start all
-the nodes with:
+Once the cluster is created, you can populate it with 3 nodes with:
 
     ccm populate -n 3
+
+Note: If you’re running on Mac OSX, create a new interface for every node besides the first, for example if you populated your cluster with 3 nodes, create interfaces for 127.0.0.2 and 127.0.0.3 like so:
+
+    sudo ifconfig lo0 alias 127.0.0.2
+    sudo ifconfig lo0 alias 127.0.0.3
+
+Otherwise you will get the following error message:
+
+    (...) Inet address 127.0.0.1:9042 is not available: [Errno 48] Address already in use
+
+After that execute:
+
     ccm start
 
 That will start 3 nodes on IP 127.0.0.[1, 2, 3] on port 9160 for thrift, port
