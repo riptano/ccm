@@ -134,6 +134,20 @@ The list of other provided commands is available through
 Each command is then documented through the `-h` (or `--help`) flag. For
 instance `ccm add -h` describes the options for `ccm add`.
 
+Remote debugging
+-----------------------
+
+If you would like to connect to your Cassandra nodes with a remote debugger you have to pass the `-d` (or `--debug`) flag to the populate command:
+
+    ccm populate -d -n 3
+
+That will populate 3 nodes on IP 127.0.0.[1, 2, 3] setting up the remote debugging on ports 2100, 2200 and 2300.
+The main thread will not be suspended so you don't have to connect with a remote debugger to start a node.
+
+Alternatively you can also specify a remote port with the `-r` (or `--remote-debug-port`) flag while adding a node
+
+    ccm add node4 -r 5005 -i 127.0.0.4 -j 7400 -b
+
 Where things are stored
 -----------------------
 
