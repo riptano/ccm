@@ -1302,14 +1302,14 @@ class Node(object):
             if not columnfamilies or len(columnfamilies) > 1 :
                 raise common.ArgumentError("Exactly one column family must be specified with datafiles")
 
-            cf_dir = os.path.join(os.path.realpath(self.get_path()), 'data', keyspace, columnfamilies[0]+'-')
+            cf_dir = os.path.join(os.path.realpath(self.get_path()), 'data', keyspace, columnfamilies[0])
 
             sstables = set()
             for datafile in datafiles:
                 if not os.path.isabs(datafile):
                     datafile = os.path.join(os.getcwd(), datafile)
 
-                if not datafile.startswith(cf_dir):
+                if not datafile.startswith(cf_dir+'-') and not datafile.startswith(cf_dir+os.sep):
                     raise NodeError("File doesn't appear to belong to the specified keyspace and column familily: " + datafile)
 
                 sstable = _sstable_regexp.match(os.path.basename(datafile))
