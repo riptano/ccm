@@ -1044,7 +1044,7 @@ class Node(object):
         data['cluster_name'] = self.cluster.name
         data['auto_bootstrap'] = self.auto_bootstrap
         data['initial_token'] = self.initial_token
-        if not self.cluster.use_vnodes:
+        if not self.cluster.use_vnodes and self.get_base_cassandra_version() >= 1.2:
             data['num_tokens'] = 1
         if 'seeds' in data:
             # cassandra 0.7
