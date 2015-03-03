@@ -1,8 +1,10 @@
 *.pyc
+*.swp
 build/
 dist/
 venv/
 ccm.iml
+ccm.py
 .idea/
 ccm.egg-info/
 .project
