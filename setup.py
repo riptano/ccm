@@ -1,12 +1,18 @@
 #!/usr/bin/env python
 
 from os.path import abspath, join, dirname
+from platform import system
+from shutil import copyfile
 
 try:
     from setuptools import setup
 except ImportError:
     from distutils.core import setup
 
+ccmscript = 'ccm'
+if system() == "Windows":
+    copyfile('ccm', 'ccm.py')
+    ccmscript = 'ccm.py'
 
 setup(
     name='ccm',
@@ -17,7 +23,7 @@ setup(
     author_email='sylvain@datastax.com',
     url='https://github.com/pcmanus/ccm',
     packages=['ccmlib', 'ccmlib.cmds'],
-    scripts=['ccm'],
+    scripts=[ccmscript],
     install_requires=['pyYaml', 'six >=1.4.1'],
     classifiers=[
         "License :: OSI Approved :: Apache Software License",
