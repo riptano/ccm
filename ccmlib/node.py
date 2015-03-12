@@ -4,6 +4,7 @@ from __future__ import with_statement
 from six import print_, iteritems, string_types
 from six.moves import xrange
 
+import decimal
 import errno
 import glob
 import os
@@ -881,16 +882,10 @@ class Node(object):
         except KeyboardInterrupt:
             pass
 
-    def data_size(self, live_data=True):
-        size = 0
-        if live_data:
-            for ks in self.list_keyspaces():
-                size += sum((os.path.getsize(path) for path in self.get_sstables(ks, "")))
-        else:
-            for ks in self.list_keyspaces():
-                for root, dirs, files in os.walk(os.path.join(self.get_path(), 'data', ks)):
-                    size += sum((os.path.getsize(os.path.join(root, f)) for f in files if os.path.isfile(os.path.join(root, f))))
-        return size
+    def data_size(self, info=None):
+        """Uses `nodetool info` to get the size of a node's data in KB."""
+        info = self.nodetool('info', capture_output=True)[0]
+        return _get_load_from_info_output(info)
 
     def flush(self):
         self.nodetool("flush")
@@ -1350,3 +1345,31 @@ class Node(object):
 
     def resume(self):
         os.kill(self.pid, signal.SIGCONT)
+
+def _get_load_from_info_output(info):
+    load_lines = [s for s in info.split('\n')
+                    if s.startswith('Load')]
+    if not len(load_lines) == 1:
+        msg = ('Expected output from `nodetool info` to contain exactly 1 '
+                'line starting with "Load". Found:\n') + info
+        raise RuntimeError(msg)
+    load_line = load_lines[0].split()
+
+    unit_multipliers = {'KB': 1,
+                        'MB': 1024,
+                        'GB': 1024 * 1024,
+                        'TB': 1024 * 1024 * 1024}
+    load_num, load_units = load_line[2], load_line[3]
+
+    try:
+        load_mult = unit_multipliers[load_units]
+    except KeyError:
+        expected = ', '.join(list(unit_multipliers))
+        msg = ('Expected `nodetool info` to report load in one of the '
+                'following units:\n'
+                '    {expected}\n'
+                'Found:\n'
+                '    {found}').format(expected=expected, found=load_units)
+        raise RuntimeError(msg)
+
+    return decimal.Decimal(load_num) * load_mult
