@@ -201,6 +201,16 @@ def check_win_requirements():
 def is_win():
     return True if sys.platform == "cygwin" or sys.platform == "win32" else False
 
+def is_ps_unrestricted():
+    if not is_win():
+        raise CCMError("Can only check PS Execution Policy on Windows")
+    else:
+        p = subprocess.Popen(['powershell', 'Get-ExecutionPolicy'], stdout=subprocess.PIPE)
+        if "Unrestricted" in p.communicate()[0]:
+            return True
+        else:
+            return False
+
 def join_bin(root, dir, executable):
     return os.path.join(root, dir, platform_binary(executable))
 
