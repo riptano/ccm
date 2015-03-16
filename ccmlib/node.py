@@ -4,6 +4,7 @@ from __future__ import with_statement
 from six import print_, iteritems, string_types
 from six.moves import xrange
 
+import decimal
 import errno
 import glob
 import os
@@ -14,6 +15,7 @@ import stat
 import subprocess
 import sys
 import time
+import warnings
 import yaml
 import shlex
 
@@ -425,6 +427,9 @@ class Node(object):
           - replace_token: start the node with the -Dcassandra.replace_token option.
           - replace_address: start the node with the -Dcassandra.replace_address option.
         """
+        # Validate Windows env
+        if common.is_win() and not common.is_ps_unrestricted() and self.cluster.version() >= '2.1':
+            raise NodeError("PS Execution Policy must be unrestricted when running C* 2.1+")
 
         if self.is_running():
             raise NodeError("%s is already running" % self.name)
@@ -749,16 +754,7 @@ class Node(object):
         print_("running")
         if out_file is None:
             out_file = sys.stdout
-        cdir = self.get_install_cassandra_root()
-        if self.get_base_cassandra_version() >= 2.1:
-            sstable2json = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstable2json')
-        else:
-            sstable2json = common.join_bin(cdir, 'bin', 'sstable2json')
-        try:
-            os.chmod(sstable2json, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
-        except:
-            print_("WARN: Couldn't change permissions to use sstable2json.")
-            print_("WARN: If it didn't work, you will have to do so manually.")
+        sstable2json = self._find_cmd('sstable2json')
         env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
         sstablefiles = self.__gather_sstables(datafiles,keyspace,column_families)
         print_(sstablefiles)
@@ -771,12 +767,8 @@ class Node(object):
             print_("")
 
     def run_json2sstable(self, in_file, ks, cf, keyspace=None, datafiles=None, column_families=None, enumerate_keys=False):
-        cdir = self.get_install_dir()
-        if self.get_base_cassandra_version() >= 2.1:
-            json2sstable = common.join_bin(cdir, os.path.join('tools', 'bin'), 'json2sstable')
-        else:
-            json2sstable = common.join_bin(cdir, 'bin', 'json2sstable')
-        env = common.make_cassandra_env(cdir, self.get_path())
+        json2sstable = self._find_cmd('json2sstable')
+        env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
         sstablefiles = self.__gather_sstables(datafiles,keyspace,column_families)
 
         for sstablefile in sstablefiles:
@@ -784,13 +776,10 @@ class Node(object):
             args = shlex.split("{json2sstable} -s -K {ks} -c {cf} {in_file_name} {sstablefile}".format(**locals()))
             subprocess.call(args, env=env)
 
-    def run_sstablesplit(self, datafiles=None,  size=None, keyspace=None, column_families=None, no_snapshot=False):
-        cdir = self.get_install_dir()
-        if self.get_base_cassandra_version() >= 2.1:
-            sstablesplit = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstablesplit')
-        else:
-            sstablesplit = common.join_bin(cdir, 'bin', 'sstablesplit')
-        env = common.make_cassandra_env(cdir, self.get_path())
+    def run_sstablesplit(self, datafiles=None,  size=None, keyspace=None, column_families=None,
+                         no_snapshot=False, **kwargs):
+        sstablesplit = self._find_cmd('sstablesplit')
+        env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
         sstablefiles = self.__gather_sstables(datafiles, keyspace, column_families)
 
         def do_split(f):
@@ -801,15 +790,14 @@ class Node(object):
             if no_snapshot:
                 cmd.append('--no-snapshot')
             cmd.append(f)
-            subprocess.call(cmd, cwd=os.path.join(cdir, 'bin'), env=env )
+            subprocess.call(cmd, cwd=os.path.join(self.get_install_dir(), 'bin'), env=env, **kwargs)
 
         for sstablefile in sstablefiles:
             do_split(sstablefile)
 
     def run_sstablemetadata(self, output_file=None, datafiles=None, keyspace=None, column_families=None):
-        cdir = self.get_install_dir()
-        sstablemetadata = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstablemetadata')
-        env = common.make_cassandra_env(cdir, self.get_path())
+        sstablemetadata = self._find_cmd('sstablemetadata')
+        env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
         sstablefiles = self.__gather_sstables(datafiles, keyspace, column_families)
 
         for sstable in sstablefiles:
@@ -820,9 +808,8 @@ class Node(object):
                 subprocess.call(cmd, env=env, stdout=output_file)
 
     def run_sstablerepairedset(self, set_repaired=True, datafiles=None, keyspace=None, column_families=None):
-        cdir = self.get_install_dir()
-        sstablerepairedset = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstablerepairedset')
-        env = common.make_cassandra_env(cdir, self.get_path())
+        sstablerepairedset = self._find_cmd('sstablerepairedset')
+        env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
         sstablefiles = self.__gather_sstables(datafiles, keyspace, column_families)
 
         for sstable in sstablefiles:
@@ -831,6 +818,22 @@ class Node(object):
             else:
                 cmd = [sstablerepairedset, "--really-set", "--is-unrepaired", sstable]
             subprocess.call(cmd, env=env)
+
+    def _find_cmd(self, cmd):
+        """
+        Locates command under cassandra root and fixes permissions if needed
+        """
+        cdir = self.get_install_cassandra_root()
+        if self.get_base_cassandra_version() >= 2.1:
+            fcmd = common.join_bin(cdir, os.path.join('tools', 'bin'), cmd)
+        else:
+            fcmd = common.join_bin(cdir, 'bin', cmd)
+        try:
+            os.chmod(fcmd, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
+        except:
+            print_("WARN: Couldn't change permissions to use {0}.".format(cmd))
+            print_("WARN: If it didn't work, you will have to do so manually.")
+        return fcmd
 
     def list_keyspaces(self):
         keyspaces = os.listdir(os.path.join(self.get_path(), 'data'))
@@ -881,16 +884,13 @@ class Node(object):
         except KeyboardInterrupt:
             pass
 
-    def data_size(self, live_data=True):
-        size = 0
-        if live_data:
-            for ks in self.list_keyspaces():
-                size += sum((os.path.getsize(path) for path in self.get_sstables(ks, "")))
-        else:
-            for ks in self.list_keyspaces():
-                for root, dirs, files in os.walk(os.path.join(self.get_path(), 'data', ks)):
-                    size += sum((os.path.getsize(os.path.join(root, f)) for f in files if os.path.isfile(os.path.join(root, f))))
-        return size
+    def data_size(self, live_data=None):
+        """Uses `nodetool info` to get the size of a node's data in KB."""
+        if live_data is not None:
+            warnings.warn("The 'live_data' keyword argument is deprecated.",
+                          DeprecationWarning)
+        info = self.nodetool('info', capture_output=True)[0]
+        return _get_load_from_info_output(info)
 
     def flush(self):
         self.nodetool("flush")
@@ -1043,7 +1043,7 @@ class Node(object):
         data['cluster_name'] = self.cluster.name
         data['auto_bootstrap'] = self.auto_bootstrap
         data['initial_token'] = self.initial_token
-        if not self.cluster.use_vnodes:
+        if not self.cluster.use_vnodes and self.get_base_cassandra_version() >= 1.2:
             data['num_tokens'] = 1
         if 'seeds' in data:
             # cassandra 0.7
@@ -1263,9 +1263,9 @@ class Node(object):
                                 with open (self.get_path() + "/cassandra.pid", 'w') as pidfile:
                                     found = True
                                     pidfile.write(win_pid)
-                            readEnd = common.now_ms()
                         else:
                             time.sleep(.001)
+                        readEnd = common.now_ms()
                     if not found:
                         raise Exception('Node: %s  Failed to find pid in ' +
                                         self.get_path() +
@@ -1301,14 +1301,14 @@ class Node(object):
             if not columnfamilies or len(columnfamilies) > 1 :
                 raise common.ArgumentError("Exactly one column family must be specified with datafiles")
 
-            cf_dir = os.path.join(os.path.realpath(self.get_path()), 'data', keyspace, columnfamilies[0]+'-')
+            cf_dir = os.path.join(os.path.realpath(self.get_path()), 'data', keyspace, columnfamilies[0])
 
             sstables = set()
             for datafile in datafiles:
                 if not os.path.isabs(datafile):
                     datafile = os.path.join(os.getcwd(), datafile)
 
-                if not datafile.startswith(cf_dir):
+                if not datafile.startswith(cf_dir+'-') and not datafile.startswith(cf_dir+os.sep):
                     raise NodeError("File doesn't appear to belong to the specified keyspace and column familily: " + datafile)
 
                 sstable = _sstable_regexp.match(os.path.basename(datafile))
@@ -1350,3 +1350,31 @@ class Node(object):
 
     def resume(self):
         os.kill(self.pid, signal.SIGCONT)
+
+def _get_load_from_info_output(info):
+    load_lines = [s for s in info.split('\n')
+                    if s.startswith('Load')]
+    if not len(load_lines) == 1:
+        msg = ('Expected output from `nodetool info` to contain exactly 1 '
+                'line starting with "Load". Found:\n') + info
+        raise RuntimeError(msg)
+    load_line = load_lines[0].split()
+
+    unit_multipliers = {'KB': 1,
+                        'MB': 1024,
+                        'GB': 1024 * 1024,
+                        'TB': 1024 * 1024 * 1024}
+    load_num, load_units = load_line[2], load_line[3]
+
+    try:
+        load_mult = unit_multipliers[load_units]
+    except KeyError:
+        expected = ', '.join(list(unit_multipliers))
+        msg = ('Expected `nodetool info` to report load in one of the '
+                'following units:\n'
+                '    {expected}\n'
+                'Found:\n'
+                '    {found}').format(expected=expected, found=load_units)
+        raise RuntimeError(msg)
+
+    return decimal.Decimal(load_num) * load_mult
