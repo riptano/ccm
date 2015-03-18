@@ -490,6 +490,11 @@ class ClusterStartCmd(Cmd):
                 profile_options = {}
                 if self.options.profile_options:
                     profile_options['options'] = self.options.profile_options
+
+            if len(self.cluster.nodes) == 0:
+                print_("No node in this cluster yet. Use the populate command before starting.")
+                exit(1)
+
             if self.cluster.start(no_wait=self.options.no_wait,
                                   wait_other_notice=self.options.wait_other_notice,
                                   wait_for_binary_proto=self.options.wait_for_binary_proto,
@@ -500,6 +505,7 @@ class ClusterStartCmd(Cmd):
                 if not self.options.verbose:
                     details = " (you can use --verbose for more information)"
                 print_("Error starting nodes, see above for details%s" % details, file=sys.stderr)
+                exit(1)
         except NodeError as e:
             print_(str(e), file=sys.stderr)
             print_("Standard error output is:", file=sys.stderr)
