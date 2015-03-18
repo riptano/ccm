@@ -378,9 +378,13 @@ class Node(object):
                         raise TimeoutError(time.strftime("%d %b %Y %H:%M:%S", time.gmtime()) + " [" + self.name + "] Missing: " + str([e.pattern for e in tofind]) + ":\n" + reads)
 
                 if process:
-                    process.poll()
-                    if process.returncode is not None and process.returncode == 0:
-                        return None
+                    if common.is_win():
+                        if not self.is_running():
+                            return None
+                    else:
+                        process.poll()
+                        if process.returncode == 0:
+                            return None
 
     def watch_log_for_death(self, nodes, from_mark=None, timeout=600):
         """
