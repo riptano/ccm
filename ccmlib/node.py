@@ -194,7 +194,7 @@ class Node(object):
 
     def get_base_cassandra_version(self):
         version = self.get_cassandra_version()
-        return float(version[:version.index('.')+2])
+        return float(version[:version.index('.') + 2])
 
     def set_configuration_options(self, values=None, batch_commitlog=None):
         """
@@ -227,7 +227,7 @@ class Node(object):
         Print infos on this node configuration.
         """
         self.__update_status()
-        indent = ''.join([ " " for i in xrange(0, len(self.name) + 2) ])
+        indent = ''.join([" " for i in xrange(0, len(self.name) + 2)])
         print_("%s: %s" % (self.name, self.__get_status_string()))
         if not only_status:
             if show_cluster:
@@ -330,7 +330,7 @@ class Node(object):
         """
         elapsed = 0
         tofind = [exprs] if isinstance(exprs, string_types) else exprs
-        tofind = [ re.compile(e) for e in tofind ]
+        tofind = [re.compile(e) for e in tofind]
         matchings = []
         reads = ""
         if len(tofind) == 0:
@@ -397,7 +397,7 @@ class Node(object):
         the log is watched from the beginning.
         """
         tofind = nodes if isinstance(nodes, list) else [nodes]
-        tofind = [ "%s is now [dead|DOWN]" % node.address() for node in tofind ]
+        tofind = ["%s is now [dead|DOWN]" % node.address() for node in tofind]
         self.watch_log_for(tofind, from_mark=from_mark, timeout=timeout)
 
     def watch_log_for_alive(self, nodes, from_mark=None, timeout=120):
@@ -406,7 +406,7 @@ class Node(object):
         nodes are marked UP. This method works similarily to watch_log_for_death.
         """
         tofind = nodes if isinstance(nodes, list) else [nodes]
-        tofind = [ "%s.* now UP" % node.address() for node in tofind ]
+        tofind = ["%s.* now UP" % node.address() for node in tofind]
         self.watch_log_for(tofind, from_mark=from_mark, timeout=timeout)
 
     def start(self,
@@ -443,8 +443,7 @@ class Node(object):
                 common.check_socket_available(itf)
 
         if wait_other_notice:
-            marks = [ (node, node.mark_log()) for node in list(self.cluster.nodes.values()) if node.is_running() ]
-
+            marks = [(node, node.mark_log()) for node in list(self.cluster.nodes.values()) if node.is_running()]
 
         cdir = self.get_install_dir()
         launch_bin = common.join_bin(cdir, 'bin', 'cassandra')
@@ -458,14 +457,14 @@ class Node(object):
 
         if profile_options is not None:
             config = common.get_config()
-            if not 'yourkit_agent' in config:
+            if 'yourkit_agent' not in config:
                 raise NodeError("Cannot enable profile. You need to set 'yourkit_agent' to the path of your agent in a ~/.ccm/config")
             cmd = '-agentpath:%s' % config['yourkit_agent']
             if 'options' in profile_options:
                 cmd = cmd + '=' + profile_options['options']
             print_(cmd)
             # Yes, it's fragile as shit
-            pattern=r'cassandra_parms="-Dlog4j.configuration=log4j-server.properties -Dlog4j.defaultInitOverride=true'
+            pattern = r'cassandra_parms="-Dlog4j.configuration=log4j-server.properties -Dlog4j.defaultInitOverride=true'
             common.replace_in_file(launch_bin, pattern, '    ' + pattern + ' ' + cmd + '"')
 
         os.chmod(launch_bin, os.stat(launch_bin).st_mode | stat.S_IEXEC)
@@ -476,7 +475,7 @@ class Node(object):
             self._clean_win_jmx()
 
         pidfile = os.path.join(self.get_path(), 'cassandra.pid')
-        args = [ launch_bin, '-p', pidfile, '-Dcassandra.join_ring=%s' % str(join_ring) ]
+        args = [launch_bin, '-p', pidfile, '-Dcassandra.join_ring=%s' % str(join_ring)]
         if replace_token is not None:
             args.append('-Dcassandra.replace_token=%s' % str(replace_token))
         if replace_address is not None:
@@ -536,8 +535,7 @@ class Node(object):
         """
         if self.is_running():
             if wait_other_notice:
-                #tstamp = time.time()
-                marks = [ (node, node.mark_log()) for node in list(self.cluster.nodes.values()) if node.is_running() and node is not self ]
+                marks = [(node, node.mark_log()) for node in list(self.cluster.nodes.values()) if node.is_running() and node is not self]
 
             if common.is_win():
                 self.stop_win(wait, wait_other_notice, gently)
@@ -550,7 +548,6 @@ class Node(object):
             if wait_other_notice:
                 for node, mark in marks:
                     node.watch_log_for_death(self, from_mark=mark)
-                    #print node.name, "has marked", self.name, "down in " + str(time.time() - tstamp) + "s"
             else:
                 time.sleep(.1)
 
@@ -578,19 +575,18 @@ class Node(object):
         if self.get_base_cassandra_version() >= 2.1:
             cass_bin = common.join_bin(self.get_path(), 'bin', 'stop-server')
             pidfile = os.path.join(self.get_path(), 'cassandra.pid')
-            args = [ cass_bin, '-p', pidfile]
+            args = [cass_bin, '-p', pidfile]
 
             if not gently:
                 if self.cluster.version() == "2.1.0":
                     os.system("taskkill /F /PID " + str(self.pid))
                 else:
                     args.append('-f')
-                    proc = subprocess.Popen(args, cwd= self.get_bin_dir(), shell=True, stdout=subprocess.PIPE)
+                    proc = subprocess.Popen(args, cwd=self.get_bin_dir(), shell=True, stdout=subprocess.PIPE)
                     proc.communicate()
             else:
-                proc = subprocess.Popen(args, cwd= self.get_bin_dir(), shell=True, stdout=subprocess.PIPE)
+                proc = subprocess.Popen(args, cwd=self.get_bin_dir(), shell=True, stdout=subprocess.PIPE)
                 proc.communicate()
-
 
             pidfile = self.get_path() + "/cassandra.pid"
             if (os.path.isfile(pidfile)):
@@ -603,10 +599,8 @@ class Node(object):
 
     def nodetool(self, cmd, capture_output=False):
         env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
-        host = self.address()
         nodetool = self.get_tool('nodetool')
-        host = self.address()
-        args = [ nodetool, '-h', 'localhost', '-p', str(self.jmx_port)]
+        args = [nodetool, '-h', 'localhost', '-p', str(self.jmx_port)]
         args += cmd.split()
         if capture_output:
             p = subprocess.Popen(args, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -633,19 +627,19 @@ class Node(object):
     def scrub(self, options):
         scrub_bin = self.get_tool('sstablescrub')
         env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
-        os.execve(scrub_bin, [ common.platform_binary('sstablescrub') ] + options, env)
+        os.execve(scrub_bin, [common.platform_binary('sstablescrub')] + options, env)
 
     def run_cli(self, cmds=None, show_output=False, cli_options=[]):
         cli = self.get_tool('cassandra-cli')
         env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
         host = self.network_interfaces['thrift'][0]
         port = self.network_interfaces['thrift'][1]
-        args = [ '-h', host, '-p', str(port) , '--jmxport', str(self.jmx_port) ] + cli_options
+        args = ['-h', host, '-p', str(port), '--jmxport', str(self.jmx_port)] + cli_options
         sys.stdout.flush()
         if cmds is None:
-            os.execve(cli, [ common.platform_binary('cassandra-cli') ] + args, env)
+            os.execve(cli, [common.platform_binary('cassandra-cli')] + args, env)
         else:
-            p = subprocess.Popen([ cli ] + args, env=env, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+            p = subprocess.Popen([cli] + args, env=env, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
             for cmd in cmds.split(';'):
                 p.stdin.write(cmd + ';\n')
             p.stdin.write("quit;\n")
@@ -668,15 +662,15 @@ class Node(object):
             port = self.network_interfaces['binary'][1]
         else:
             port = self.network_interfaces['thrift'][1]
-        args = cqlsh_options + [ host, str(port) ]
+        args = cqlsh_options + [host, str(port)]
         sys.stdout.flush()
         if cmds is None:
             if common.is_win():
-                subprocess.Popen([ cqlsh ] + args, env=env, creationflags=subprocess.CREATE_NEW_CONSOLE)
+                subprocess.Popen([cqlsh] + args, env=env, creationflags=subprocess.CREATE_NEW_CONSOLE)
             else:
-                os.execve(cqlsh, [ common.platform_binary('cqlsh') ] + args, env)
+                os.execve(cqlsh, [common.platform_binary('cqlsh')] + args, env)
         else:
-            p = subprocess.Popen([ cqlsh ] + args, env=env, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+            p = subprocess.Popen([cqlsh] + args, env=env, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
             for cmd in cmds.split(';'):
                 p.stdin.write(cmd + ';\n')
             p.stdin.write("quit;\n")
@@ -697,11 +691,11 @@ class Node(object):
         env = common.make_cassandra_env(cdir, self.get_path())
         host = self.network_interfaces['thrift'][0]
         port = self.network_interfaces['thrift'][1]
-        args = [ '-h', host, '-p', str(port) , '--jmxport', str(self.jmx_port) ]
-        return CliSession(subprocess.Popen([ cli ] + args, env=env, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE))
+        args = ['-h', host, '-p', str(port), '--jmxport', str(self.jmx_port)]
+        return CliSession(subprocess.Popen([cli] + args, env=env, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE))
 
     def set_log_level(self, new_level, class_name=None):
-        known_level = [ 'TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR' ]
+        known_level = ['TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR']
         if new_level not in known_level:
             raise common.ArgumentError("Unknown log level %s (use one of %s)" % (new_level, " ".join(known_level)))
 
@@ -709,7 +703,7 @@ class Node(object):
             self.__classes_log_level[class_name] = new_level
         else:
             self.__global_log_level = new_level
-        #loggers changed > 2.1
+        # loggers changed > 2.1
         if self.get_base_cassandra_version() < 2.1:
             self.__update_log4j()
         else:
@@ -722,7 +716,7 @@ class Node(object):
     #
     def update_log4j(self, new_log4j_config):
         cassandra_conf_dir = os.path.join(self.get_conf_dir(),
-                                           'log4j-server.properties')
+                                          'log4j-server.properties')
         common.copy_file(new_log4j_config, cassandra_conf_dir)
 
     #
@@ -731,11 +725,11 @@ class Node(object):
     #
     def update_logback(self, new_logback_config):
         cassandra_conf_dir = os.path.join(self.get_conf_dir(),
-                                           'logback.xml')
+                                          'logback.xml')
         common.copy_file(new_logback_config, cassandra_conf_dir)
 
-    def clear(self, clear_all = False, only_data = False):
-        data_dirs = [ 'data' ]
+    def clear(self, clear_all=False, only_data=False):
+        data_dirs = ['data']
         if not only_data:
             data_dirs.append("commitlogs")
             if clear_all:
@@ -760,11 +754,11 @@ class Node(object):
             out_file = sys.stdout
         sstable2json = self._find_cmd('sstable2json')
         env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
-        sstablefiles = self.__gather_sstables(datafiles,keyspace,column_families)
+        sstablefiles = self.__gather_sstables(datafiles, keyspace, column_families)
         print_(sstablefiles)
         for sstablefile in sstablefiles:
             print_("-- {0} -----".format(os.path.basename(sstablefile)))
-            args = [ sstable2json , sstablefile ]
+            args = [sstable2json, sstablefile]
             if enumerate_keys:
                 args = args + ["-e"]
             subprocess.call(args, env=env, stdout=out_file)
@@ -773,7 +767,7 @@ class Node(object):
     def run_json2sstable(self, in_file, ks, cf, keyspace=None, datafiles=None, column_families=None, enumerate_keys=False):
         json2sstable = self._find_cmd('json2sstable')
         env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
-        sstablefiles = self.__gather_sstables(datafiles,keyspace,column_families)
+        sstablefiles = self.__gather_sstables(datafiles, keyspace, column_families)
 
         for sstablefile in sstablefiles:
             in_file_name = os.path.abspath(in_file.name)
@@ -806,7 +800,7 @@ class Node(object):
 
         for sstable in sstablefiles:
             cmd = [sstablemetadata, sstable]
-            if output_file == None:
+            if output_file is None:
                 subprocess.call(cmd, env=env)
             else:
                 subprocess.call(cmd, env=env, stdout=output_file)
@@ -817,8 +811,8 @@ class Node(object):
         sstablefiles = self.__gather_sstables(datafiles, keyspace, column_families)
 
         for sstable in sstablefiles:
-            if set_repaired == True:
-                cmd = [sstablerepairedset,"--really-set", "--is-repaired", sstable]
+            if set_repaired:
+                cmd = [sstablerepairedset, "--really-set", "--is-repaired", sstable]
             else:
                 cmd = [sstablerepairedset, "--really-set", "--is-unrepaired", sstable]
             subprocess.call(cmd, env=env)
@@ -872,7 +866,7 @@ class Node(object):
         else:
             stress_options.append('-node')
             stress_options.append(self.address())
-        args = [ stress ] + stress_options
+        args = [stress] + stress_options
         try:
             subprocess.call(args, cwd=common.parse_path(stress), **kwargs)
         except KeyboardInterrupt:
@@ -882,7 +876,7 @@ class Node(object):
         cdir = self.get_install_dir()
         shuffle = common.join_bin(cdir, 'bin', 'cassandra-shuffle')
         host = self.address()
-        args = [ shuffle, '-h', host, '-p', str(self.jmx_port) ] + [ cmd ]
+        args = [shuffle, '-h', host, '-p', str(self.jmx_port)] + [cmd]
         try:
             subprocess.call(args)
         except KeyboardInterrupt:
@@ -917,7 +911,7 @@ class Node(object):
         self.nodetool("cleanup")
 
     def version(self):
-        self.nodetool("version");
+        self.nodetool("version")
 
     def decommission(self):
         self.nodetool("decommission")
@@ -931,7 +925,7 @@ class Node(object):
         self._update_config()
         self.copy_config_files()
         self.__update_yaml()
-        #loggers changed > 2.1
+        # loggers changed > 2.1
         if self.get_base_cassandra_version() < 2.1:
             self.__update_log4j()
         else:
@@ -963,42 +957,42 @@ class Node(object):
 
         # Change the nodes to separate jmx ports
         bin_dir = os.path.join(self.get_path(), 'bin')
-        jmx_port_pattern="-Dcom.sun.management.jmxremote.port="
-        bat_file = os.path.join(bin_dir, "cassandra.bat");
+        jmx_port_pattern = "-Dcom.sun.management.jmxremote.port="
+        bat_file = os.path.join(bin_dir, "cassandra.bat")
         common.replace_in_file(bat_file, jmx_port_pattern, " " + jmx_port_pattern + self.jmx_port + "^")
 
         # Split binaries from conf
-        home_pattern="if NOT DEFINED CASSANDRA_HOME set CASSANDRA_HOME=%CD%"
+        home_pattern = "if NOT DEFINED CASSANDRA_HOME set CASSANDRA_HOME=%CD%"
         common.replace_in_file(bat_file, home_pattern, "set CASSANDRA_HOME=" + self.get_install_dir())
 
-        classpath_pattern="set CLASSPATH=\\\"%CASSANDRA_HOME%\\\\conf\\\""
+        classpath_pattern = "set CLASSPATH=\\\"%CASSANDRA_HOME%\\\\conf\\\""
         common.replace_in_file(bat_file, classpath_pattern, "set CCM_DIR=\"" + self.get_path() + "\"\nset CLASSPATH=\"%CCM_DIR%\\conf\"")
 
         # escape the double quotes in name of the lib files in the classpath
-        jar_file_pattern="do call :append \"%%i\""
-        for_statement="for %%i in (\"%CASSANDRA_HOME%\lib\*.jar\")"
+        jar_file_pattern = "do call :append \"%%i\""
+        for_statement = "for %%i in (\"%CASSANDRA_HOME%\lib\*.jar\")"
         common.replace_in_file(bat_file, jar_file_pattern, for_statement + " do call :append \\\"%%i\\\"")
 
         # escape double quotes in java agent path
-        class_dir_pattern="-javaagent:"
+        class_dir_pattern = "-javaagent:"
         common.replace_in_file(bat_file, class_dir_pattern, " -javaagent:\\\"%CASSANDRA_HOME%\\lib\\jamm-0.2.5.jar\\\"^")
 
         # escape the double quotes in name of the class directories
-        class_dir_pattern="set CASSANDRA_CLASSPATH="
+        class_dir_pattern = "set CASSANDRA_CLASSPATH="
         main_classes = "\\\"%CASSANDRA_HOME%\\build\\classes\\main\\\";"
-        thrift_classes="\\\"%CASSANDRA_HOME%\\build\\classes\\thrift\\\""
+        thrift_classes = "\\\"%CASSANDRA_HOME%\\build\\classes\\thrift\\\""
         common.replace_in_file(bat_file, class_dir_pattern, "set CASSANDRA_CLASSPATH=%CLASSPATH%;" +
                                main_classes + thrift_classes)
 
         # background the server process and grab the pid
-        run_text="\\\"%JAVA_HOME%\\bin\\java\\\" %JAVA_OPTS% %CASSANDRA_PARAMS% -cp %CASSANDRA_CLASSPATH% \\\"%CASSANDRA_MAIN%\\\""
-        run_pattern=".*-cp.*"
+        run_text = "\\\"%JAVA_HOME%\\bin\\java\\\" %JAVA_OPTS% %CASSANDRA_PARAMS% -cp %CASSANDRA_CLASSPATH% \\\"%CASSANDRA_MAIN%\\\""
+        run_pattern = ".*-cp.*"
         common.replace_in_file(bat_file, run_pattern, "wmic process call create \"" + run_text + "\" > \"" +
                                self.get_path() + "/dirty_pid.tmp\"\n")
 
     def _save(self):
         self.__update_yaml()
-        #loggers changed > 2.1
+        # loggers changed > 2.1
         if self.get_base_cassandra_version() < 2.1:
             self.__update_log4j()
         else:
@@ -1015,12 +1009,12 @@ class Node(object):
 
         filename = os.path.join(dir_name, 'node.conf')
         values = {
-            'name' : self.name,
-            'status' : self.status,
-            'auto_bootstrap' : self.auto_bootstrap,
-            'interfaces' : self.network_interfaces,
-            'jmx_port' : self.jmx_port,
-            'config_options' : self.__config_options,
+            'name': self.name,
+            'status': self.status,
+            'auto_bootstrap': self.auto_bootstrap,
+            'interfaces': self.network_interfaces,
+            'jmx_port': self.jmx_port,
+            'config_options': self.__config_options,
         }
         if self.pid:
             values['pid'] = self.pid
@@ -1060,7 +1054,7 @@ class Node(object):
         if self.network_interfaces['binary'] is not None and self.get_base_cassandra_version() >= 1.2:
             _, data['native_transport_port'] = self.network_interfaces['binary']
 
-        data['data_file_directories'] = [ os.path.join(self.get_path(), 'data') ]
+        data['data_file_directories'] = [os.path.join(self.get_path(), 'data')]
         data['commitlog_directory'] = os.path.join(self.get_path(), 'commitlogs')
         data['saved_caches_directory'] = os.path.join(self.get_path(), 'saved_caches')
 
@@ -1090,7 +1084,7 @@ class Node(object):
             yaml.safe_dump(data, f, default_flow_style=False)
 
     def __update_log4j(self):
-        append_pattern='log4j.appender.R.File='
+        append_pattern = 'log4j.appender.R.File='
         conf_file = os.path.join(self.get_conf_dir(), common.LOG4J_CONF)
         log_file = os.path.join(self.get_path(), 'logs', 'system.log')
         # log4j isn't partial to Windows \.  I can't imagine why not.
@@ -1102,43 +1096,43 @@ class Node(object):
 
         # Replace the global log level
         if self.__global_log_level is not None:
-            append_pattern='log4j.rootLogger='
+            append_pattern = 'log4j.rootLogger='
             common.replace_in_file(conf_file, append_pattern, append_pattern + self.__global_log_level + ',stdout,R')
 
         # Class specific log levels
         for class_name in self.__classes_log_level:
-            logger_pattern='log4j.logger'
+            logger_pattern = 'log4j.logger'
             full_logger_pattern = logger_pattern + '.' + class_name + '='
             common.replace_or_add_into_file_tail(conf_file, full_logger_pattern, full_logger_pattern + self.__classes_log_level[class_name])
 
     def __update_logback(self):
-        append_pattern='<file>.*</file>'
+        append_pattern = '<file>.*</file>'
         conf_file = os.path.join(self.get_conf_dir(), common.LOGBACK_CONF)
         log_file = os.path.join(self.get_path(), 'logs', 'system.log')
         common.replace_in_file(conf_file, append_pattern, '<file>' + log_file + '</file>')
 
-        append_pattern='<fileNamePattern>.*</fileNamePattern>'
+        append_pattern = '<fileNamePattern>.*</fileNamePattern>'
         common.replace_in_file(conf_file, append_pattern, '<fileNamePattern>' + log_file + '.%i.zip</fileNamePattern>')
 
         # Setting the right log level
 
         # Replace the global log level
         if self.__global_log_level is not None:
-            append_pattern='<root level=".*">'
+            append_pattern = '<root level=".*">'
             common.replace_in_file(conf_file, append_pattern, '<root level="' + self.__global_log_level + '">')
 
         # Class specific log levels
         for class_name in self.__classes_log_level:
-            logger_pattern='\t<logger name="'
+            logger_pattern = '\t<logger name="'
             full_logger_pattern = logger_pattern + class_name + '" level=".*"/>'
             common.replace_or_add_into_file_tail(conf_file, full_logger_pattern, logger_pattern + class_name + '" level="' + self.__classes_log_level[class_name] + '"/>')
 
     def __update_envfile(self):
         if common.is_win():
-            jmx_port_pattern='^\s+\$JMX_PORT='
+            jmx_port_pattern = '^\s+\$JMX_PORT='
         else:
-            jmx_port_pattern='JMX_PORT='
-        remote_debug_port_pattern='-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address='
+            jmx_port_pattern = 'JMX_PORT='
+        remote_debug_port_pattern = '-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address='
         conf_file = os.path.join(self.get_conf_dir(), common.CASSANDRA_ENV)
         common.replace_in_file(conf_file, jmx_port_pattern, jmx_port_pattern + self.jmx_port)
         if self.remote_debug_port != '0':
@@ -1255,7 +1249,7 @@ class Node(object):
 
                     readStart = common.now_ms()
                     readEnd = common.now_ms()
-                    while (found == False and readEnd - readStart < 500):
+                    while (found is False and readEnd - readStart < 500):
                         line = f.read()
                         if (line):
                             m = process_regex.search(line)
@@ -1264,7 +1258,7 @@ class Node(object):
                                 linesub = line.split('=')
                                 pidchunk = linesub[1].split(';')
                                 win_pid = pidchunk[0].lstrip()
-                                with open (self.get_path() + "/cassandra.pid", 'w') as pidfile:
+                                with open(self.get_path() + "/cassandra.pid", 'w') as pidfile:
                                     found = True
                                     pidfile.write(win_pid)
                         else:
@@ -1302,7 +1296,7 @@ class Node(object):
                 for cf in columnfamilies:
                     files = files + self.get_sstables(keyspace, cf)
         else:
-            if not columnfamilies or len(columnfamilies) > 1 :
+            if not columnfamilies or len(columnfamilies) > 1:
                 raise common.ArgumentError("Exactly one column family must be specified with datafiles")
 
             cf_dir = os.path.join(os.path.realpath(self.get_path()), 'data', keyspace, columnfamilies[0])
@@ -1312,7 +1306,7 @@ class Node(object):
                 if not os.path.isabs(datafile):
                     datafile = os.path.join(os.getcwd(), datafile)
 
-                if not datafile.startswith(cf_dir+'-') and not datafile.startswith(cf_dir+os.sep):
+                if not datafile.startswith(cf_dir + '-') and not datafile.startswith(cf_dir + os.sep):
                     raise NodeError("File doesn't appear to belong to the specified keyspace and column familily: " + datafile)
 
                 sstable = _sstable_regexp.match(os.path.basename(datafile))
@@ -1335,9 +1329,11 @@ class Node(object):
             common.replace_in_file(dst, "^\s+\$JMX_PORT=", "    $JMX_PORT=\"" + self.jmx_port + "\"")
 
             # properly use single and double quotes to count for single quotes in the CASSANDRA_CONF path
-            common.replace_in_file(dst,'CASSANDRA_PARAMS=','    $env:CASSANDRA_PARAMS=\'-Dcassandra' +    # -Dcassandra
-              ' -Dlogback.configurationFile=/"\' + "$env:CASSANDRA_CONF" + \'/logback.xml"\'' +            # -Dlogback.configurationFile=/"$env:CASSANDRA_CONF/logback.xml"
-              ' + \' -Dcassandra.config=file:"\' + "///$env:CASSANDRA_CONF" + \'/cassandra.yaml"\'')        # -Dcassandra.config=file:"///$env:CASSANDRA_CONF/cassandra.yaml"
+            common.replace_in_file(
+                dst,
+                'CASSANDRA_PARAMS=', '    $env:CASSANDRA_PARAMS=\'-Dcassandra' +                        # -Dcassandra
+                ' -Dlogback.configurationFile=/"\' + "$env:CASSANDRA_CONF" + \'/logback.xml"\'' +       # -Dlogback.configurationFile=/"$env:CASSANDRA_CONF/logback.xml"
+                ' + \' -Dcassandra.config=file:"\' + "///$env:CASSANDRA_CONF" + \'/cassandra.yaml"\'')  # -Dcassandra.config=file:"///$env:CASSANDRA_CONF/cassandra.yaml"
 
     def get_conf_option(self, option):
         conf_file = os.path.join(self.get_conf_dir(), common.CASSANDRA_CONF)
@@ -1357,10 +1353,10 @@ class Node(object):
 
 def _get_load_from_info_output(info):
     load_lines = [s for s in info.split('\n')
-                    if s.startswith('Load')]
+                  if s.startswith('Load')]
     if not len(load_lines) == 1:
         msg = ('Expected output from `nodetool info` to contain exactly 1 '
-                'line starting with "Load". Found:\n') + info
+               'line starting with "Load". Found:\n') + info
         raise RuntimeError(msg)
     load_line = load_lines[0].split()
 
@@ -1375,10 +1371,10 @@ def _get_load_from_info_output(info):
     except KeyError:
         expected = ', '.join(list(unit_multipliers))
         msg = ('Expected `nodetool info` to report load in one of the '
-                'following units:\n'
-                '    {expected}\n'
-                'Found:\n'
-                '    {found}').format(expected=expected, found=load_units)
+               'following units:\n'
+               '    {expected}\n'
+               'Found:\n'
+               '    {found}').format(expected=expected, found=load_units)
         raise RuntimeError(msg)
 
     return decimal.Decimal(load_num) * load_mult
