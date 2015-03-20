@@ -222,7 +222,7 @@ class _NodeToolCmd(Cmd):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
 
     def run(self):
-        self.node.nodetool(self.nodetool_cmd)
+        self.node.nodetool(self.nodetool_cmd + " " + " ".join((self.args[1:])))
 
 class NodeNodetoolCmd(_NodeToolCmd):
     usage = "usage: ccm node_name nodetool [options]"
