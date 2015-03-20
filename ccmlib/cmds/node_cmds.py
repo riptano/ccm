@@ -224,20 +224,6 @@ class _NodeToolCmd(Cmd):
     def run(self):
         self.node.nodetool(self.nodetool_cmd)
 
-class _NodeToolCmd(Cmd):
-    def get_parser(self):
-        parser = self._get_default_parser(self.usage, self.description())
-        return parser
-
-    def description(self):
-        return self.descr_text
-
-    def validate(self, parser, options, args):
-        Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
-
-    def run(self):
-        self.node.nodetool(self.nodetool_cmd)
-
 class NodeNodetoolCmd(_NodeToolCmd):
     usage = "usage: ccm node_name nodetool [options]"
     descr_text = "Run nodetool (connecting to node name)"
