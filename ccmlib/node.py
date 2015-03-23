@@ -1280,8 +1280,8 @@ class Node(object):
                     self.pid = int(f.readline().strip().decode('utf-16'))
                 else:
                     self.pid = int(f.readline().strip())
-        except IOError:
-            raise NodeError('Problem starting node %s' % self.name, process)
+        except IOError as e:
+            raise NodeError('Problem starting node %s due to %s' % (self.name, e.message), process)
         self.__update_status()
 
     def __gather_sstables(self, datafiles=None, keyspace=None, columnfamilies=None):
