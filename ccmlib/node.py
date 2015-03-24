@@ -500,7 +500,14 @@ class Node(object):
             self._update_pid(process)
         elif update_pid:
             if no_wait:
-                time.sleep(2) # waiting 2 seconds nevertheless to check for early errors and for the pid to be set
+                #Wait for up to 15s for the pid to be set
+                start = common.now_ms()
+                while not os.path.isfile(os.path.join(self.get_path(), 'cassandra.pid')):
+                    now = common.now_ms()
+                    if (now - start > 15000):
+                        break
+                    else:
+                        time.sleep(.01)
             else:
                 for line in process.stdout:
                     if verbose:
@@ -1274,16 +1281,6 @@ class Node(object):
 
     def _update_pid(self, process):
         pidfile = os.path.join(self.get_path(), 'cassandra.pid')
-
-        #Wait for 2.5 s for the pid to be set
-        start = common.now_ms()
-        while not os.path.isfile(pidfile):
-            now = common.now_ms()
-            if (now - start > 2500):
-                break
-            else:
-                time.sleep(.01)
-
         try:
             with open(pidfile, 'r') as f:
                 if common.is_win() and self.get_base_cassandra_version() >= 2.1:
