@@ -1274,6 +1274,16 @@ class Node(object):
 
     def _update_pid(self, process):
         pidfile = os.path.join(self.get_path(), 'cassandra.pid')
+
+        #Wait for 2.5 s for the pid to be set
+        start = common.now_ms()
+        while not os.path.isfile(pidfile):
+            now = common.now_ms()
+            if (now - start > 2500):
+                break
+            else:
+                time.sleep(.01)
+
         try:
             with open(pidfile, 'r') as f:
                 if common.is_win() and self.get_base_cassandra_version() >= 2.1:
