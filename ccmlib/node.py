@@ -4,6 +4,7 @@ from __future__ import with_statement
 from six import print_, iteritems, string_types
 from six.moves import xrange
 
+from datetime import datetime
 import decimal
 import errno
 import glob
@@ -499,16 +500,7 @@ class Node(object):
             self.__clean_win_pid()
             self._update_pid(process)
         elif update_pid:
-            if no_wait:
-                #Wait for up to 15s for the pid to be set
-                start = common.now_ms()
-                while not os.path.isfile(os.path.join(self.get_path(), 'cassandra.pid')):
-                    now = common.now_ms()
-                    if (now - start > 15000):
-                        break
-                    else:
-                        time.sleep(.01)
-            else:
+            if not no_wait:
                 for line in process.stdout:
                     if verbose:
                         print_(line.rstrip('\n'))
@@ -1281,6 +1273,15 @@ class Node(object):
 
     def _update_pid(self, process):
         pidfile = os.path.join(self.get_path(), 'cassandra.pid')
+
+        start = time.time()
+        while not (os.path.isfile(pidfile) and os.stat(pidfile).st_size > 0):
+            if (time.time() - start > 30.0):
+                print_("Timed out waiting for pidfile to be filled (current time is %s)" % (datetime.now()))
+                break
+            else:
+                time.sleep(0.1)
+
         try:
             with open(pidfile, 'r') as f:
                 if common.is_win() and self.get_base_cassandra_version() >= 2.1:
@@ -1288,7 +1289,7 @@ class Node(object):
                 else:
                     self.pid = int(f.readline().strip())
         except IOError as e:
-            raise NodeError('Problem starting node %s due to %s' % (self.name, e.message), process)
+            raise NodeError('Problem starting node %s due to %s' % (self.name, e), process)
         self.__update_status()
 
     def __gather_sstables(self, datafiles=None, keyspace=None, columnfamilies=None):
