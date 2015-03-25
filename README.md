@@ -145,6 +145,14 @@ The list of other provided commands is available through
 Each command is then documented through the `-h` (or `--help`) flag. For
 instance `ccm add -h` describes the options for `ccm add`.
 
+### Binary Distribution
+
+If you'd like to use a binary distribution instead of compiling from sources each time (for example, for Continuous Integration), you can prefix cassandra version with `binary:`, for example:
+
+```
+ccm create test -v binary:2.0.5 -n 3 -s
+```
+
 Remote debugging
 -----------------------
 
