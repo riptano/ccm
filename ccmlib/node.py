@@ -5,7 +5,6 @@ from six import print_, iteritems, string_types
 from six.moves import xrange
 
 from datetime import datetime
-import decimal
 import errno
 import glob
 import os
@@ -1385,4 +1384,4 @@ def _get_load_from_info_output(info):
                '    {found}').format(expected=expected, found=load_units)
         raise RuntimeError(msg)
 
-    return decimal.Decimal(load_num) * load_mult
+    return float(load_num) * load_mult
