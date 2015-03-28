@@ -1354,10 +1354,26 @@ class Node(object):
             return None
 
     def pause(self):
-        os.kill(self.pid, signal.SIGSTOP)
+        try:
+            import psutil
+            p = psutil.Process(self.pid)
+            p.suspend()
+        except ImportError:
+            if common.is_win():
+                print_("WARN: psutil not installed. Pause functionality will not work properly on Windows.")
+            else:
+                os.kill(self.pid, signal.SIGSTOP)
 
     def resume(self):
-        os.kill(self.pid, signal.SIGCONT)
+        try:
+            import psutil
+            p = psutil.Process(self.pid)
+            p.resume()
+        except ImportError:
+            if common.is_win():
+                print_("WARN: psutil not installed. Resume functionality will not work properly on Windows.")
+            else:
+                os.kill(self.pid, signal.SIGCONT)
 
 def _get_load_from_info_output(info):
     load_lines = [s for s in info.split('\n')
