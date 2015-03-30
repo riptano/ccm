@@ -1020,8 +1020,6 @@ class Node(object):
             values['initial_token'] = self.initial_token
         if self.__install_dir is not None:
             values['install_dir'] = self.__install_dir
-        if self.data_center:
-            values['data_center'] = self.data_center
         if self.remote_debug_port:
             values['remote_debug_port'] = self.remote_debug_port
         if self.data_center:
