@@ -355,6 +355,7 @@ class Cluster(object):
         self._update_config()
         for node in list(self.nodes.values()):
             node.import_config_files()
+        self.__update_topology_files()
         return self
 
     def set_dse_configuration_options(self, values=None):
