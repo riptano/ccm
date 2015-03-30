@@ -212,7 +212,7 @@ class NodeStopCmd(Cmd):
 
 class _NodeToolCmd(Cmd):
     def get_parser(self):
-        parser = self._get_default_parser(self.usage, self.description(),  ignore_unknown_options=True)
+        parser = self._get_default_parser(self.usage, self.description())
         return parser
 
     def description(self):
