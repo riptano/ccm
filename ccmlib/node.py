@@ -38,6 +38,20 @@ class TimeoutError(Exception):
     def __init__(self, data):
         Exception.__init__(self, str(data))
 
+class NodetoolError(Exception):
+
+    def __init__(self, command, exit_status, stdout=None, stderr=None):
+        self.command = command
+        self.exit_status = exit_status
+        self.stdout = stdout
+        self.stderr = stderr
+
+        message = "Nodetool command '%s' failed; exit status: %d" % (command, exit_status)
+        if stdout is not None and stderr is not None:
+            message += "; stdout: %s; stderr: %s" % (stdout, stderr)
+
+        Exception.__init__(self, message)
+
 # Groups: 1 = cf, 2 = tmp or none, 3 = suffix (Compacted or Data.db)
 _sstable_regexp = re.compile('(?P<keyspace>[^\s-]+)-(?P<cf>[^\s-]+)-(?P<tmp>tmp(link)?-)?(?P<version>[^\s-]+)-(?P<number>\d+)-(?P<suffix>[a-zA-Z]+)\.[a-zA-Z0-9]+$')
 
@@ -602,10 +616,14 @@ class Node(object):
         args += cmd.split()
         if capture_output:
             p = subprocess.Popen(args, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            return p.communicate()
+            stdout, stderr = p.communicate()
         else:
             p = subprocess.Popen(args, env=env)
-            p.wait()
+            stdout, stderr = None, None
+
+        exit_status = p.wait()
+        if exit_status != 0:
+            raise NodetoolError(" ".join(args), exit_status, stdout, stderr)
 
     def dsetool(self, cmd):
         raise common.ArgumentError('Cassandra nodes do not support dsetool')
