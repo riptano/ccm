@@ -645,6 +645,11 @@ class Node(object):
         env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
         os.execve(scrub_bin, [common.platform_binary('sstablescrub')] + options, env)
 
+    def verify(self, options):
+        verify_bin = self.get_tool('sstableverify')
+        env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
+        os.execve(verify_bin, [ common.platform_binary('sstableverify') ] + options, env)
+
     def run_cli(self, cmds=None, show_output=False, cli_options=[]):
         cli = self.get_tool('cassandra-cli')
         env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())

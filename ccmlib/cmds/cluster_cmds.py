@@ -36,6 +36,7 @@ def cluster_cmds():
         "bulkload",
         "setlog",
         "scrub",
+        "verify",
         "invalidatecache",
     ]
 
@@ -747,6 +748,22 @@ class ClusterScrubCmd(Cmd):
 
     def run(self):
         self.cluster.scrub(self.scrub_options)
+
+class ClusterVerifyCmd(Cmd):
+    def description(self):
+        return "Verify files"
+
+    def get_parser(self):
+        usage = "usage: ccm verify [options] <keyspace> <cf>"
+        parser = self._get_default_parser(usage, self.description(), ignore_unknown_options=True)
+        return parser
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, load_cluster=True)
+        self.verify_options = parser.get_ignored() + args
+
+    def run(self):
+        self.cluster.verify(self.verify_options)
 
 class ClusterSetlogCmd(Cmd):
     def description(self):

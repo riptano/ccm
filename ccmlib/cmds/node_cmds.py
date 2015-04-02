@@ -22,6 +22,7 @@ def node_cmds():
         "cleanup",
         "repair",
         "scrub",
+        "verify",
         "shuffle",
         "sstablesplit",
         "decommission",
@@ -32,6 +33,7 @@ def node_cmds():
         "cli",
         "cqlsh",
         "scrub",
+        "verify",
         "status",
         "setdir",
         "version",
@@ -284,6 +286,11 @@ class NodeScrubCmd(_NodeToolCmd):
     nodetool_cmd = 'scrub'
     descr_text = "Run scrub on node name"
 
+class NodeVerifyCmd(_NodeToolCmd):
+    usage = "usage: ccm node_name verify [options]"
+    nodetool_cmd = 'verify'
+    descr_text = "Run verify on node name"
+
 class _DseToolCmd(Cmd):
     def get_parser(self):
         parser = self._get_default_parser(self.usage, self.description())
@@ -360,6 +367,22 @@ class NodeScrubCmd(Cmd):
 
     def run(self):
         self.node.scrub(self.scrub_options)
+
+class NodeVerifyCmd(Cmd):
+    def description(self):
+        return "Verify files"
+
+    def get_parser(self):
+        usage = "usage: ccm node_name verify [options] <keyspace> <cf>"
+        parser = self._get_default_parser(usage, self.description(), ignore_unknown_options=True)
+        return parser
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
+        self.verify_options = parser.get_ignored() + args[1:]
+
+    def run(self):
+        self.node.verify(self.verify_options)
 
 class NodeJsonCmd(Cmd):
     def description(self):
