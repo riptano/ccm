@@ -625,6 +625,8 @@ class Node(object):
         if exit_status != 0:
             raise NodetoolError(" ".join(args), exit_status, stdout, stderr)
 
+        return stdout, stderr
+
     def dsetool(self, cmd):
         raise common.ArgumentError('Cassandra nodes do not support dsetool')
 
