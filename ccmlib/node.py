@@ -695,7 +695,9 @@ class Node(object):
         else:
             p = subprocess.Popen([cqlsh] + args, env=env, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
             for cmd in cmds.split(';'):
-                p.stdin.write(cmd + ';\n')
+                cmd = cmd.strip()
+                if cmd:
+                    p.stdin.write(cmd + ';\n')
             p.stdin.write("quit;\n")
             p.wait()
             for err in p.stderr:
