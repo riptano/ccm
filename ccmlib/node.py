@@ -1,7 +1,7 @@
 # ccm node
 from __future__ import with_statement
 
-from six import print_, iteritems, string_types
+from six import print_, iteritems, string_types, StringIO
 from six.moves import xrange
 
 from datetime import datetime
@@ -677,7 +677,7 @@ class Node(object):
                         print_(log, end='')
                     i = i + 1
 
-    def run_cqlsh(self, cmds=None, show_output=False, cqlsh_options=[]):
+    def run_cqlsh(self, cmds=None, show_output=False, cqlsh_options=[], return_output=False):
         cqlsh = self.get_tool('cqlsh')
         env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
         host = self.network_interfaces['thrift'][0]
@@ -702,9 +702,14 @@ class Node(object):
             p.wait()
             for err in p.stderr:
                 print_("(EE) ", err, end='')
+
+            output = (p.stdout.read(), p.stderr.read())
+
             if show_output:
-                for log in p.stdout:
-                    print_(log, end='')
+                print_(output[0], end='')
+
+            if return_output:
+                return output
 
     def cli(self):
         cdir = self.get_install_dir()

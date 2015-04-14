@@ -7,6 +7,7 @@ from . import TEST_DIR
 from . import ccmtest
 from ccmlib.cluster import Cluster
 import ccmlib
+from six import StringIO
 
 CLUSTER_PATH = TEST_DIR
 
@@ -103,6 +104,75 @@ class TestCCMLib(ccmtest.Tester):
 
         self.cluster.clear()
         self.cluster.stop()
+
+
+class TestRunCqlsh(ccmtest.Tester):
+    def setUp(self):
+        '''Create a cluster for cqlsh tests. Assumes that ccmtest.Tester's
+        teardown() method will safely stop and remove self.cluster.'''
+        self.cluster = Cluster(CLUSTER_PATH, "run_cqlsh",
+                               cassandra_version='git:trunk')
+        self.cluster.populate(1).start(wait_for_binary_proto=True)
+        [self.node] = self.cluster.nodelist()
+
+    def test_run_cqlsh(self):
+        '''run_cqlsh works with a simple example input'''
+        self.node.run_cqlsh(
+            '''
+            CREATE KEYSPACE ks WITH replication = { 'class' :'SimpleStrategy', 'replication_factor': 1};
+            USE ks;
+            CREATE TABLE test (key int PRIMARY KEY);
+            INSERT INTO test (key) VALUES (1);
+            ''')
+        rv = self.node.run_cqlsh('SELECT * from ks.test', return_output=True)
+        for s in ['(1 rows)', 'key', '1']:
+            self.assertIn(s, rv[0])
+        self.assertEqual(rv[1], '')
+
+    def run_cqlsh_printing(self, return_output, show_output):
+        '''Parameterized test. Runs run_cqlsh with options to print the output
+        and to return it as a string, or with these options combined, depending
+        on the values of the arguments.'''
+        # redirect run_cqlsh's stdout to a string buffer
+        old_stdout, sys.stdout = sys.stdout, StringIO()
+
+        rv = self.node.run_cqlsh('DESCRIBE keyspaces;',
+                                 return_output=return_output,
+                                 show_output=show_output)
+
+        # put stdout back where it belongs and get the built string value
+        sys.stdout, printed_output = old_stdout, sys.stdout.getvalue()
+
+        if return_output:
+            # we should see names of system keyspaces
+            self.assertIn('system', rv[0])
+            # stderr should be empty
+            self.assertEqual('', rv[1])
+        else:
+            # implicitly-returned None
+            self.assertEqual(rv, None)
+
+        if show_output:
+            self.assertIn('system', printed_output)
+        else:
+            # nothing should be printed if (not show_output)
+            self.assertEqual(printed_output, '')
+
+        if return_output and show_output:
+            self.assertEqual(printed_output, rv[0])
+
+    def test_no_output(self):
+        self.run_cqlsh_printing(return_output=False, show_output=False)
+
+    def test_print_output(self):
+        self.run_cqlsh_printing(return_output=True, show_output=False)
+
+    def test_return_output(self):
+        self.run_cqlsh_printing(return_output=False, show_output=True)
+
+    def test_print_and_return_output(self):
+        self.run_cqlsh_printing(return_output=True, show_output=True)
+
 
 class TestNodeLoad(ccmtest.Tester):
     def test_rejects_multiple_load_lines(self):
