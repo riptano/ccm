@@ -703,12 +703,8 @@ class Node(object):
             for err in p.stderr:
                 print_("(EE) ", err, end='')
             if show_output:
-                i = 0
                 for log in p.stdout:
-                    # first four lines are not interesting
-                    if i >= 4:
-                        print_(log, end='')
-                    i = i + 1
+                    print_(log, end='')
 
     def cli(self):
         cdir = self.get_install_dir()
