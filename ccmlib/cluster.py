@@ -355,6 +355,7 @@ class Cluster(object):
         self._update_config()
         for node in list(self.nodes.values()):
             node.import_config_files()
+        self.__update_topology_files()
         return self
 
     def set_dse_configuration_options(self, values=None):
@@ -390,6 +391,10 @@ class Cluster(object):
     def scrub(self, options):
         for node in list(self.nodes.values()):
             node.scrub(options)
+
+    def verify(self, options):
+        for node in list(self.nodes.values()):
+            node.verify(options)
 
     def update_log4j(self, new_log4j_config):
         # iterate over all nodes

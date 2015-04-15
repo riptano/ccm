@@ -1,11 +1,10 @@
 # ccm node
 from __future__ import with_statement
 
-from six import print_, iteritems, string_types
+from six import print_, iteritems, string_types, StringIO
 from six.moves import xrange
 
 from datetime import datetime
-import decimal
 import errno
 import glob
 import os
@@ -38,6 +37,20 @@ class NodeError(Exception):
 class TimeoutError(Exception):
     def __init__(self, data):
         Exception.__init__(self, str(data))
+
+class NodetoolError(Exception):
+
+    def __init__(self, command, exit_status, stdout=None, stderr=None):
+        self.command = command
+        self.exit_status = exit_status
+        self.stdout = stdout
+        self.stderr = stderr
+
+        message = "Nodetool command '%s' failed; exit status: %d" % (command, exit_status)
+        if stdout is not None and stderr is not None:
+            message += "; stdout: %s; stderr: %s" % (stdout, stderr)
+
+        Exception.__init__(self, message)
 
 # Groups: 1 = cf, 2 = tmp or none, 3 = suffix (Compacted or Data.db)
 _sstable_regexp = re.compile('(?P<keyspace>[^\s-]+)-(?P<cf>[^\s-]+)-(?P<tmp>tmp(link)?-)?(?P<version>[^\s-]+)-(?P<number>\d+)-(?P<suffix>[a-zA-Z]+)\.[a-zA-Z0-9]+$')
@@ -603,10 +616,16 @@ class Node(object):
         args += cmd.split()
         if capture_output:
             p = subprocess.Popen(args, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            return p.communicate()
+            stdout, stderr = p.communicate()
         else:
             p = subprocess.Popen(args, env=env)
-            p.wait()
+            stdout, stderr = None, None
+
+        exit_status = p.wait()
+        if exit_status != 0:
+            raise NodetoolError(" ".join(args), exit_status, stdout, stderr)
+
+        return stdout, stderr
 
     def dsetool(self, cmd):
         raise common.ArgumentError('Cassandra nodes do not support dsetool')
@@ -627,6 +646,11 @@ class Node(object):
         scrub_bin = self.get_tool('sstablescrub')
         env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
         os.execve(scrub_bin, [common.platform_binary('sstablescrub')] + options, env)
+
+    def verify(self, options):
+        verify_bin = self.get_tool('sstableverify')
+        env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
+        os.execve(verify_bin, [ common.platform_binary('sstableverify') ] + options, env)
 
     def run_cli(self, cmds=None, show_output=False, cli_options=[]):
         cli = self.get_tool('cassandra-cli')
@@ -653,7 +677,7 @@ class Node(object):
                         print_(log, end='')
                     i = i + 1
 
-    def run_cqlsh(self, cmds=None, show_output=False, cqlsh_options=[]):
+    def run_cqlsh(self, cmds=None, show_output=False, cqlsh_options=[], return_output=False):
         cqlsh = self.get_tool('cqlsh')
         env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
         host = self.network_interfaces['thrift'][0]
@@ -671,18 +695,21 @@ class Node(object):
         else:
             p = subprocess.Popen([cqlsh] + args, env=env, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
             for cmd in cmds.split(';'):
-                p.stdin.write(cmd + ';\n')
+                cmd = cmd.strip()
+                if cmd:
+                    p.stdin.write(cmd + ';\n')
             p.stdin.write("quit;\n")
             p.wait()
             for err in p.stderr:
                 print_("(EE) ", err, end='')
+
+            output = (p.stdout.read(), p.stderr.read())
+
             if show_output:
-                i = 0
-                for log in p.stdout:
-                    # first four lines are not interesting
-                    if i >= 4:
-                        print_(log, end='')
-                    i = i + 1
+                print_(output[0], end='')
+
+            if return_output:
+                return output
 
     def cli(self):
         cdir = self.get_install_dir()
@@ -1021,8 +1048,6 @@ class Node(object):
             values['initial_token'] = self.initial_token
         if self.__install_dir is not None:
             values['install_dir'] = self.__install_dir
-        if self.data_center:
-            values['data_center'] = self.data_center
         if self.remote_debug_port:
             values['remote_debug_port'] = self.remote_debug_port
         if self.data_center:
@@ -1401,4 +1426,4 @@ def _get_load_from_info_output(info):
                '    {found}').format(expected=expected, found=load_units)
         raise RuntimeError(msg)
 
-    return decimal.Decimal(load_num) * load_mult
+    return float(load_num) * load_mult
