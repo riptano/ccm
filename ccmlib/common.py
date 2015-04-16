@@ -178,6 +178,7 @@ def make_dse_env(install_dir, node_path):
     env['HADOOP_CONF_DIR'] = os.path.join(node_path, 'resources', 'hadoop', 'conf')
     env['HIVE_CONF_DIR'] = os.path.join(node_path, 'resources', 'hive', 'conf')
     env['SQOOP_CONF_DIR'] = os.path.join(node_path, 'resources', 'sqoop', 'conf')
+    env['TOMCAT_HOME'] = os.path.join(node_path, 'resources', 'tomcat')
     env['TOMCAT_CONF_DIR'] = os.path.join(node_path, 'resources', 'tomcat', 'conf')
     env['PIG_CONF_DIR'] = os.path.join(node_path, 'resources', 'pig', 'conf')
     env['MAHOUT_CONF_DIR'] = os.path.join(node_path, 'resources', 'mahout', 'conf')

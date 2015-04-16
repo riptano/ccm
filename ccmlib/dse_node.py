@@ -53,6 +53,8 @@ class DseNode(Node):
     def set_workload(self, workload):
         self.workload = workload
         self._update_config()
+        if workload == 'solr':
+            self.__generate_server_xml()
 
     def start(self,
               join_ring=True,
@@ -243,13 +245,29 @@ class DseNode(Node):
         self.__update_yaml()
 
     def copy_config_files(self):
-        for product in ['dse', 'cassandra', 'hadoop', 'sqoop', 'hive', 'tomcat', 'spark', 'shark', 'mahout', 'pig']:
-            if not os.path.isdir(os.path.join(self.get_path(), 'resources', product, 'conf')):
-                os.makedirs(os.path.join(self.get_path(), 'resources', product, 'conf'))
-            common.copy_directory(os.path.join(self.get_install_dir(), 'resources', product, 'conf'), os.path.join(self.get_path(), 'resources', product, 'conf'))
-            if product == 'cassandra':
-                if not os.path.isdir(os.path.join(self.get_path(), 'resources', product, 'conf', 'triggers')):
-                    os.mkdir(os.path.join(self.get_path(), 'resources', product, 'conf', 'triggers'))
+        for product in ['dse', 'cassandra', 'hadoop', 'sqoop', 'hive', 'tomcat', 'spark', 'shark', 'mahout', 'pig', 'solr']:
+            src_conf = os.path.join(self.get_install_dir(), 'resources', product, 'conf')
+            dst_conf = os.path.join(self.get_path(), 'resources', product, 'conf')
+            if os.path.isdir(dst_conf):
+                shutil.rmtree(dst_conf)
+            shutil.copytree(src_conf, dst_conf)
+            if product == 'solr':
+                src_web = os.path.join(self.get_install_dir(), 'resources', product, 'web')
+                dst_web = os.path.join(self.get_path(), 'resources', product, 'web')
+                if os.path.isdir(dst_web):
+                    shutil.rmtree(dst_web)
+                shutil.copytree(src_web, dst_web)
+            if product == 'tomcat':
+                src_lib = os.path.join(self.get_install_dir(), 'resources', product, 'lib')
+                dst_lib = os.path.join(self.get_path(), 'resources', product, 'lib')
+                if os.path.isdir(dst_lib):
+                    shutil.rmtree(dst_lib)
+                shutil.copytree(src_lib, dst_lib)
+                src_webapps = os.path.join(self.get_install_dir(), 'resources', product, 'webapps')
+                dst_webapps = os.path.join(self.get_path(), 'resources', product, 'webapps')
+                if os.path.isdir(dst_webapps):
+                    shutil.rmtree(dst_webapps)
+                shutil.copytree(src_webapps, dst_webapps)
 
     def import_bin_files(self):
         os.makedirs(os.path.join(self.get_path(), 'resources', 'cassandra', 'bin'))
@@ -283,6 +301,24 @@ class DseNode(Node):
 
         with open(conf_file, 'w') as f:
             yaml.safe_dump(data, f, default_flow_style=False)
+
+    def __generate_server_xml(self):
+        server_xml = os.path.join(self.get_path(), 'resources', 'tomcat', 'conf', 'server.xml')
+        if os.path.isfile(server_xml):
+            os.remove(server_xml)
+        with open(server_xml, 'w+') as f:
+            f.write('<Server port="8005" shutdown="SHUTDOWN">\n')
+            f.write('  <Service name="Solr">\n')
+            f.write('    <Connector port="8983" address="%s" protocol="HTTP/1.1" connectionTimeout="20000" maxThreads = "200" URIEncoding="UTF-8"/>\n' % self.network_interfaces['thrift'][0])
+            f.write('    <Engine name="Solr" defaultHost="localhost">\n')
+            f.write('      <Host name="localhost"  appBase="../solr/web"\n')
+            f.write('            unpackWARs="true" autoDeploy="true"\n')
+            f.write('            xmlValidation="false" xmlNamespaceAware="false">\n')
+            f.write('      </Host>\n')
+            f.write('    </Engine>\n')
+            f.write('  </Service>\n')
+            f.write('</Server>\n')
+            f.close()
 
     def _get_directories(self):
         dirs = {}
