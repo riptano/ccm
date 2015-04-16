@@ -550,7 +550,14 @@ class Node(object):
                 marks = [(node, node.mark_log()) for node in list(self.cluster.nodes.values()) if node.is_running() and node is not self]
 
             if common.is_win():
-                self.stop_win(wait, wait_other_notice, gently)
+                # Just taskkill the instance, don't bother trying to shut it down gracefully.
+                # Node recovery should prevent data loss from hard shutdown.
+                # We have recurring issues with nodes not stopping / releasing files in the CI
+                # environment so it makes more sense just to murder it hard since there's
+                # really little downside.
+                os.system("taskkill /F /PID " + str(self.pid))
+                if self._find_pid_on_windows():
+                    print_("WARN: Failed to terminate node: {0} with pid: {1}".format(self.name, self.pid))
             else:
                 if gently:
                     os.kill(self.pid, signal.SIGTERM)
@@ -578,36 +585,6 @@ class Node(object):
                 return True
         else:
             return False
-
-    def stop_win(self, wait=True, wait_other_notice=False, gently=True):
-        # Gentle on Windows is relative.  WM_CLOSE is the best we get without external scripting
-        # New stop-server.bat allows for gentle shutdown on windows. If gentle shutdown
-        # does not succeed for any reason, we will revert to the more forceful taskkill.
-        # This is necessary intermittently.
-        if self.get_base_cassandra_version() >= 2.1:
-            cass_bin = common.join_bin(self.get_path(), 'bin', 'stop-server')
-            pidfile = os.path.join(self.get_path(), 'cassandra.pid')
-            args = [cass_bin, '-p', pidfile]
-
-            if not gently:
-                if self.cluster.version() == "2.1.0":
-                    os.system("taskkill /F /PID " + str(self.pid))
-                else:
-                    args.append('-f')
-                    proc = subprocess.Popen(args, cwd=self.get_bin_dir(), shell=True, stdout=subprocess.PIPE)
-                    proc.communicate()
-            else:
-                proc = subprocess.Popen(args, cwd=self.get_bin_dir(), shell=True, stdout=subprocess.PIPE)
-                proc.communicate()
-
-            pidfile = self.get_path() + "/cassandra.pid"
-            if (os.path.isfile(pidfile)):
-                os.remove(pidfile)
-        else:
-            if gently:
-                os.system("taskkill /PID " + str(self.pid))
-            else:
-                os.system("taskkill /F /PID " + str(self.pid))
 
     def nodetool(self, cmd, capture_output=False):
         env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
@@ -1208,6 +1185,14 @@ class Node(object):
             self._update_config()
 
     def __update_status_win(self):
+        if self._find_pid_on_windows():
+            if self.status == Status.DOWN or self.status == Status.UNINITIALIZED:
+                self.status = Status.UP
+        else:
+            self.status = Status.DOWN
+
+    def _find_pid_on_windows(self):
+        found = False
         try:
             import psutil
             found = psutil.pid_exists(self.pid)
@@ -1216,15 +1201,10 @@ class Node(object):
             cmd = 'tasklist /fi "PID eq ' + str(self.pid) + '"'
             proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
 
-            found = False
             for line in proc.stdout:
                 if re.match("Image", line):
                     found = True
-        if not found:
-            self.status = Status.DOWN
-        else:
-            if self.status == Status.DOWN or self.status == Status.UNINITIALIZED:
-                self.status = Status.UP
+        return found
 
     def _get_directories(self):
         dirs = {}
