@@ -100,6 +100,8 @@ class ClusterCreateCmd(Cmd):
             help="Path to keystore.jks and cassandra.crt files (and truststore.jks [not required])", default=None)
         parser.add_option('--require_client_auth', action="store_true", dest="require_client_auth",
             help="Enable client authentication (only vaid with --ssl)", default=False)
+        parser.add_option('--node-ssl', type="string", dest="node_ssl_path",
+            help="Path to keystore.jks and truststore.jks for internode encryption", default=None)
         return parser
 
     def validate(self, parser, options, args):
@@ -151,6 +153,9 @@ class ClusterCreateCmd(Cmd):
 
         if self.options.ssl_path:
             cluster.enable_ssl(self.options.ssl_path, self.options.require_client_auth)
+            
+        if self.options.node_ssl_path:
+            cluster.enable_internode_ssl(self.options.node_ssl_path)
 
         if self.nodes is not None:
             try:
