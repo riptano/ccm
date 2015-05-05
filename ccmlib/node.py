@@ -677,10 +677,11 @@ class Node(object):
                     p.stdin.write(cmd + ';\n')
             p.stdin.write("quit;\n")
             p.wait()
-            for err in p.stderr:
-                print_("(EE) ", err, end='')
 
             output = (p.stdout.read(), p.stderr.read())
+
+            for err in output[1].split('\n'):
+                print_("(EE) ", err, end='')
 
             if show_output:
                 print_(output[0], end='')
