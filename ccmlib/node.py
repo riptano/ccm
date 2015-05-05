@@ -305,7 +305,7 @@ class Node(object):
                 if m:
                     matchings.append([line])
                     try:
-                        while line.find("INFO", 0, 5) < 0:
+                        while line.find("INFO") < 0:
                             line = f.next()
                             matchings[-1].append(line)
                     except StopIteration:
