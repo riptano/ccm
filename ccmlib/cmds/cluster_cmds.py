@@ -153,7 +153,7 @@ class ClusterCreateCmd(Cmd):
 
         if self.options.ssl_path:
             cluster.enable_ssl(self.options.ssl_path, self.options.require_client_auth)
-            
+
         if self.options.node_ssl_path:
             cluster.enable_internode_ssl(self.options.node_ssl_path)
 
@@ -170,10 +170,10 @@ class ClusterCreateCmd(Cmd):
                         profile_options = {}
                         if self.options.profile_options:
                             profile_options['options'] = self.options.profile_options
-                    if cluster.start(verbose=self.options.debug, wait_for_binary_proto=self.options.binary_protocol, jvm_args=self.options.jvm_args, profile_options=profile_options) is None:
+                    if cluster.start(verbose=self.options.debug_log, wait_for_binary_proto=self.options.binary_protocol, jvm_args=self.options.jvm_args, profile_options=profile_options) is None:
                         details = ""
-                        if not self.options.debug:
-                            details = " (you can use --debug for more information)"
+                        if not self.options.debug_log:
+                            details = " (you can use --debug-log for more information)"
                         print_("Error starting nodes, see above for details%s" % details, file=sys.stderr)
             except common.ArgumentError as e:
                 print_(str(e), file=sys.stderr)
