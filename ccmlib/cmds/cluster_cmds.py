@@ -163,7 +163,7 @@ class ClusterCreateCmd(Cmd):
                     cluster.set_log_level("DEBUG")
                 if self.options.trace_log:
                     cluster.set_log_level("TRACE")
-                cluster.populate(self.nodes, use_vnodes=self.options.vnodes, ipprefix=self.options.ipprefix, ipformat=self.options.ipformat)
+                cluster.populate(self.nodes, self.options.debug, use_vnodes=self.options.vnodes, ipprefix=self.options.ipprefix, ipformat=self.options.ipformat)
                 if self.options.start_nodes:
                     profile_options = None
                     if self.options.profile:
