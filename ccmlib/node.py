@@ -506,7 +506,6 @@ class Node(object):
             process = subprocess.Popen(args, cwd=self.get_bin_dir(), env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         else:
             process = subprocess.Popen(args, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
         # Our modified batch file writes a dirty output with more than just the pid - clean it to get in parity
         # with *nix operation here.
         if common.is_win():
@@ -523,6 +522,7 @@ class Node(object):
             if not self.is_running():
                 raise NodeError("Error starting node %s" % self.name, process)
 
+        process.communicate()
         if wait_other_notice:
             for node, mark in marks:
                 node.watch_log_for_alive(self, from_mark=mark)
