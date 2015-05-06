@@ -482,7 +482,6 @@ class Node(object):
         os.chmod(launch_bin, os.stat(launch_bin).st_mode | stat.S_IEXEC)
 
         env = common.make_cassandra_env(cdir, self.get_path())
-        self.__update_envfile()
 
         if common.is_win():
             self._clean_win_jmx()
