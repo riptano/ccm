@@ -329,8 +329,6 @@ class Node(object):
             [stdout, stderr] = proc.communicate()
         except ValueError:
             [stdout, stderr] = ['', '']
-        if verbose:
-            print_("[%s] %s" % (name, stdout.strip()))
         if len(stderr) > 1:
             print_("[%s ERROR] %s" % (name, stderr.strip()))
 
@@ -500,30 +498,25 @@ class Node(object):
         env['JVM_EXTRA_OPTS'] = env.get('JVM_EXTRA_OPTS', "") + " ".join(jvm_args)
 
         process = None
+        FNULL = open(os.devnull, 'w')
         if common.is_win():
             # clean up any old dirty_pid files from prior runs
             if (os.path.isfile(self.get_path() + "/dirty_pid.tmp")):
                 os.remove(self.get_path() + "/dirty_pid.tmp")
-            process = subprocess.Popen(args, cwd=self.get_bin_dir(), env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            process = subprocess.Popen(args, cwd=self.get_bin_dir(), env=env, stdout=FNULL, stderr=subprocess.PIPE)
         else:
-            process = subprocess.Popen(args, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            process = subprocess.Popen(args, env=env, stdout=FNULL, stderr=subprocess.PIPE)
         # Our modified batch file writes a dirty output with more than just the pid - clean it to get in parity
         # with *nix operation here.
         if common.is_win():
             self.__clean_win_pid()
             self._update_pid(process)
         elif update_pid:
-            if not no_wait:
-                for line in process.stdout:
-                    if verbose:
-                        print_(line.rstrip('\n'))
-
             self._update_pid(process)
 
             if not self.is_running():
                 raise NodeError("Error starting node %s" % self.name, process)
 
-        process.communicate()
         if wait_other_notice:
             for node, mark in marks:
                 node.watch_log_for_alive(self, from_mark=mark)

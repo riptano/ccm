@@ -254,10 +254,6 @@ class Cluster(object):
         else:
             for node, p, mark in started:
                 try:
-                    if verbose:
-                        print_("[" + node.name + "] ------------------------------")
-                        print_(p.stdout.read())
-                        print_(p.stderr.read())
                     node.watch_log_for("Listening for thrift clients...", process=p, verbose=verbose, from_mark=mark)
                 except RuntimeError:
                     return None
@@ -465,7 +461,7 @@ class Cluster(object):
 
         self._config_options['client_encryption_options'] = ssl_options
         self._update_config()
-        
+
     def enable_internode_ssl(self, node_ssl_path):
         shutil.copyfile(os.path.join(node_ssl_path, 'keystore.jks'), os.path.join(self.get_path(), 'internode-keystore.jks'))
         shutil.copyfile(os.path.join(node_ssl_path, 'truststore.jks'), os.path.join(self.get_path(), 'internode-truststore.jks'))
@@ -476,6 +472,6 @@ class Cluster(object):
             'truststore': os.path.join(self.get_path(), 'internode-truststore.jks'),
             'truststore_password': 'cassandra'
         }
-        
+
         self._config_options['server_encryption_options'] = node_ssl_options
         self._update_config()
