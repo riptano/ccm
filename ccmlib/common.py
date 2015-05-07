@@ -135,7 +135,8 @@ def make_cassandra_env(install_dir, node_path):
         sh_file = os.path.join(BIN_DIR, CASSANDRA_SH)
     orig = os.path.join(install_dir, sh_file)
     dst = os.path.join(node_path, sh_file)
-    shutil.copy(orig, dst)
+    if not os.path.exists(dst):
+        shutil.copy(orig, dst)
     replacements = ""
     if is_win() and get_version_from_build(node_path=node_path) >= '2.1':
         replacements = [
