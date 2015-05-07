@@ -40,6 +40,7 @@ def node_cmds():
         "nodetool",
         "dsetool",
         "setworkload",
+        "dse",
         "hadoop",
         "hive",
         "pig",
@@ -621,6 +622,22 @@ class NodeSetworkloadCmd(Cmd):
             print_(str(e), file=sys.stderr)
             exit(1)
 
+class NodeDseCmd(Cmd):
+    def description(self):
+        return "Launch a dse client application connected to this node"
+
+    def get_parser(self):
+        usage = "usage: ccm node_name dse [dse_options]"
+        parser = self._get_default_parser(usage, self.description(), ignore_unknown_options=True)
+        return parser
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
+        self.dse_options = args[1:] + parser.get_ignored()
+
+    def run(self):
+        self.node.dse(self.dse_options)
+
 class NodeHadoopCmd(Cmd):
     def description(self):
         return "Launch a hadoop session connected to this node"
@@ -648,7 +665,7 @@ class NodeHiveCmd(Cmd):
 
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
-        self.hive_options = parser.get_ignored() + args[1:]
+        self.hive_options = args[1:] + parser.get_ignored()
 
     def run(self):
         self.node.hive(self.hive_options)

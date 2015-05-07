@@ -197,8 +197,18 @@ class DseNode(Node):
         p = subprocess.Popen(args, env=env)
         p.wait()
 
+    def dse(self, dse_options=[]):
+        env = common.make_dse_env(self.get_install_dir(), self.get_path())
+        env['JMX_PORT'] = self.jmx_port
+        dse = common.join_bin(self.get_install_dir(), 'bin', 'dse')
+        args = [dse]
+        args += dse_options
+        p = subprocess.Popen(args, env=env)
+        p.wait()
+
     def hadoop(self, hadoop_options=[]):
         env = common.make_dse_env(self.get_install_dir(), self.get_path())
+        env['JMX_PORT'] = self.jmx_port
         dse = common.join_bin(self.get_install_dir(), 'bin', 'dse')
         args = [dse, 'hadoop']
         args += hadoop_options
@@ -207,6 +217,7 @@ class DseNode(Node):
 
     def hive(self, hive_options=[]):
         env = common.make_dse_env(self.get_install_dir(), self.get_path())
+        env['JMX_PORT'] = self.jmx_port
         dse = common.join_bin(self.get_install_dir(), 'bin', 'dse')
         args = [dse, 'hive']
         args += hive_options
@@ -215,6 +226,7 @@ class DseNode(Node):
 
     def pig(self, pig_options=[]):
         env = common.make_dse_env(self.get_install_dir(), self.get_path())
+        env['JMX_PORT'] = self.jmx_port
         dse = common.join_bin(self.get_install_dir(), 'bin', 'dse')
         args = [dse, 'pig']
         args += pig_options
@@ -223,6 +235,7 @@ class DseNode(Node):
 
     def sqoop(self, sqoop_options=[]):
         env = common.make_dse_env(self.get_install_dir(), self.get_path())
+        env['JMX_PORT'] = self.jmx_port
         dse = common.join_bin(self.get_install_dir(), 'bin', 'dse')
         args = [dse, 'sqoop']
         args += sqoop_options
@@ -231,6 +244,7 @@ class DseNode(Node):
 
     def spark(self, spark_options=[]):
         env = common.make_dse_env(self.get_install_dir(), self.get_path())
+        env['JMX_PORT'] = self.jmx_port
         dse = common.join_bin(self.get_install_dir(), 'bin', 'dse')
         args = [dse, 'spark']
         args += spark_options

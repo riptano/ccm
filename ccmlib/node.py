@@ -600,6 +600,9 @@ class Node(object):
     def dsetool(self, cmd):
         raise common.ArgumentError('Cassandra nodes do not support dsetool')
 
+    def dse(self, dse_options=[]):
+        raise common.ArgumentError('Cassandra nodes do not support dse')
+
     def hadoop(self, hadoop_options=[]):
         raise common.ArgumentError('Cassandra nodes do not support hadoop')
 
