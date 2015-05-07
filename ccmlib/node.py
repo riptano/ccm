@@ -1124,16 +1124,20 @@ class Node(object):
 
     def __update_envfile(self):
         if common.is_win():
-            jmx_port_pattern = '^\s+\$JMX_PORT='
             conf_file = os.path.join(self.get_conf_dir(), common.CASSANDRA_WIN_ENV)
+            jmx_port_pattern = '^\s+\$JMX_PORT='
+            jmx_port_setting = '    $JMX_PORT="' + self.jmx_port + '"'
             remote_debug_options = '    $env:JVM_OPTS="$env:JVM_OPTS -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=' + str(self.remote_debug_port) + '"'
         else:
-            jmx_port_pattern = 'JMX_PORT='
             conf_file = os.path.join(self.get_conf_dir(), common.CASSANDRA_ENV)
+            jmx_port_pattern = 'JMX_PORT='
+            jmx_port_setting = 'JMX_PORT="' + self.jmx_port + '"'
             remote_debug_options = 'JVM_OPTS="$JVM_OPTS -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=' + str(self.remote_debug_port) + '"'
-        remote_debug_port_pattern = '((-Xrunjdwp:)|(-agentlib:jdwp=))transport=dt_socket,server=y,suspend=n,address='
-        common.replace_in_file(conf_file, jmx_port_pattern, jmx_port_pattern + self.jmx_port)
+
+        common.replace_in_file(conf_file, jmx_port_pattern, jmx_port_setting)
+
         if self.remote_debug_port != '0':
+            remote_debug_port_pattern = '((-Xrunjdwp:)|(-agentlib:jdwp=))transport=dt_socket,server=y,suspend=n,address='
             common.replace_in_file(conf_file, remote_debug_port_pattern, remote_debug_options)
 
         if self.get_cassandra_version() < '2.0.1':
