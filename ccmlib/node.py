@@ -47,8 +47,12 @@ class NodetoolError(Exception):
         self.stderr = stderr
 
         message = "Nodetool command '%s' failed; exit status: %d" % (command, exit_status)
-        if stdout is not None and stderr is not None:
-            message += "; stdout: %s; stderr: %s" % (stdout, stderr)
+        if stdout:
+            message += "; stdout: "
+            message += stdout
+        if stderr:
+            message += "; stderr: "
+            message += stderr
 
         Exception.__init__(self, message)
 
