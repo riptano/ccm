@@ -500,6 +500,10 @@ class Node(object):
             args.append('-Dcassandra.boot_without_jna=true')
         env['JVM_EXTRA_OPTS'] = env.get('JVM_EXTRA_OPTS', "") + " ".join(jvm_args)
 
+        #In case we are restarting a node
+        #we risk reading the old cassandra.pid file
+        self._delete_old_pid()
+
         process = None
         FNULL = open(os.devnull, 'w')
         if common.is_win():
@@ -1283,6 +1287,11 @@ class Node(object):
             except Exception as e:
                 print_("ERROR: Problem starting " + self.name + " (" + str(e) + ")")
                 raise Exception('Error while parsing <node>/dirty_pid.tmp in path: ' + self.get_path())
+
+    def _delete_old_pid(self):
+        pidfile = os.path.join(self.get_path(), 'cassandra.pid')
+        if os.path.isfile(pidfile):
+            os.remove(pidfile)
 
     def _update_pid(self, process):
         pidfile = os.path.join(self.get_path(), 'cassandra.pid')
