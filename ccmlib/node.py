@@ -705,7 +705,7 @@ class Node(object):
             self.__global_log_level = new_level
         # loggers changed > 2.1
         if self.get_base_cassandra_version() < 2.1:
-            self.__update_log4j()
+            self._update_log4j()
         else:
             self.__update_logback()
         return self
@@ -927,7 +927,7 @@ class Node(object):
         self.__update_yaml()
         # loggers changed > 2.1
         if self.get_base_cassandra_version() < 2.1:
-            self.__update_log4j()
+            self._update_log4j()
         else:
             self.__update_logback()
         self.__update_envfile()
@@ -994,7 +994,7 @@ class Node(object):
         self.__update_yaml()
         # loggers changed > 2.1
         if self.get_base_cassandra_version() < 2.1:
-            self.__update_log4j()
+            self._update_log4j()
         else:
             self.__update_logback()
         self.__update_envfile()
@@ -1081,7 +1081,7 @@ class Node(object):
         with open(conf_file, 'w') as f:
             yaml.safe_dump(data, f, default_flow_style=False)
 
-    def __update_log4j(self):
+    def _update_log4j(self):
         append_pattern = 'log4j.appender.R.File='
         conf_file = os.path.join(self.get_conf_dir(), common.LOG4J_CONF)
         log_file = os.path.join(self.get_path(), 'logs', 'system.log')
