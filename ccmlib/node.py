@@ -587,7 +587,7 @@ class Node(object):
         else:
             return False
 
-    def nodetool(self, cmd, capture_output=False):
+    def nodetool(self, cmd, capture_output=True):
         env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
         nodetool = self.get_tool('nodetool')
         args = [nodetool, '-h', 'localhost', '-p', str(self.jmx_port)]
