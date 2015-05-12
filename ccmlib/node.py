@@ -7,6 +7,7 @@ from six.moves import xrange
 from datetime import datetime
 import errno
 import glob
+import itertools
 import os
 import re
 import shutil
@@ -300,21 +301,8 @@ class Node(object):
         Returns a list of errors with stack traces
         in the Cassandra log of this node
         """
-        expr = "ERROR"
-        matchings = []
-        pattern = re.compile(expr)
         with open(self.logfilename()) as f:
-            for line in f:
-                m = pattern.search(line)
-                if m:
-                    matchings.append([line])
-                    try:
-                        while line.find("INFO") < 0:
-                            line = f.next()
-                            matchings[-1].append(line)
-                    except StopIteration:
-                        break
-        return matchings
+            return _grep_log_for_errors(f.read())
 
     def mark_log(self):
         """
@@ -1426,3 +1414,20 @@ def _get_load_from_info_output(info):
         raise RuntimeError(msg)
 
     return float(load_num) * load_mult
+
+
+def _grep_log_for_errors(log):
+    matchings = []
+    it = iter(log.splitlines())
+    for line in it:
+        is_error_line = ('ERROR' in line
+                         and 'DEBUG' not in line.split('ERROR')[0])
+        if is_error_line:
+            matchings.append([line])
+            try:
+                it, peeker = itertools.tee(it)
+                while 'INFO' not in next(peeker):
+                    matchings[-1].append(next(it))
+            except StopIteration:
+                break
+    return matchings

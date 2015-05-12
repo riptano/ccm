@@ -218,3 +218,54 @@ class TestNodeLoad(ccmtest.Tester):
                 'Token                  : -9223372036854775808\n')
         self.assertEqual(ccmlib.node._get_load_from_info_output(data),
                          decimal.Decimal('247.59') * 1024)
+
+
+class TestErrorLogGrepping(ccmtest.Tester):
+
+    def assertGreppedLog(self, log, grepped_log):
+        self.assertEqual(ccmlib.node._grep_log_for_errors(log), grepped_log)
+
+    def test_basic_error_message(self):
+        err = 'ERROR: You messed up'
+        self.assertGreppedLog(err, [[err]])
+
+    def test_error_message_with_timestamp(self):
+        err = '2015-05-12 14:12:12,720 ERROR: You messed up'
+        self.assertGreppedLog(err, [[err]])
+
+    def test_filter_debug_lines(self):
+        err = 'DEBUG: harmless warning message\n'
+        self.assertGreppedLog(err, [])
+
+    def test_ignore_empty_lines(self):
+        err = ('\n'
+               'ERROR: Node unavailable')
+        self.assertGreppedLog(err, [['ERROR: Node unavailable']])
+
+    def test_ignore_debug_lines_containing_error(self):
+        err = 'DEBUG: another process raised: ERROR: abandon hope!\n'
+        self.assertGreppedLog(err, [])
+
+    def test_coalesces_stack_trace_lines(self):
+        err = ('ERROR: You have made a terrible mistake\n'
+               '  And here are more details on what you did\n'
+               'saints preserve us')
+        self.assertGreppedLog(err,
+                              [['ERROR: You have made a terrible mistake',
+                                '  And here are more details on what you did',
+                                'saints preserve us']])
+
+    def test_multiple_errors(self):
+        err = ('ERROR: You have made a terrible mistake\n'
+               '  And here are more details on what you did\n'
+               'INFO: Node joined ring\n'
+               'ERROR: not again!')
+        self.assertGreppedLog(err,
+                              [['ERROR: You have made a terrible mistake',
+                                '  And here are more details on what you did'],
+                               ['ERROR: not again!']])
+
+    def test_does_not_coalesce_info_lines(self):
+        err = ('ERROR: You have made a terrible mistake\n'
+               '  2015-05-12 14:12:12,720 INFO: why would you ever do that\n')
+        self.assertGreppedLog(err, [['ERROR: You have made a terrible mistake']])
