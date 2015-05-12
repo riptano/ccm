@@ -461,6 +461,8 @@ class Node(object):
         if wait_other_notice:
             marks = [(node, node.mark_log()) for node in list(self.cluster.nodes.values()) if node.is_running()]
 
+        self.mark = self.mark_log()
+
         cdir = self.get_install_dir()
         launch_bin = common.join_bin(cdir, 'bin', 'cassandra')
         # Copy back the cassandra scripts since profiling may have modified it the previous time
@@ -529,7 +531,7 @@ class Node(object):
                 node.watch_log_for_alive(self, from_mark=mark)
 
         if wait_for_binary_proto and self.cluster.version() >= '1.2':
-            self.watch_log_for("Starting listening for CQL clients")
+            self.watch_log_for("Starting listening for CQL clients", from_mark=self.mark)
             # we're probably fine at that point but just wait some tiny bit more because
             # the msg is logged just before starting the binary protocol server
             time.sleep(0.2)
