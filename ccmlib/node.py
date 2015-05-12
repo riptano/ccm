@@ -524,6 +524,7 @@ class Node(object):
             if not self.is_running():
                 raise NodeError("Error starting node %s" % self.name, process)
 
+        process.wait()
         if wait_other_notice:
             for node, mark in marks:
                 node.watch_log_for_alive(self, from_mark=mark)
