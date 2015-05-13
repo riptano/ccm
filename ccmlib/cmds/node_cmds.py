@@ -225,14 +225,18 @@ class _NodeToolCmd(Cmd):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
 
     def run(self):
-        self.node.nodetool(self.nodetool_cmd + " " + " ".join((self.args[1:])))
+        stdout, stderr = self.node.nodetool(self.nodetool_cmd + " " + " ".join((self.args[1:])))
+        print_(stderr)
+        print_(stdout)
 
 class NodeNodetoolCmd(_NodeToolCmd):
     usage = "usage: ccm node_name nodetool [options]"
     descr_text = "Run nodetool (connecting to node name)"
 
     def run(self):
-        self.node.nodetool(" ".join(self.args[1:]))
+        stdout, stderr = self.node.nodetool(" ".join(self.args[1:]))
+        print_(stderr)
+        print_(stdout)
 
 class NodeRingCmd(_NodeToolCmd):
     usage = "usage: ccm node_name ring [options]"
