@@ -840,7 +840,11 @@ class Node(object):
         keyspace_dir = os.path.join(self.get_path(), 'data', keyspace)
         cf_glob = '*'
         if column_family:
-            cf_glob = column_family + '-*'
+            # account for changes in data dir layout from CASSANDRA-5202
+            if self.get_base_cassandra_version() < 2.1:
+                cf_glob = column_family
+            else:
+                cf_glob = column_family + '-*'
         if not os.path.exists(keyspace_dir):
             raise common.ArgumentError("Unknown keyspace {0}".format(keyspace))
 
