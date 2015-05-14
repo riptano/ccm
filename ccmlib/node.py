@@ -851,7 +851,7 @@ class Node(object):
         # data directory layout is changed from 1.1
         if self.get_base_cassandra_version() < 1.1:
             files = glob.glob(os.path.join(keyspace_dir, "{0}*-Data.db".format(column_family)))
-        elif self.get_base_cassandra_version() < 3.0:
+        elif self.get_base_cassandra_version() < 2.2:
             files = glob.glob(os.path.join(keyspace_dir, cf_glob, "%s-%s*-Data.db" % (keyspace, column_family)))
         else:
             files = glob.glob(os.path.join(keyspace_dir, cf_glob, "*big-Data.db"))
