@@ -1128,7 +1128,8 @@ class Node(object):
             common.replace_or_add_into_file_tail(conf_file, full_logger_pattern, logger_pattern + class_name + '" level="' + self.__classes_log_level[class_name] + '"/>')
 
     def __update_envfile(self):
-        if common.is_win():
+        # The cassandra-env.ps1 file has been introduced in 2.1
+        if common.is_win() and self.get_base_cassandra_version() >= 2.1:
             conf_file = os.path.join(self.get_conf_dir(), common.CASSANDRA_WIN_ENV)
             jmx_port_pattern = '^\s+\$JMX_PORT='
             jmx_port_setting = '    $JMX_PORT="' + self.jmx_port + '"'
