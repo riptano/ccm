@@ -254,7 +254,8 @@ class Cluster(object):
         else:
             for node, p, mark in started:
                 try:
-                    node.watch_log_for("Listening for thrift clients...", process=p, verbose=verbose, from_mark=mark)
+                    start_message = "Listening for thrift clients..." if self.cassandra_version() < "2.2" else "Starting listening for CQL clients"
+                    node.watch_log_for(start_message, timeout=60, process=p, verbose=verbose, from_mark=mark)
                 except RuntimeError:
                     return None
 
