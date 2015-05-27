@@ -508,6 +508,7 @@ class Node(object):
         if common.is_win():
             self.__clean_win_pid()
             self._update_pid(process)
+            print_("Started: {0} with pid: {1}".format(self.name, self.pid), file=sys.stderr, flush=True)
         elif update_pid:
             self._update_pid(process)
 
