@@ -802,28 +802,87 @@ class Node(object):
             do_split(sstablefile)
 
     def run_sstablemetadata(self, output_file=None, datafiles=None, keyspace=None, column_families=None):
-        sstablemetadata = self._find_cmd('sstablemetadata')
-        env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
-        sstablefiles = self.__gather_sstables(datafiles, keyspace, column_families)
+        cdir = self.get_install_dir()
+        sstablemetadata = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstablemetadata')
+        env = common.make_cassandra_env(cdir, self.get_path())
+        sstablefiles = self.__gather_sstables(datafiles=datafiles, keyspace=keyspace, columnfamilies=column_families)
+        results = []
 
         for sstable in sstablefiles:
             cmd = [sstablemetadata, sstable]
-            if output_file is None:
-                subprocess.call(cmd, env=env)
+            if output_file == None:
+                p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=env)
+                (out, err) = p.communicate()
+                rc = p.returncode
+                results.append((out, err, rc))
             else:
                 subprocess.call(cmd, env=env, stdout=output_file)
+        if output_file == None:
+            return results  
 
     def run_sstablerepairedset(self, set_repaired=True, datafiles=None, keyspace=None, column_families=None):
-        sstablerepairedset = self._find_cmd('sstablerepairedset')
-        env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
+        cdir = self.get_install_dir()
+        sstablerepairedset = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstablerepairedset')
+        env = common.make_cassandra_env(cdir, self.get_path())
         sstablefiles = self.__gather_sstables(datafiles, keyspace, column_families)
 
         for sstable in sstablefiles:
-            if set_repaired:
-                cmd = [sstablerepairedset, "--really-set", "--is-repaired", sstable]
+            if set_repaired == True:
+                cmd = [sstablerepairedset,"--really-set", "--is-repaired", sstable]
             else:
                 cmd = [sstablerepairedset, "--really-set", "--is-unrepaired", sstable]
             subprocess.call(cmd, env=env)
+
+    
+    def run_sstablelevelreset(self, keyspace, cf, output=False):
+        cdir = self.get_install_dir()
+        sstablelevelreset = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstablelevelreset')
+        env = common.make_cassandra_env(cdir, self.get_path())
+
+        cmd = [sstablelevelreset, "--really-reset", keyspace, cf]
+
+        if output==True:
+            p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=env)
+            (stdout, stderr) = p.communicate()
+            rc = p.returncode
+            return (stdout, stderr, rc)
+        else:
+            return subprocess.call(cmd, env=env)
+
+    def run_sstableofflinerelevel(self, keyspace, cf, dry_run=False, output=False):
+        cdir = self.get_install_dir()
+        sstableofflinerelevel = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstableofflinerelevel')
+        env = common.make_cassandra_env(cdir, self.get_path())
+
+        if dry_run==True:
+            cmd = [sstableofflinerelevel, keyspace, cf]
+        else:
+            cmd = [sstableofflinerelevel, "--dry-run", keyspace, cf]
+
+        if output == True:
+            p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=env)
+            (stdout, stderr) = p.communicate()
+            rc = p.returncode
+            return (stdout, stderr, rc)
+        else:
+            return subprocess.call(cmd, env=env)
+
+    def run_sstableverify(self, keyspace, cf, options=None, output=False):
+        cdir = self.get_install_dir()
+        sstableverify = common.join_bin(cdir, 'bin', 'sstableverify')
+        env = common.make_cassandra_env(cdir, self.get_path())
+
+        cmd = [sstableverify, keyspace, cf]
+        if options!=None:
+            cmd[1:1] = options
+
+        if output == True:
+            p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=env)
+            (stdout, stderr) = p.communicate()
+            rc = p.returncode
+            return (stdout, stderr, rc)
+        else:
+            return subprocess.call(cmd, env=env)
 
     def _find_cmd(self, cmd):
         """
@@ -857,7 +916,7 @@ class Node(object):
         # data directory layout is changed from 1.1
         if self.get_base_cassandra_version() < 1.1:
             files = glob.glob(os.path.join(keyspace_dir, "{0}*-Data.db".format(column_family)))
-        elif self.get_base_cassandra_version() < 3.0:
+        elif self.get_base_cassandra_version() < 2.2:
             files = glob.glob(os.path.join(keyspace_dir, cf_glob, "%s-%s*-Data.db" % (keyspace, column_family)))
         else:
             files = glob.glob(os.path.join(keyspace_dir, cf_glob, "*big-Data.db"))
