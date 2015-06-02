@@ -128,6 +128,13 @@ def replaces_or_add_into_file_tail(file, replacement_list):
 
     shutil.move(file_tmp, file)
 
+def rmdirs(path):
+    if is_win():
+        # Handle Windows 255 char limit
+        shutil.rmtree(u"\\\\?\\" + path)
+    else:
+        shutil.rmtree(path)
+
 def make_cassandra_env(install_dir, node_path):
     if is_win() and get_version_from_build(node_path=node_path) >= '2.1':
         sh_file = os.path.join(CASSANDRA_CONF_DIR, CASSANDRA_WIN_ENV)
@@ -472,4 +479,4 @@ def is_dse_cluster(path):
         return False
 
 def invalidate_cache():
-    shutil.rmtree(os.path.join(get_default_path(), 'repository'))
+    rmdirs(os.path.join(get_default_path(), 'repository'))

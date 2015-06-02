@@ -263,24 +263,24 @@ class DseNode(Node):
             src_conf = os.path.join(self.get_install_dir(), 'resources', product, 'conf')
             dst_conf = os.path.join(self.get_path(), 'resources', product, 'conf')
             if os.path.isdir(dst_conf):
-                shutil.rmtree(dst_conf)
+                common.rmdirs(dst_conf)
             shutil.copytree(src_conf, dst_conf)
             if product == 'solr':
                 src_web = os.path.join(self.get_install_dir(), 'resources', product, 'web')
                 dst_web = os.path.join(self.get_path(), 'resources', product, 'web')
                 if os.path.isdir(dst_web):
-                    shutil.rmtree(dst_web)
+                    common.rmdirs(dst_web)
                 shutil.copytree(src_web, dst_web)
             if product == 'tomcat':
                 src_lib = os.path.join(self.get_install_dir(), 'resources', product, 'lib')
                 dst_lib = os.path.join(self.get_path(), 'resources', product, 'lib')
                 if os.path.isdir(dst_lib):
-                    shutil.rmtree(dst_lib)
+                    common.rmdirs(dst_lib)
                 shutil.copytree(src_lib, dst_lib)
                 src_webapps = os.path.join(self.get_install_dir(), 'resources', product, 'webapps')
                 dst_webapps = os.path.join(self.get_path(), 'resources', product, 'webapps')
                 if os.path.isdir(dst_webapps):
-                    shutil.rmtree(dst_webapps)
+                    common.rmdirs(dst_webapps)
                 shutil.copytree(src_webapps, dst_webapps)
 
     def import_bin_files(self):
