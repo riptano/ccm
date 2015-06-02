@@ -57,7 +57,7 @@ class Cluster(object):
                 self._update_config()
         except:
             if create_directory:
-                shutil.rmtree(self.get_path())
+                common.rmdirs(self.get_path())
             raise
 
     def load_from_repository(self, version, verbose):
@@ -205,10 +205,10 @@ class Cluster(object):
                 self.seeds.remove(node)
             self._update_config()
             node.stop(gently=False)
-            shutil.rmtree(node.get_path())
+            common.rmdirs(node.get_path())
         else:
             self.stop(gently=False)
-            shutil.rmtree(self.get_path())
+            common.rmdirs(self.get_path())
 
     def clear(self):
         self.stop()

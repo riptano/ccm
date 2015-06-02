@@ -744,7 +744,7 @@ class Node(object):
                             if os.path.isfile(full_path):
                                 os.remove(full_path)
             else:
-                shutil.rmtree(full_dir)
+                common.rmdirs(full_dir)
                 os.mkdir(full_dir)
 
     def run_sstable2json(self, out_file=None, keyspace=None, datafiles=None, column_families=None, enumerate_keys=False):

@@ -17,7 +17,7 @@ import re
 from distutils.version import LooseVersion
 
 from ccmlib.common import (ArgumentError, CCMError, get_default_path,
-                           platform_binary, validate_install_dir)
+                           platform_binary, validate_install_dir, rmdirs)
 
 DSE_ARCHIVE="http://downloads.datastax.com/enterprise/dse-%s-bin.tar.gz"
 OPSC_ARCHIVE="http://downloads.datastax.com/community/opscenter-%s.tar.gz"
@@ -123,7 +123,7 @@ def clone_development(git_repo, version, verbose=False):
         except:
             # wipe out the directory if anything goes wrong. Otherwise we will assume it has been compiled the next time it runs.
             try:
-                shutil.rmtree(target_dir)
+                rmdirs(target_dir)
                 print_("Deleted %s due to error" % target_dir)
             except:
                 raise CCMError("Building C* version %s failed. Attempted to delete %s but failed. This will need to be manually deleted" % (version, target_dir))
@@ -142,7 +142,7 @@ def download_dse_version(version, username, password, verbose=False):
         tar.close()
         target_dir = os.path.join(__get_dir(), version)
         if os.path.exists(target_dir):
-            shutil.rmtree(target_dir)
+            rmdirs(target_dir)
         shutil.move(os.path.join(__get_dir(), dir), target_dir)
     except urllib.error.URLError as e:
         msg = "Invalid version %s" % version if url is None else "Invalid url %s" % url
@@ -164,7 +164,7 @@ def download_opscenter_version(version, target_version, verbose=False):
         tar.close()
         target_dir = os.path.join(__get_dir(), target_version)
         if os.path.exists(target_dir):
-            shutil.rmtree(target_dir)
+            rmdirs(target_dir)
         shutil.move(os.path.join(__get_dir(), dir), target_dir)
     except urllib.error.URLError as e:
         msg = "Invalid version %s" % version if url is None else "Invalid url %s" % url
@@ -193,7 +193,7 @@ def download_version(version, url=None, verbose=False, binary=False):
         tar.close()
         target_dir = os.path.join(__get_dir(), version)
         if os.path.exists(target_dir):
-            shutil.rmtree(target_dir)
+            rmdirs(target_dir)
         shutil.move(os.path.join(__get_dir(), dir), target_dir)
 
         if binary:
@@ -214,7 +214,7 @@ def download_version(version, url=None, verbose=False, binary=False):
     except CCMError as e:
         # wipe out the directory if anything goes wrong. Otherwise we will assume it has been compiled the next time it runs.
         try:
-            shutil.rmtree(target_dir)
+            rmdirs(target_dir)
             print_("Deleted %s due to error" % target_dir)
         except:
             raise CCMError("Building C* version %s failed. Attempted to delete %s but failed. This will need to be manually deleted" % (version, target_dir))
@@ -273,13 +273,13 @@ def version_directory(version):
             validate_install_dir(dir)
             return dir
         except ArgumentError as e:
-            shutil.rmtree(dir)
+            rmdirs(dir)
             return None
     else:
         return None
 
 def clean_all():
-    shutil.rmtree(__get_dir())
+    rmdirs(__get_dir())
 
 def get_tagged_version_numbers(series='stable'):
     """Retrieve git tags and find version numbers for a release series
