@@ -57,7 +57,7 @@ class Cluster(object):
                 self._update_config()
         except:
             if create_directory:
-                shutil.rmtree(self.get_path())
+                common.rmdirs(self.get_path())
             raise
 
     def load_from_repository(self, version, verbose):
@@ -205,10 +205,10 @@ class Cluster(object):
                 self.seeds.remove(node)
             self._update_config()
             node.stop(gently=False)
-            shutil.rmtree(node.get_path())
+            common.rmdirs(node.get_path())
         else:
             self.stop(gently=False)
-            shutil.rmtree(self.get_path())
+            common.rmdirs(self.get_path())
 
     def clear(self):
         self.stop()
@@ -237,7 +237,7 @@ class Cluster(object):
 
     def start(self, no_wait=False, verbose=False, wait_for_binary_proto=False, wait_other_notice=False, jvm_args=[], profile_options=None):
         if wait_other_notice:
-            marks = [ (node, node.mark_log()) for node in list(self.nodes.values()) if node.is_running() ]
+            marks = [(node, node.mark_log()) for node in list(self.nodes.values())]
 
         started = []
         for node in list(self.nodes.values()):
@@ -254,7 +254,8 @@ class Cluster(object):
         else:
             for node, p, mark in started:
                 try:
-                    node.watch_log_for("Listening for thrift clients...", process=p, verbose=verbose, from_mark=mark)
+                    start_message = "Listening for thrift clients..." if self.cassandra_version() < "2.2" else "Starting listening for CQL clients"
+                    node.watch_log_for(start_message, timeout=60, process=p, verbose=verbose, from_mark=mark)
                 except RuntimeError:
                     return None
 
@@ -275,7 +276,8 @@ class Cluster(object):
         if wait_other_notice:
             for old_node, mark in marks:
                 for node, _, _ in started:
-                    old_node.watch_log_for_alive(node, from_mark=mark)
+                    if old_node is not node:
+                        old_node.watch_log_for_alive(node, from_mark=mark)
 
         if wait_for_binary_proto and self.version() >= '1.2':
             for node, _, mark in started:
