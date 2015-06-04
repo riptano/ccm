@@ -70,7 +70,7 @@ class Node(object):
         Create a new Node.
           - name: the name for that node
           - cluster: the cluster this node is part of
-          - auto_bootstrap: whether or not this node should be set for auto-boostrap
+          - auto_bootstrap: whether or not this node should be set for auto-bootstrap
           - thrift_interface: the (host, port) tuple for thrift
           - storage_interface: the (host, port) tuple for internal cluster communication
           - jmx_port: the port for JMX to bind to
