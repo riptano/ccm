@@ -809,7 +809,7 @@ class Node(object):
             else:
                 subprocess.call(cmd, env=env, stdout=output_file)
         if output_file == None:
-            return results  
+            return results
 
     def run_sstablerepairedset(self, set_repaired=True, datafiles=None, keyspace=None, column_families=None):
         cdir = self.get_install_dir()
@@ -824,7 +824,7 @@ class Node(object):
                 cmd = [sstablerepairedset, "--really-set", "--is-unrepaired", sstable]
             subprocess.call(cmd, env=env)
 
-    
+
     def run_sstablelevelreset(self, keyspace, cf, output=False):
         cdir = self.get_install_dir()
         sstablelevelreset = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstablelevelreset')
