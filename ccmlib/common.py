@@ -110,6 +110,7 @@ def replace_or_add_into_file_tail(file, regexp, replace):
     replaces_or_add_into_file_tail(file, [(regexp, replace)])
 
 def replaces_or_add_into_file_tail(file, replacement_list):
+    print 'test'
     rs = [ (re.compile(regexp), repl) for (regexp, repl) in replacement_list]
     is_line_found = False
     file_tmp = file + ".tmp"
@@ -121,10 +122,12 @@ def replaces_or_add_into_file_tail(file, replacement_list):
                     if match:
                         line = replace + "\n"
                         is_line_found = True
-                f_tmp.write(line)
+                if "</configuration>" not in line:
+                    f_tmp.write(line)
             # In case, entry is not found, and need to be added
             if is_line_found == False:
-                f_tmp.write('\n'+ replace + "\n")
+                f_tmp.write('\n' + replace + "\n")
+            f_tmp.write("</configuration>\n")
 
     shutil.move(file_tmp, file)
 
