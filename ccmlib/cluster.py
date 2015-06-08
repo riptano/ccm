@@ -26,6 +26,9 @@ class Cluster(object):
         self.__path = path
         self.__version = None
         self.use_vnodes = False
+        # Classes that are to follow the respective logging level
+        self._debug = []
+        self._trace = []
 
         ##This is incredibly important for
         ##backwards compatibility.
@@ -112,6 +115,12 @@ class Cluster(object):
         self._update_config()
         node.data_center = data_center
         node.set_log_level(self.__log_level)
+
+        for debug_class in self._debug:
+            node.set_log_level("DEBUG", debug_class)
+        for trace_class in self._trace:
+            node.set_log_level("TRACE", trace_class)
+
         if data_center is not None:
             self.__update_topology_files()
         node._save()
@@ -298,8 +307,18 @@ class Cluster(object):
         if new_level not in known_level:
             raise common.ArgumentError("Unknown log level %s (use one of %s)" % (new_level, " ".join(known_level)))
 
-        self.__log_level = new_level
-        self._update_config()
+        if class_name:
+            if new_level is 'DEBUG':
+                if class_name in self._trace:
+                    raise common.ArgumentError("Class %s already in TRACE" % (class_name))
+                self._debug.append(class_name)
+            if new_level is 'TRACE':
+                if class_name in self._debug:
+                    raise common.ArgumentError("Class %s already in DEBUG" % (class_name))
+                self._trace.append(class_name)
+        else:
+            self.__log_level = new_level
+            self._update_config()
 
         for node in self.nodelist():
             node.set_log_level(new_level, class_name)
