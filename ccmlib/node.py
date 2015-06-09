@@ -58,7 +58,7 @@ class NodetoolError(Exception):
         Exception.__init__(self, message)
 
 # Groups: 1 = cf, 2 = tmp or none, 3 = suffix (Compacted or Data.db)
-_sstable_regexp = re.compile('(?P<keyspace>[^\s-]+)-(?P<cf>[^\s-]+)-(?P<tmp>tmp(link)?-)?(?P<version>[^\s-]+)-(?P<number>\d+)-(?P<suffix>[a-zA-Z]+)\.[a-zA-Z0-9]+$')
+_sstable_regexp = re.compile('((?P<keyspace>[^\s-]+)-(?P<cf>[^\s-]+)-)?(?P<tmp>tmp(link)?-)?(?P<version>[^\s-]+)-(?P<number>\d+)-(?P<big>big-)?(?P<suffix>[a-zA-Z]+)\.[a-zA-Z0-9]+$')
 
 class Node(object):
     """
