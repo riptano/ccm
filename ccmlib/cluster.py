@@ -307,7 +307,6 @@ class Cluster(object):
         if new_level not in known_level:
             raise common.ArgumentError("Unknown log level %s (use one of %s)" % (new_level, " ".join(known_level)))
 
-<<<<<<< HEAD
         if class_names:
             for class_name in class_names: 
                 if new_level is 'DEBUG':
@@ -318,17 +317,7 @@ class Cluster(object):
                     if class_name in self._debug:
                         raise common.ArgumentError("Class %s already in DEBUG" % (class_name))
                     self._trace.append(class_name)
-=======
-        if class_name:
-            if new_level is 'DEBUG':
-                if class_name in self._trace:
-                    raise common.ArgumentError("Class %s already in TRACE" % (class_name))
-                self._debug.append(class_name)
-            if new_level is 'TRACE':
-                if class_name in self._debug:
-                    raise common.ArgumentError("Class %s already in DEBUG" % (class_name))
-                self._trace.append(class_name)
->>>>>>> d8b89335f98de6856874404d2afea362819248c3
+
         else:
             self.__log_level = new_level
             self._update_config()
