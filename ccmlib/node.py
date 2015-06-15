@@ -378,7 +378,7 @@ class Node(object):
                     if process.returncode != 0:
                         raise RuntimeError()  # Shouldn't reuse RuntimeError but I'm lazy
 
-        with open(log_file) as f:
+        with open(self.logfilename()) as f:
             if from_mark:
                 f.seek(from_mark)
 
@@ -416,13 +416,8 @@ class Node(object):
                             return None
                     else:
                         process.poll()
-                        if process.returncode is not None and process.returncode == 0:
+                        if process.returncode == 0:
                             return None
-                    # Pull from process io so they don't block
-                    if process.stdout:
-                        process.stdout.readline()
-                    if process.stderr:
-                        process.stderr.readline()
 
     def watch_log_for_death(self, nodes, from_mark=None, timeout=600, filename='system.log'):
         """
@@ -768,6 +763,7 @@ class Node(object):
             port = self.network_interfaces['thrift'][1]
         args = cqlsh_options + [host, str(port)]
         sys.stdout.flush()
+
         if cmds is None:
             if common.is_win():
                 subprocess.Popen([cqlsh] + args, env=env, creationflags=subprocess.CREATE_NEW_CONSOLE)
@@ -780,12 +776,17 @@ class Node(object):
             for cmd in cmds.split(';'):
                 cmd = cmd.strip()
                 if cmd:
-                    cmd_str += (cmd + ';\n')
-            cmd_str += "quit;\n"
-            output = p.communicate(input=cmd_str)
+                    p.stdin.write(cmd + ';\n')
+            p.stdin.write("quit;\n")
+            p.wait()
 
             for err in output[1].split('\n'):
                 print_("(EE) ", err, end='')
+
+            for err in output[1].split('\n'):
+                err = err.strip()
+                if err:
+                    print_("(EE) ", err, end='')
 
             if show_output:
                 print_(output[0], end='')

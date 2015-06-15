@@ -94,7 +94,8 @@ class DseNode(Node):
 
         if wait_other_notice:
             marks = [(node, node.mark_log()) for node in list(self.cluster.nodes.values()) if node.is_running()]
-        logmark = self.mark_log()
+
+        self.mark = self.mark_log()
 
         cdir = self.get_install_dir()
         launch_bin = common.join_bin(cdir, 'bin', 'dse')
@@ -151,13 +152,15 @@ class DseNode(Node):
 
         process = None
 
+        FNULL = open(os.devnull, 'w')
+
         if common.is_win():
             # clean up any old dirty_pid files from prior runs
             if (os.path.isfile(self.get_path() + "/dirty_pid.tmp")):
                 os.remove(self.get_path() + "/dirty_pid.tmp")
-            process = subprocess.Popen(args, cwd=self.get_bin_dir(), env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            process = subprocess.Popen(args, cwd=self.get_bin_dir(), env=env, stdout=FNULL, stderr=subprocess.PIPE)
         else:
-            process = subprocess.Popen(args, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            process = subprocess.Popen(args, env=env, stdout=FNULL, stderr=subprocess.PIPE)
 
         # Our modified batch file writes a dirty output with more than just the pid - clean it to get in parity
         # with *nix operation here.
@@ -165,14 +168,6 @@ class DseNode(Node):
             self.__clean_win_pid()
             self._update_pid(process)
         elif update_pid:
-            if no_wait:
-                time.sleep(2)  # waiting 2 seconds nevertheless to check for early errors and for the pid to be set
-            else:
-                # for line in fstdout:
-                for line in process.stdout:
-                    if verbose:
-                        print_(line.rstrip('\n'))
-
             self._update_pid(process)
 
             if not self.is_running():
@@ -183,12 +178,7 @@ class DseNode(Node):
                 node.watch_log_for_alive(self, from_mark=mark)
 
         if wait_for_binary_proto:
-            try:
-                self.watch_log_for("Starting listening for CQL clients", logmark, timeout=150, process=process)
-            except:
-                self._update_pid(process)
-                os.kill(self.pid, signal.SIGKILL)
-                raise
+            self.watch_log_for("Starting listening for CQL clients", from_mark=self.mark)
             # we're probably fine at that point but just wait some tiny bit more because
             # the msg is logged just before starting the binary protocol server
             time.sleep(0.2)

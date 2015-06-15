@@ -318,10 +318,6 @@ class Cluster(object):
                     if old_node is not node:
                         old_node.watch_log_for_alive(node, from_mark=mark)
 
-        if wait_for_binary_proto:
-            for node, p, mark in started:
-                node.wait_for_binary_interface(process=p, verbose=verbose, from_mark=mark)
-
         return started
 
     def stop(self, wait=True, gently=True):
