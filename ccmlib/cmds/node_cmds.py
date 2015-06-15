@@ -47,7 +47,8 @@ def node_cmds():
         "sqoop",
         "spark",
         "pause",
-        "resume"
+        "resume",
+        "kill"
     ]
 
 class NodeShowCmd(Cmd):
@@ -751,3 +752,18 @@ class NodeResumeCmd(Cmd):
 
     def run(self):
         self.node.resume()
+
+class NodeKillCmd(Cmd):
+    def description(self):
+        return "Send a SIGKILL to this node"
+
+    def get_parser(self):
+        usage = "usage: ccm node_name kill"
+        parser = self._get_default_parser(usage, self.description())
+        return parser
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
+
+    def run(self):
+        self.node.kill()
