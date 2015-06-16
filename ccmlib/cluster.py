@@ -9,6 +9,7 @@ import re
 import subprocess
 import shutil
 import time
+import itertools
 
 from ccmlib import common, repository
 from ccmlib.node import Node, NodeError
@@ -498,3 +499,28 @@ class Cluster(object):
 
         self._config_options['server_encryption_options'] = node_ssl_options
         self._update_config()
+
+def grep_log_for_errors(node):
+    """
+    Returns a list of errors with stack traces
+    in the Cassandra log of this node
+    """
+    with open(node.logfilename()) as f:
+        return _grep_log_for_errors(f.read())
+
+
+def _grep_log_for_errors(log):
+    matchings = []
+    it = iter(log.splitlines())
+    for line in it:
+        is_error_line = ('ERROR' in line
+                         and 'DEBUG' not in line.split('ERROR')[0])
+        if is_error_line:
+            matchings.append([line])
+            try:
+                it, peeker = itertools.tee(it)
+                while 'INFO' not in next(peeker):
+                    matchings[-1].append(next(it))
+            except StopIteration:
+                break
+    return matchings

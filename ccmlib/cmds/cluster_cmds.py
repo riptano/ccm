@@ -11,6 +11,7 @@ from ccmlib.cmds.command import Cmd
 from ccmlib.dse_cluster import DseCluster
 from ccmlib.dse_node import DseNode
 from ccmlib.cluster_factory import ClusterFactory
+from ccmlib.cluster import grep_log_for_errors, _grep_log_for_errors
 
 def cluster_cmds():
     return [
@@ -38,6 +39,7 @@ def cluster_cmds():
         "scrub",
         "verify",
         "invalidatecache",
+        "checklogerror",
     ]
 
 def parse_populate_count(v):
@@ -551,6 +553,7 @@ class ClusterStopCmd(Cmd):
             print_(str(e), file=sys.stderr)
             exit(1)
 
+
 class _ClusterNodetoolCmd(Cmd):
     def get_parser(self):
         parser = self._get_default_parser(self.usage, self.description())
@@ -817,3 +820,23 @@ class ClusterInvalidatecacheCmd(Cmd):
             print_(str(e), file=sys.stderr)
             print_("Error while deleting cache. Please attempt manually.")
             exit(1)
+
+class ClusterChecklogerrorCmd(Cmd):
+    def description(self):
+        return "Check for errors in log files of the node."
+
+    def get_parser(self):
+        usage = "usage: ccm checklogerror"
+        parser = self._get_default_parser(usage, self.description())
+        return parser
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, load_cluster=True)
+
+    def run(self):
+        cluster_nodes = self.cluster.nodelist()
+        for node in cluster_nodes:
+            errors = grep_log_for_errors(node)
+            for mylist in errors:
+                for line in mylist:
+                    print_(line)
