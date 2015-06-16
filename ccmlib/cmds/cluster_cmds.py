@@ -11,7 +11,6 @@ from ccmlib.cmds.command import Cmd
 from ccmlib.dse_cluster import DseCluster
 from ccmlib.dse_node import DseNode
 from ccmlib.cluster_factory import ClusterFactory
-from ccmlib.cluster import grep_log_for_errors, _grep_log_for_errors
 
 def cluster_cmds():
     return [
@@ -553,7 +552,6 @@ class ClusterStopCmd(Cmd):
             print_(str(e), file=sys.stderr)
             exit(1)
 
-
 class _ClusterNodetoolCmd(Cmd):
     def get_parser(self):
         parser = self._get_default_parser(self.usage, self.description())
@@ -823,7 +821,7 @@ class ClusterInvalidatecacheCmd(Cmd):
 
 class ClusterChecklogerrorCmd(Cmd):
     def description(self):
-        return "Check for errors in log files of the node."
+        return "Check for errors in log file of each node."
 
     def get_parser(self):
         usage = "usage: ccm checklogerror"
@@ -834,9 +832,8 @@ class ClusterChecklogerrorCmd(Cmd):
         Cmd.validate(self, parser, options, args, load_cluster=True)
 
     def run(self):
-        cluster_nodes = self.cluster.nodelist()
-        for node in cluster_nodes:
-            errors = grep_log_for_errors(node)
+        for node in self.cluster.nodelist():
+            errors = node.grep_log_for_errors()
             for mylist in errors:
                 for line in mylist:
                     print_(line)
