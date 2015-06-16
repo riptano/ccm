@@ -9,6 +9,7 @@ import re
 import subprocess
 import shutil
 import time
+import itertools
 
 from ccmlib import common, repository
 from ccmlib.node import Node, NodeError

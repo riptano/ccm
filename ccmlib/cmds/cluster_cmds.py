@@ -38,6 +38,7 @@ def cluster_cmds():
         "scrub",
         "verify",
         "invalidatecache",
+        "checklogerror",
     ]
 
 def parse_populate_count(v):
@@ -817,3 +818,22 @@ class ClusterInvalidatecacheCmd(Cmd):
             print_(str(e), file=sys.stderr)
             print_("Error while deleting cache. Please attempt manually.")
             exit(1)
+
+class ClusterChecklogerrorCmd(Cmd):
+    def description(self):
+        return "Check for errors in log file of each node."
+
+    def get_parser(self):
+        usage = "usage: ccm checklogerror"
+        parser = self._get_default_parser(usage, self.description())
+        return parser
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, load_cluster=True)
+
+    def run(self):
+        for node in self.cluster.nodelist():
+            errors = node.grep_log_for_errors()
+            for mylist in errors:
+                for line in mylist:
+                    print_(line)
