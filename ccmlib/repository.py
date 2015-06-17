@@ -284,6 +284,9 @@ def github_username_and_branch_name(version):
     assert version.startswith('github')
     return version.split(':', 1)[1].split('/', 1)
 
+def github_repo_for_user(username):
+    return 'git@github.com:{username}/cassandra.git'.format(username=username)
+
 def version_directory(version):
     dir = directory_name(version)
     if os.path.exists(dir):
@@ -382,6 +385,3 @@ def __get_dir():
     if not os.path.exists(repo):
         os.mkdir(repo)
     return repo
-
-def github_repo_for_user(username):
-    return 'git@github.com:{username}/cassandra.git'.format(username=username)
