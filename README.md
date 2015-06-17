@@ -153,6 +153,20 @@ If you'd like to use a binary distribution instead of compiling from sources eac
 ccm create test -v binary:2.0.5 -n 3 -s
 ```
 
+### Git and GitHub
+
+To use the latest version from the [canonical Apache Git repository](https://git-wip-us.apache.org/repos/asf?p=cassandra.git), use the version name `git:branch-name`, e.g.:
+
+```
+ccm create trunk -v git:trunk -n 5
+```
+
+and to download a branch from a GitHub fork of Cassandra, you can prefix the repository and branch with `github:`, e.g.:
+
+```
+ccm create patched -v github:jbellis/trunk -n 1
+```
+
 Remote debugging
 -----------------------
 
