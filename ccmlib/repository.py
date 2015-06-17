@@ -34,7 +34,7 @@ def setup(version, verbose=False):
         version = version.replace('binary:','')
         binary = True
     elif version.startswith('github:'):
-        user_name = version.replace('github:', '').split('/', 1)[0]
+        user_name, _ = github_username_and_branch_name(version)
         clone_development(github_repo_for_user(user_name), version, verbose=verbose)
         return (directory_name(version), None)
     if version in ('stable','oldstable','testing'):
@@ -70,7 +70,7 @@ def clone_development(git_repo, version, verbose=False):
     target_dir = directory_name(version)
     assert target_dir
     if 'github' in version:
-        git_repo_name, git_branch = version.split(':', 1)[1].split('/', 1)
+        git_repo_name, git_branch = github_username_and_branch_name(version)
     else:
         git_repo_name = 'apache'
         git_branch = version.split(':', 1)[1]
@@ -279,6 +279,10 @@ def directory_name(version):
     version = version.replace(':', 'COLON') # handle git branches like 'git:trunk'.
     version = version.replace('/', 'SLASH') # handle git branches like 'github:mambocab/trunk'.
     return os.path.join(__get_dir(), version)
+
+def github_username_and_branch_name(version):
+    assert version.startswith('github')
+    return version.split(':', 1)[1].split('/', 1)
 
 def version_directory(version):
     dir = directory_name(version)
