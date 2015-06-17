@@ -33,6 +33,10 @@ def setup(version, verbose=False):
     elif version.startswith('binary:'):
         version = version.replace('binary:','')
         binary = True
+    elif version.startswith('github:'):
+        user_name = version.replace('github:', '').split('/', 1)[0]
+        clone_development(github_repo_for_user(user_name), version, verbose=verbose)
+        return (directory_name(version), None)
     if version in ('stable','oldstable','testing'):
         version = get_tagged_version_numbers(version)[0]
     cdir = version_directory(version)
@@ -62,9 +66,15 @@ def validate(path):
         setup(version)
 
 def clone_development(git_repo, version, verbose=False):
-    local_git_cache = os.path.join(__get_dir(), '_git_cache')
-    target_dir = os.path.join(__get_dir(), version.replace(':', '_')) # handle git branches like 'git:trunk'.
-    git_branch = version[4:] # the part of the version after the 'git:'
+    print_(git_repo, version)
+    target_dir = directory_name(version)
+    assert target_dir
+    if 'github' in version:
+        git_repo_name, git_branch = version.split(':', 1)[1].split('/', 1)
+    else:
+        git_repo_name = 'apache'
+        git_branch = version.split(':', 1)[1]
+    local_git_cache = os.path.join(__get_dir(), '_git_cache_' + git_repo_name)
     logfile = os.path.join(__get_dir(), "last.log")
     with open(logfile, 'w') as lf:
         try:
@@ -265,9 +275,13 @@ def compile_version(version, target_dir, verbose=False):
                 raise CCMError("Error compiling Cassandra stress tool: %s (you will "
                 "still be able to use ccm but not the stress related commands)" % str(e))
 
+def directory_name(version):
+    version = version.replace(':', 'COLON') # handle git branches like 'git:trunk'.
+    version = version.replace('/', 'SLASH') # handle git branches like 'github:mambocab/trunk'.
+    return os.path.join(__get_dir(), version)
+
 def version_directory(version):
-    version = version.replace(':', '_') # handle git branches like 'git:trunk'.
-    dir = os.path.join(__get_dir(), version)
+    dir = directory_name(version)
     if os.path.exists(dir):
         try:
             validate_install_dir(dir)
@@ -364,3 +378,6 @@ def __get_dir():
     if not os.path.exists(repo):
         os.mkdir(repo)
     return repo
+
+def github_repo_for_user(username):
+    return 'git@github.com:{username}/cassandra.git'.format(username=username)
