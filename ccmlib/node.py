@@ -1,7 +1,7 @@
 # ccm node
 from __future__ import with_statement
 
-from six import print_, iteritems, string_types, StringIO
+from six import print_, iteritems, string_types
 from six.moves import xrange
 
 from datetime import datetime
