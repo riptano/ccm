@@ -5,7 +5,6 @@ from six.moves import xrange
 
 import yaml
 import os
-import re
 import subprocess
 import shutil
 import time
@@ -308,7 +307,7 @@ class Cluster(object):
             raise common.ArgumentError("Unknown log level %s (use one of %s)" % (new_level, " ".join(known_level)))
 
         if class_names:
-            for class_name in class_names: 
+            for class_name in class_names:
                 if new_level == 'DEBUG':
                     if class_name in self._trace:
                         raise common.ArgumentError("Class %s already in TRACE" % (class_name))

@@ -3,6 +3,7 @@ from __future__ import with_statement
 
 from six import print_
 
+import re
 import os
 import shutil
 import stat
