@@ -958,8 +958,11 @@ class Node(object):
     def compact(self):
         self.nodetool("compact")
 
-    def drain(self):
+    def drain(self, block_on_log=False):
+        mark = self.mark_log()
         self.nodetool("drain")
+        if block_on_log:
+            self.watch_log_for("DRAINED", from_mark=mark)
 
     def repair(self, options=[], **kwargs):
         args = ["repair"] + options
