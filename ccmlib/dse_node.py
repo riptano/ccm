@@ -104,7 +104,7 @@ class DseNode(Node):
         if profile_options is not None:
             config = common.get_config()
             if not 'yourkit_agent' in config:
-                raise NodeError("Cannot enable profile. You need to set 'yourkit_agent' to the path of your agent in a ~/.ccm/config")
+                raise NodeError("Cannot enable profile. You need to set 'yourkit_agent' to the path of your agent in a {0}/config".format(common.get_default_path_display_name()))
             cmd = '-agentpath:%s' % config['yourkit_agent']
             if 'options' in profile_options:
                 cmd = cmd + '=' + profile_options['options']

@@ -29,6 +29,7 @@ CASSANDRA_WIN_ENV = "cassandra-env.ps1"
 CASSANDRA_SH = "cassandra.in.sh"
 
 CONFIG_FILE = "config"
+CCM_CONFIG_DIR = "CCM_CONFIG_DIR"
 
 class CCMError(Exception):
     pass
@@ -43,9 +44,22 @@ class UnavailableSocketError(CCMError):
     pass
 
 def get_default_path():
-    default_path = os.path.join(get_user_home(), '.ccm')
+    if CCM_CONFIG_DIR in os.environ and os.environ[CCM_CONFIG_DIR]:
+        default_path = os.environ[CCM_CONFIG_DIR]
+    else:
+        default_path = os.path.join(get_user_home(), '.ccm')
+
     if not os.path.exists(default_path):
         os.mkdir(default_path)
+    return default_path
+
+def get_default_path_display_name():
+    default_path = get_default_path().lower()
+    user_home = get_user_home().lower()
+
+    if default_path.startswith(user_home):
+        default_path = os.path.join('~', default_path[len(user_home)+1:])
+
     return default_path
 
 def get_user_home():
