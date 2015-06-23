@@ -79,7 +79,7 @@ class Cmd(object):
         else:
             parser = OptionParser(usage=usage, description=description)
         parser.add_option('--config-dir', type="string", dest="config_dir",
-            help="Directory for the cluster files [default to ~/.ccm]")
+            help="Directory for the cluster files [default to {0}]".format(common.get_default_path_display_name()))
         return parser
 
     def description(self):
