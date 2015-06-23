@@ -56,10 +56,6 @@ There is also a [Homebrew package][brew] available:
 
     brew install ccm
 
-MacPorts has ccm available as a port:
-
-    sudo port -v sync && sudo port -v install ccm
-
   [pip]: https://pypi.python.org/pypi/ccm
   [brew]: https://github.com/Homebrew/homebrew/blob/master/Library/Formula/ccm.rb
 
