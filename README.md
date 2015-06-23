@@ -48,10 +48,15 @@ ccm uses python distutils so from the source directory run:
 
     sudo ./setup.py install
 
+ccm is available on the [Python Package Index][pip]:
+
+    pip install ccm
+
 MacPorts has ccm available as a port:
 
     sudo port -v sync && sudo port -v install ccm
 
+  [pip]: https://pypi.python.org/pypi/ccm
 Usage
 -----
 
