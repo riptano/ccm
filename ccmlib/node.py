@@ -200,6 +200,7 @@ class Node(object):
             dir, v = setup(version, verbose=verbose)
             self.__install_dir = dir
         self.import_config_files()
+        self.import_bin_files()
         return self
 
     def set_workload(self, workload):
