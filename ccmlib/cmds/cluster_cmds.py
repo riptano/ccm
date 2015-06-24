@@ -333,7 +333,7 @@ class ClusterSwitchCmd(Cmd):
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, cluster_name=True)
         if not os.path.exists(os.path.join(self.path, self.name, 'cluster.conf')):
-            print_("%s does not appear to be a valid cluster (use ccm cluster list to view valid cluster)" % self.name, file=sys.stderr)
+            print_("%s does not appear to be a valid cluster (use ccm list to view valid clusters)" % self.name, file=sys.stderr)
             exit(1)
 
     def run(self):
@@ -374,7 +374,7 @@ class ClusterRemoveCmd(Cmd):
             if not os.path.exists(os.path.join(
                     self.path, self.other_cluster, 'cluster.conf')):
                 print_("%s does not appear to be a valid cluster" \
-                    " (use ccm cluster list to view valid cluster)" \
+                    " (use ccm list to view valid clusters)" \
                     % self.other_cluster, file=sys.stderr)
                 exit(1)
         else:
