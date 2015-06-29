@@ -213,7 +213,7 @@ def check_win_requirements():
             sys.exit("ERROR!  64-bit os and 32-bit python distribution found.  ccm requires matching architectures.")
 
 def is_win():
-    return True if sys.platform == "cygwin" or sys.platform == "win32" else False
+    return sys.platform in ("cygwin", "win32")
 
 def is_ps_unrestricted():
     if not is_win():
