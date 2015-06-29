@@ -29,6 +29,9 @@ class Cluster(object):
         self._debug = []
         self._trace = []
 
+        if self.name.lower() == "current":
+            raise RuntimeError("Cannot name a cluster 'current'.")
+
         ##This is incredibly important for
         ##backwards compatibility.
         if 'cassandra_version' in kwargs:
