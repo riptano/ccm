@@ -233,7 +233,10 @@ def is_ps_unrestricted():
     if not is_win():
         raise CCMError("Can only check PS Execution Policy on Windows")
     else:
-        p = subprocess.Popen(['powershell', 'Get-ExecutionPolicy'], stdout=subprocess.PIPE)
+        try:
+            p = subprocess.Popen(['powershell', 'Get-ExecutionPolicy'], stdout=subprocess.PIPE)
+        except WindowsError:
+            print_("ERROR: Could not find powershell. Is it in your path?")
         if "Unrestricted" in p.communicate()[0]:
             return True
         else:
