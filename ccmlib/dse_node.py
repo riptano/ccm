@@ -298,21 +298,15 @@ class DseNode(Node):
 
         full_options = dict(list(self.cluster._dse_config_options.items()))
         for name in full_options:
-            if not name is 'dse_yaml_file':
-                value = full_options[name]
-                if value is None:
-                    try:
-                        del data[name]
-                    except KeyError:
-                        # it is fine to remove a key not there:w
-                        pass
-                else:
-                    data[name] = full_options[name]
-
-        if 'dse_yaml_file' in full_options:
-            with open(full_options['dse_yaml_file'], 'r') as f:
-                user_yaml = yaml.load(f)
-                data = common.yaml_merge(data, user_yaml)
+            value = full_options[name]
+            if type(value) is str and (value is None or len(value) == 0):
+                try:
+                    del data[name]
+                except KeyError:
+                    # it is fine to remove a key not there
+                    pass
+            else:
+                data[name] = full_options[name]
 
         with open(conf_file, 'w') as f:
             yaml.safe_dump(data, f, default_flow_style=False)
