@@ -96,7 +96,7 @@ class Node(object):
         self.__install_dir = None
         self.__global_log_level = None
         self.__classes_log_level = {}
-        self.data_dirs = ['data']
+        self.__data_dirs = ['data']
         if save:
             self.import_config_files()
             self.import_bin_files()
@@ -730,7 +730,7 @@ class Node(object):
         common.copy_file(new_logback_config, cassandra_conf_dir)
 
     def clear(self, clear_all=False, only_data=False):
-        data_dirs = self.data_dirs
+        data_dirs = self.__data_dirs
         if not only_data:
             data_dirs.append("commitlogs")
             if clear_all:
@@ -899,7 +899,7 @@ class Node(object):
         return keyspaces
 
     def get_sstables(self, keyspace, column_family):
-        keyspace_dirs = [os.path.join(self.get_path(), dir_name, keyspace) for dir_name in self.data_dirs]
+        keyspace_dirs = [os.path.join(self.get_path(), dir_name, keyspace) for dir_name in self.__data_dirs]
         cf_glob = '*'
         if column_family:
             # account for changes in data dir layout from CASSANDRA-5202
@@ -1126,7 +1126,7 @@ class Node(object):
         if self.network_interfaces['binary'] is not None and self.get_base_cassandra_version() >= 1.2:
             _, data['native_transport_port'] = self.network_interfaces['binary']
 
-        data['data_file_directories'] = [os.path.join(self.get_path(), x) for x in self.data_dirs]
+        data['data_file_directories'] = [os.path.join(self.get_path(), x) for x in self.__data_dirs]
         data['commitlog_directory'] = os.path.join(self.get_path(), 'commitlogs')
         data['saved_caches_directory'] = os.path.join(self.get_path(), 'saved_caches')
 
@@ -1291,14 +1291,14 @@ class Node(object):
         return found
 
     def _get_directories(self):
-        directories = self.data_dirs + ['commitlogs', 'saved_caches', 'logs', 'conf', 'bin']
+        directories = self.__data_dirs + ['commitlogs', 'saved_caches', 'logs', 'conf', 'bin']
         dirs = {}
         for i in directories:
             dirs[i] = os.path.join(self.get_path(), i)
         return dirs
 
     def set_data_dirs(self, directories):
-        self.data_dirs = directories
+        self.__data_dirs = directories
         dir_name = self.get_path()
         for dirs in directories:
             if not os.path.exists(dir_name):
