@@ -96,6 +96,7 @@ class Node(object):
         self.__install_dir = None
         self.__global_log_level = None
         self.__classes_log_level = {}
+        self.data_dirs = ['data']
         if save:
             self.import_config_files()
             self.import_bin_files()
@@ -729,7 +730,7 @@ class Node(object):
         common.copy_file(new_logback_config, cassandra_conf_dir)
 
     def clear(self, clear_all=False, only_data=False):
-        data_dirs = ['data']
+        data_dirs = self.data_dirs
         if not only_data:
             data_dirs.append("commitlogs")
             if clear_all:
@@ -761,7 +762,7 @@ class Node(object):
             args = [sstable2json, sstablefile]
             if enumerate_keys:
                 args = args + ["-e"]
-            subprocess.call(args, env=env, stdout=out_file)
+            subprocess.call(args, env=env)
             print_("")
 
     def run_json2sstable(self, in_file, ks, cf, keyspace=None, datafiles=None, column_families=None, enumerate_keys=False):
@@ -898,7 +899,7 @@ class Node(object):
         return keyspaces
 
     def get_sstables(self, keyspace, column_family):
-        keyspace_dir = os.path.join(self.get_path(), 'data', keyspace)
+        keyspace_dirs = [os.path.join(self.get_path(), dir_name, keyspace) for dir_name in self.data_dirs]
         cf_glob = '*'
         if column_family:
             # account for changes in data dir layout from CASSANDRA-5202
@@ -906,16 +907,23 @@ class Node(object):
                 cf_glob = column_family
             else:
                 cf_glob = column_family + '-*'
-        if not os.path.exists(keyspace_dir):
+        
+        keyspace_dirs = filter(lambda directory: os.path.exists(directory), keyspace_dirs)
+        if not keyspace_dirs:
             raise common.ArgumentError("Unknown keyspace {0}".format(keyspace))
 
+        files = []
         # data directory layout is changed from 1.1
         if self.get_base_cassandra_version() < 1.1:
-            files = glob.glob(os.path.join(keyspace_dir, "{0}*-Data.db".format(column_family)))
+            for keyspace_dir in keyspace_dirs:
+                files.extend(glob.glob(os.path.join(keyspace_dir, "{0}*-Data.db".format(column_family))))
         elif self.get_base_cassandra_version() < 2.2:
-            files = glob.glob(os.path.join(keyspace_dir, cf_glob, "%s-%s*-Data.db" % (keyspace, column_family)))
+            for keyspace_dir in keyspace_dirs:
+                files.extend(glob.glob(os.path.join(keyspace_dir, cf_glob, "%s-%s*-Data.db" % (keyspace, column_family))))
         else:
-            files = glob.glob(os.path.join(keyspace_dir, cf_glob, "*big-Data.db"))
+            for keyspace_dir in keyspace_dirs:
+                files.extend(glob.glob(os.path.join(keyspace_dir, cf_glob, "*big-Data.db")))
+
         for f in files:
             if os.path.exists(f.replace('Data.db', 'Compacted')):
                 files.remove(f)
@@ -1118,7 +1126,7 @@ class Node(object):
         if self.network_interfaces['binary'] is not None and self.get_base_cassandra_version() >= 1.2:
             _, data['native_transport_port'] = self.network_interfaces['binary']
 
-        data['data_file_directories'] = [os.path.join(self.get_path(), 'data')]
+        data['data_file_directories'] = [os.path.join(self.get_path(), x) for x in self.data_dirs]
         data['commitlog_directory'] = os.path.join(self.get_path(), 'commitlogs')
         data['saved_caches_directory'] = os.path.join(self.get_path(), 'saved_caches')
 
@@ -1283,10 +1291,21 @@ class Node(object):
         return found
 
     def _get_directories(self):
+        directories = self.data_dirs + ['commitlogs', 'saved_caches', 'logs', 'conf', 'bin']
         dirs = {}
-        for i in ['data', 'commitlogs', 'saved_caches', 'logs', 'conf', 'bin']:
+        for i in directories:
             dirs[i] = os.path.join(self.get_path(), i)
         return dirs
+
+    def set_data_dirs(self, directories):
+        self.data_dirs = directories
+        dir_name = self.get_path()
+        for dirs in directories:
+            if not os.path.exists(dir_name):
+                break
+            os.mkdir(os.path.join(dir_name, dirs))
+        dir_paths = [os.path.join(dir_name, direct) for direct in directories]
+        self.set_configuration_options({'data_file_directories':dir_paths})
 
     def __get_status_string(self):
         if self.status == Status.UNINITIALIZED:
