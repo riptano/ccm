@@ -605,7 +605,7 @@ class ClusterUpdateconfCmd(Cmd):
         return "Update the cassandra config files for all nodes"
 
     def get_parser(self):
-        usage = "usage: ccm updateconf [options] [ new_setting | ...  ], where new_setting should be a string of the form 'compaction_throughput_mb_per_sec: 32'"
+        usage = "usage: ccm updateconf [options] [ new_setting | ...  ], where new_setting should be a string of the form 'compaction_throughput_mb_per_sec: 32'; nested options can be separated with a period like 'client_encryption_options.enabled: false'"
         parser = self._get_default_parser(usage, self.description())
         parser.add_option('--no-hh', '--no-hinted-handoff', action="store_false",
             dest="hinted_handoff", default=True, help="Disable hinted handoff")
@@ -643,9 +643,8 @@ class ClusterUpdatedseconfCmd(Cmd):
         return "Update the dse config files for all nodes"
 
     def get_parser(self):
-        usage = "usage: ccm updatedseconf [options] [ new_setting | ...  ], where new_setting should be a string of the form 'max_solr_concurrency_per_core: 2'"
+        usage = "usage: ccm updatedseconf [options] [ new_setting | ...  ], where new_setting should be a string of the form 'max_solr_concurrency_per_core: 2'; nested options can be separated with a period like 'cql_slow_log_options.enabled: true'"
         parser = self._get_default_parser(usage, self.description())
-        parser.add_option('-y', '--yaml', action="store", type="string", dest="yaml_file", help="Path to a yaml file containing options to be copied into each node's dse.yaml. Useful for defining nested structures.", default=None)
         return parser
 
     def validate(self, parser, options, args):
@@ -656,15 +655,7 @@ class ClusterUpdatedseconfCmd(Cmd):
             print_(str(e), file=sys.stderr)
             exit(1)
 
-        if self.options.yaml_file is not None:
-            if not os.path.exists(self.options.yaml_file):
-                print_("%s does not appear to be a valid file" % self.options.yaml_file)
-                exit(1)
-
     def run(self):
-        if self.options.yaml_file is not None:
-            self.setting["dse_yaml_file"] = self.options.yaml_file
-
         self.cluster.set_dse_configuration_options(values=self.setting)
 
 #
