@@ -5,7 +5,6 @@ from six.moves import xrange
 
 import yaml
 import os
-import re
 import subprocess
 import shutil
 import time
@@ -26,6 +25,12 @@ class Cluster(object):
         self.__path = path
         self.__version = None
         self.use_vnodes = False
+        # Classes that are to follow the respective logging level
+        self._debug = []
+        self._trace = []
+
+        if self.name.lower() == "current":
+            raise RuntimeError("Cannot name a cluster 'current'.")
 
         ##This is incredibly important for
         ##backwards compatibility.
@@ -112,6 +117,12 @@ class Cluster(object):
         self._update_config()
         node.data_center = data_center
         node.set_log_level(self.__log_level)
+
+        for debug_class in self._debug:
+            node.set_log_level("DEBUG", debug_class)
+        for trace_class in self._trace:
+            node.set_log_level("TRACE", trace_class)
+
         if data_center is not None:
             self.__update_topology_files()
         node._save()
@@ -293,16 +304,28 @@ class Cluster(object):
                 not_running.append(node)
         return not_running
 
-    def set_log_level(self, new_level, class_name=None):
+    def set_log_level(self, new_level, class_names=None):
         known_level = [ 'TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR' ]
         if new_level not in known_level:
             raise common.ArgumentError("Unknown log level %s (use one of %s)" % (new_level, " ".join(known_level)))
 
-        self.__log_level = new_level
-        self._update_config()
+        if class_names:
+            for class_name in class_names:
+                if new_level == 'DEBUG':
+                    if class_name in self._trace:
+                        raise common.ArgumentError("Class %s already in TRACE" % (class_name))
+                    self._debug.append(class_name)
+                if new_level == 'TRACE':
+                    if class_name in self._debug:
+                        raise common.ArgumentError("Class %s already in DEBUG" % (class_name))
+                    self._trace.append(class_name)
+        else:
+            self.__log_level = new_level
+            self._update_config()
 
         for node in self.nodelist():
-            node.set_log_level(new_level, class_name)
+            for class_name in class_names:
+                node.set_log_level(new_level, class_name)
 
     def nodetool(self, nodetool_cmd):
         for node in list(self.nodes.values()):
@@ -477,3 +500,7 @@ class Cluster(object):
 
         self._config_options['server_encryption_options'] = node_ssl_options
         self._update_config()
+
+    def set_data_dirs(self, directories):
+        for node in list(self.nodes.values()):
+            node.set_data_dirs(directories)
