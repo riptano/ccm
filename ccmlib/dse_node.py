@@ -299,11 +299,11 @@ class DseNode(Node):
         full_options = dict(list(self.cluster._dse_config_options.items()))
         for name in full_options:
             value = full_options[name]
-            if value is None:
+            if type(value) is str and (value is None or len(value) == 0):
                 try:
                     del data[name]
                 except KeyError:
-                    # it is fine to remove a key not there:w
+                    # it is fine to remove a key not there
                     pass
             else:
                 data[name] = full_options[name]
