@@ -1128,11 +1128,11 @@ class Node(object):
         full_options = dict(list(self.cluster._config_options.items()) + list(self.__config_options.items())) # last win and we want node options to win
         for name in full_options:
             value = full_options[name]
-            if value is None:
+            if type(value) is str and (value is None or len(value) == 0):
                 try:
                     del data[name]
                 except KeyError:
-                    # it is fine to remove a key not there:w
+                    # it is fine to remove a key not there
                     pass
             else:
                 try:
