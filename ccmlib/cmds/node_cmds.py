@@ -25,7 +25,6 @@ def node_cmds():
         "verify",
         "shuffle",
         "sstablesplit",
-        "getsstables",
         "decommission",
         "json",
         "updateconf",
@@ -469,40 +468,6 @@ class NodeSstablesplitCmd(Cmd):
         self.node.run_sstablesplit(datafiles=self.datafiles, keyspace=self.keyspace,
                                    column_families=self.column_families, size=self.size,
                                    no_snapshot=self.no_snapshot)
-
-class NodeGetsstablesCmd(Cmd):
-    def description(self):
-        return "Run getsstables to get sstables of this node"
-
-    def get_parser(self):
-        usage = "usage: ccm node_name getsstables [options] [file]"
-        parser = self._get_default_parser(usage, self.description())
-        parser.add_option('-k', '--keyspace', type="string", dest="keyspace", default=None,
-                          help="The keyspace to use [use all keyspaces by default]")
-        parser.add_option('-c', '--column-families', type="string", dest='cfs', default=None,
-                          help="Comma seperated list of column families ut use (requires -k to be set)")
-        return parser
-
-    def validate(self, parser, options, args):
-        Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
-        self.keyspace = options.keyspace
-        self.column_families = None
-        self.datafiles = None
-        if options.cfs is not None:
-            if self.keyspace is None:
-                print_("You need a keyspace (option -k) if you specify column families", file=sys.stderr)
-                exit(1)
-            self.column_families = options.cfs.split(',')
-
-        if len(args) > 1:
-            if self.column_families is None:
-                print_("You need a column family (option -c) if you specify datafiles", file=sys.stderr)
-                exit(1)
-            self.datafiles = args[1:]
-
-    def run(self):
-        self.node.run_sstables(datafiles=self.datafiles, keyspace=self.keyspace,
-                                   column_families=self.column_families)     
 
 class NodeUpdateconfCmd(Cmd):
     def description(self):
