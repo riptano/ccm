@@ -286,16 +286,6 @@ class NodeDecommissionCmd(_NodeToolCmd):
     def run(self):
         self.node.decommission()
 
-class NodeScrubCmd(_NodeToolCmd):
-    usage = "usage: ccm node_name scrub [options]"
-    nodetool_cmd = 'scrub'
-    descr_text = "Run scrub on node name"
-
-class NodeVerifyCmd(_NodeToolCmd):
-    usage = "usage: ccm node_name verify [options]"
-    nodetool_cmd = 'verify'
-    descr_text = "Run verify on node name"
-
 class _DseToolCmd(Cmd):
     def get_parser(self):
         parser = self._get_default_parser(self.usage, self.description())

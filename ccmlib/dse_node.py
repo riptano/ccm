@@ -3,6 +3,7 @@ from __future__ import with_statement
 
 from six import print_
 
+import re
 import os
 import shutil
 import stat
@@ -103,7 +104,7 @@ class DseNode(Node):
         if profile_options is not None:
             config = common.get_config()
             if not 'yourkit_agent' in config:
-                raise NodeError("Cannot enable profile. You need to set 'yourkit_agent' to the path of your agent in a ~/.ccm/config")
+                raise NodeError("Cannot enable profile. You need to set 'yourkit_agent' to the path of your agent in a {0}/config".format(common.get_default_path_display_name()))
             cmd = '-agentpath:%s' % config['yourkit_agent']
             if 'options' in profile_options:
                 cmd = cmd + '=' + profile_options['options']
@@ -297,21 +298,15 @@ class DseNode(Node):
 
         full_options = dict(list(self.cluster._dse_config_options.items()))
         for name in full_options:
-            if not name is 'dse_yaml_file':
-                value = full_options[name]
-                if value is None:
-                    try:
-                        del data[name]
-                    except KeyError:
-                        # it is fine to remove a key not there:w
-                        pass
-                else:
-                    data[name] = full_options[name]
-
-        if 'dse_yaml_file' in full_options:
-            with open(full_options['dse_yaml_file'], 'r') as f:
-                user_yaml = yaml.load(f)
-                data = common.yaml_merge(data, user_yaml)
+            value = full_options[name]
+            if type(value) is str and (value is None or len(value) == 0):
+                try:
+                    del data[name]
+                except KeyError:
+                    # it is fine to remove a key not there
+                    pass
+            else:
+                data[name] = full_options[name]
 
         with open(conf_file, 'w') as f:
             yaml.safe_dump(data, f, default_flow_style=False)

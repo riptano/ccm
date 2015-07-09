@@ -48,9 +48,16 @@ ccm uses python distutils so from the source directory run:
 
     sudo ./setup.py install
 
-MacPorts has ccm available as a port:
+ccm is available on the [Python Package Index][pip]:
 
-    sudo port -v sync && sudo port -v install ccm
+    pip install ccm
+
+There is also a [Homebrew package][brew] available:
+
+    brew install ccm
+
+  [pip]: https://pypi.python.org/pypi/ccm
+  [brew]: https://github.com/Homebrew/homebrew/blob/master/Library/Formula/ccm.rb
 
 Usage
 -----
@@ -151,6 +158,20 @@ If you'd like to use a binary distribution instead of compiling from sources eac
 
 ```
 ccm create test -v binary:2.0.5 -n 3 -s
+```
+
+### Git and GitHub
+
+To use the latest version from the [canonical Apache Git repository](https://git-wip-us.apache.org/repos/asf?p=cassandra.git), use the version name `git:branch-name`, e.g.:
+
+```
+ccm create trunk -v git:trunk -n 5
+```
+
+and to download a branch from a GitHub fork of Cassandra, you can prefix the repository and branch with `github:`, e.g.:
+
+```
+ccm create patched -v github:jbellis/trunk -n 1
 ```
 
 Remote debugging

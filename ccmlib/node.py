@@ -1,7 +1,7 @@
 # ccm node
 from __future__ import with_statement
 
-from six import print_, iteritems, string_types, StringIO
+from six import print_, iteritems, string_types
 from six.moves import xrange
 
 from datetime import datetime
@@ -200,6 +200,7 @@ class Node(object):
             dir, v = setup(version, verbose=verbose)
             self.__install_dir = dir
         self.import_config_files()
+        self.import_bin_files()
         return self
 
     def set_workload(self, workload):
@@ -958,8 +959,11 @@ class Node(object):
     def compact(self):
         self.nodetool("compact")
 
-    def drain(self):
+    def drain(self, block_on_log=False):
+        mark = self.mark_log()
         self.nodetool("drain")
+        if block_on_log:
+            self.watch_log_for("DRAINED", from_mark=mark)
 
     def repair(self, options=[], **kwargs):
         args = ["repair"] + options
@@ -1124,11 +1128,11 @@ class Node(object):
         full_options = dict(list(self.cluster._config_options.items()) + list(self.__config_options.items())) # last win and we want node options to win
         for name in full_options:
             value = full_options[name]
-            if value is None:
+            if type(value) is str and (value is None or len(value) == 0):
                 try:
                     del data[name]
                 except KeyError:
-                    # it is fine to remove a key not there:w
+                    # it is fine to remove a key not there
                     pass
             else:
                 try:
@@ -1211,7 +1215,12 @@ class Node(object):
 
         for itf in list(self.network_interfaces.values()):
             if itf is not None and common.interface_is_ipv6(itf):
-                common.replace_in_file(conf_file,
+                if common.is_win():
+                    common.replace_in_file(conf_file,
+                                       '-Djava.net.preferIPv4Stack=true',
+                                       '\t$env:JVM_OPTS="$env:JVM_OPTS -Djava.net.preferIPv4Stack=false -Djava.net.preferIPv6Addresses=true"')
+                else:
+                    common.replace_in_file(conf_file,
                                        '-Djava.net.preferIPv4Stack=true',
                                        'JVM_OPTS="$JVM_OPTS -Djava.net.preferIPv4Stack=false -Djava.net.preferIPv6Addresses=true"')
                 break
