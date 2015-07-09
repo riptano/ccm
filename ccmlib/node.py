@@ -811,6 +811,13 @@ class Node(object):
         if output_file == None:
             return results
 
+    def run_sstables(self, output_file=None, datafiles=None, keyspace=None, column_families=None):
+        cdir = self.get_install_dir()
+        sstablemetadata = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstablemetadata')
+        env = common.make_cassandra_env(cdir, self.get_path())
+        sstablefiles = self.__gather_sstables(datafiles=datafiles, keyspace=keyspace, columnfamilies=column_families)
+        print_(sstablefiles)
+
     def run_sstablerepairedset(self, set_repaired=True, datafiles=None, keyspace=None, column_families=None):
         cdir = self.get_install_dir()
         sstablerepairedset = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstablerepairedset')
