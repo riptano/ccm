@@ -666,7 +666,7 @@ class Node(object):
             else:
                 os.execve(cqlsh, [common.platform_binary('cqlsh')] + args, env)
         else:
-            p = subprocess.Popen([cqlsh] + args, env=env, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+            p = subprocess.Popen([cqlsh] + args, env=env, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True)
             for cmd in cmds.split(';'):
                 cmd = cmd.strip()
                 if cmd:
