@@ -1303,7 +1303,8 @@ class Node(object):
         for dirs in directories:
             if not os.path.exists(dir_name):
                 break
-            os.mkdir(os.path.join(dir_name, dirs))
+            if not os.path.exists(os.path.join(dir_name, dirs)):
+                os.mkdir(os.path.join(dir_name, dirs))
         dir_paths = [os.path.join(dir_name, direct) for direct in directories]
         self.set_configuration_options({'data_file_directories':dir_paths})
 
