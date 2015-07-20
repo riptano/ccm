@@ -25,6 +25,7 @@ def node_cmds():
         "verify",
         "shuffle",
         "sstablesplit",
+        "getsstables",
         "decommission",
         "json",
         "updateconf",
@@ -428,7 +429,7 @@ class NodeSstablesplitCmd(Cmd):
         parser.add_option('-k', '--keyspace', type="string", dest="keyspace", default=None,
                           help="The keyspace to use [use all keyspaces by default]")
         parser.add_option('-c', '--column-families', type="string", dest='cfs', default=None,
-                          help="Comma seperated list of column families ut use (requires -k to be set)")
+                          help="Comma separated list of column families to use (requires -k to be set)")
         parser.add_option('-s', '--size', type='int', dest="size", default=None,
                           help="Maximum size in MB for the output sstables (default: 50 MB)")
         parser.add_option('--no-snapshot', action='store_true', dest="no_snapshot", default=False,
@@ -458,6 +459,41 @@ class NodeSstablesplitCmd(Cmd):
         self.node.run_sstablesplit(datafiles=self.datafiles, keyspace=self.keyspace,
                                    column_families=self.column_families, size=self.size,
                                    no_snapshot=self.no_snapshot)
+
+class NodeGetsstablesCmd(Cmd):
+    def description(self):
+        return "Run getsstables to get absolute path of sstables in this node"
+
+    def get_parser(self):
+        usage = "usage: ccm node_name getsstables [options] [file]"
+        parser = self._get_default_parser(usage, self.description())
+        parser.add_option('-k', '--keyspace', type="string", dest="keyspace", default=None,
+                          help="The keyspace to use [use all keyspaces by default]")
+        parser.add_option('-t', '--tables', type="string", dest='tables', default=None,
+                          help="Comma separated list of tables to use (requires -k to be set)")
+        return parser
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
+        self.keyspace = options.keyspace
+        self.tables = None
+        self.datafiles = None
+        if options.tables is not None:
+            if self.keyspace is None:
+                print_("You need a keyspace (option -k) if you specify tables", file=sys.stderr)
+                exit(1)
+            self.tables = options.tables.split(',')
+
+        if len(args) > 1:
+            if self.tables is None:
+                print_("You need a tables (option -t) if you specify datafiles", file=sys.stderr)
+                exit(1)
+            self.datafiles = args[1:]
+
+    def run(self):
+        sstablefiles = self.node.get_sstablespath(datafiles=self.datafiles, keyspace=self.keyspace,
+                                   tables=self.tables)
+        print_(sstablefiles)
 
 class NodeUpdateconfCmd(Cmd):
     def description(self):

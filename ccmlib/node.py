@@ -812,6 +812,10 @@ class Node(object):
         if output_file == None:
             return results
 
+    def get_sstablespath(self, output_file=None, datafiles=None, keyspace=None, tables=None):
+        sstablefiles = self.__gather_sstables(datafiles=datafiles, keyspace=keyspace, columnfamilies=tables)
+        return sstablefiles
+
     def run_sstablerepairedset(self, set_repaired=True, datafiles=None, keyspace=None, column_families=None):
         cdir = self.get_install_dir()
         sstablerepairedset = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstablerepairedset')
