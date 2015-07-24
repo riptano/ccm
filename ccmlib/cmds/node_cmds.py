@@ -37,6 +37,7 @@ def node_cmds():
         "verify",
         "status",
         "setdir",
+        "bulkload",
         "version",
         "nodetool",
         "dsetool",
@@ -347,6 +348,22 @@ class NodeCqlshCmd(Cmd):
 
     def run(self):
         self.node.run_cqlsh(self.options.cmds, self.options.verbose, self.cqlsh_options)
+
+class NodeBulkloadCmd(Cmd):
+    def description(self):
+        return "Bulkload files into the cluster by connecting to this node"
+
+    def get_parser(self):
+        usage = "usage: ccm node_name bulkload [options] [sstable_dir]"
+        parser = self._get_default_parser(usage, self.description(), ignore_unknown_options=True)
+        return parser
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
+        self.loader_options = parser.get_ignored() + args[1:]
+
+    def run(self):
+        self.node.bulkload(self.loader_options)
 
 class NodeScrubCmd(Cmd):
     def description(self):

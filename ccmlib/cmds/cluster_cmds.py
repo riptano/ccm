@@ -716,7 +716,7 @@ class ClusterCliCmd(Cmd):
 
 class ClusterBulkloadCmd(Cmd):
     def description(self):
-        return "Bulkload files into the cluster"
+        return "Bulkload files into the cluster by connecting to some live node (if any)"
 
     def get_parser(self):
         usage = "usage: ccm bulkload [options] [sstable_dir]"

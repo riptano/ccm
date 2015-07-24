@@ -5,13 +5,13 @@ from six.moves import xrange
 
 import yaml
 import os
+import random
 import subprocess
 import shutil
 import time
 
 from ccmlib import common, repository
 from ccmlib.node import Node, NodeError
-from ccmlib.bulkloader import BulkLoader
 
 class Cluster(object):
     def __init__(self, path, name, partitioner=None, install_dir=None, create_directory=True, version=None, verbose=False, **kwargs):
@@ -406,8 +406,10 @@ class Cluster(object):
         self.nodetool("removeToken " + str(token))
 
     def bulkload(self, options):
-        loader = BulkLoader(self)
-        loader.load(options)
+        livenodes = [node for node in self.nodes.values() if node.is_live()]
+        if not livenodes:
+            raise common.ArgumentError("No live node")
+        random.choice(livenodes).bulkload(options)
 
     def scrub(self, options):
         for node in list(self.nodes.values()):
