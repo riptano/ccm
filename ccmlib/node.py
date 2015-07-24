@@ -964,11 +964,26 @@ class Node(object):
         info = self.nodetool('info', capture_output=True)[0]
         return _get_load_from_info_output(info)
 
-    def flush(self):
+    def flush(self, delay=True):
+        # The "delay" argument allows one to determine whether to delay the test until the flush command is finished. 
+        mark = self.mark_log()
         self.nodetool("flush")
+        if delay and self.cluster.version() >= '1.2':
+            self.watch_log_for("Completed flushing", from_mark=mark)
 
     def compact(self):
         self.nodetool("compact")
+        self._compact_delay()
+
+    def _compact_delay(self, check_interval=2):
+        # Delays the test until compact has finished running.
+        pattern = re.compile("(^|\n)pending tasks: 0\n")
+        running = True
+        while running:
+            output = self.nodetool('compactionstats')
+            if pattern.search(output[0]):
+                running = False
+            time.sleep(check_interval)
 
     def drain(self, block_on_log=False):
         mark = self.mark_log()
@@ -981,8 +996,12 @@ class Node(object):
         cmd = ' '.join(args)
         return self.nodetool(cmd, **kwargs)
 
-    def move(self, new_token):
+    def move(self, new_token, delay=True):
+        # The "delay" argument allows one to determine whether delay the test until the move command is finished. 
+        mark = self.mark_log()
         self.nodetool("move " + str(new_token))
+        if delay and self.cluster.version() >= '1.2':
+            self.watch_log_for("MOVING: fetching new ranges and streaming old ranges", from_mark=mark)
 
     def cleanup(self):
         self.nodetool("cleanup")
