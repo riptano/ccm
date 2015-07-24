@@ -615,6 +615,13 @@ class Node(object):
     def sqoop(self, sqoop_options=[]):
         raise common.ArgumentError('Cassandra nodes do not support sqoop')
 
+    def bulkload(self, options):
+        loader_bin = common.join_bin(self.get_path(), 'bin', 'sstableloader')
+        env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
+        host, port = self.network_interfaces['thrift']
+        args = ['-d', host, '-p', str(port)]
+        os.execve(loader_bin, [common.platform_binary('sstableloader')] + args + options, env)
+
     def scrub(self, options):
         scrub_bin = self.get_tool('sstablescrub')
         env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
