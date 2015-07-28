@@ -217,9 +217,9 @@ def check_win_requirements():
     if is_win():
         # Make sure ant.bat is in the path and executable before continuing
         try:
-            process = subprocess.Popen('ant.bat', stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            process = subprocess.Popen(platform_binary("ant"), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         except Exception as e:
-            sys.exit("ERROR!  Could not find or execute ant.bat.  Please fix this before attempting to run ccm on Windows.")
+            sys.exit("ERROR!  Could not find or execute ant.  Please fix this before attempting to run ccm on Windows.")
 
         # Confirm matching architectures
         # 32-bit python distributions will launch 32-bit cmd environments, losing PowerShell execution privileges on a 64-bit system
@@ -246,7 +246,7 @@ def join_bin(root, dir, executable):
     return os.path.join(root, dir, platform_binary(executable))
 
 def platform_binary(input):
-    return input + ".bat" if is_win() else input
+    return input + ".bat" if is_win() and not ".bat" in os.environ["PATHEXT"].lower() else input
 
 def platform_pager():
     return "more" if sys.platform == "win32" else "less"
