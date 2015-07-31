@@ -702,7 +702,7 @@ class Node(object):
         return CliSession(subprocess.Popen([cli] + args, env=env, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE))
 
     def set_log_level(self, new_level, class_name=None):
-        known_level = ['TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR']
+        known_level = ['TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR', 'OFF']
         if new_level not in known_level:
             raise common.ArgumentError("Unknown log level %s (use one of %s)" % (new_level, " ".join(known_level)))
 
@@ -1189,6 +1189,12 @@ class Node(object):
         append_pattern = '<fileNamePattern>.*</fileNamePattern>'
         common.replace_in_file(conf_file, append_pattern, '<fileNamePattern>' + log_file + '.%i.zip</fileNamePattern>')
 
+        self.__update_logback_loglevel(conf_file)
+
+        tools_conf_file = os.path.join(self.get_conf_dir(), common.LOGBACK_TOOLS_CONF)
+        self.__update_logback_loglevel(tools_conf_file)
+
+    def __update_logback_loglevel(self, conf_file):
         # Setting the right log level
 
         # Replace the global log level

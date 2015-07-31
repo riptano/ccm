@@ -24,6 +24,7 @@ CASSANDRA_CONF = "cassandra.yaml"
 LOG4J_CONF = "log4j-server.properties"
 LOG4J_TOOL_CONF = "log4j-tools.properties"
 LOGBACK_CONF = "logback.xml"
+LOGBACK_TOOLS_CONF = "logback-tools.xml"
 CASSANDRA_ENV = "cassandra-env.sh"
 CASSANDRA_WIN_ENV = "cassandra-env.ps1"
 CASSANDRA_SH = "cassandra.in.sh"
@@ -191,6 +192,8 @@ def make_cassandra_env(install_dir, node_path):
     env['CASSANDRA_INCLUDE'] = os.path.join(dst)
     env['MAX_HEAP_SIZE'] = os.environ.get('CCM_MAX_HEAP_SIZE', '500M')
     env['HEAP_NEWSIZE'] = os.environ.get('CCM_HEAP_NEWSIZE', '50M')
+    env['CASSANDRA_HOME'] = install_dir
+    env['CASSANDRA_CONF'] = os.path.join(node_path, 'conf')
 
     return env
 
