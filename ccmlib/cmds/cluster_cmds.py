@@ -437,6 +437,8 @@ class ClusterSetdirCmd(Cmd):
             help="Download and use provided cassandra or dse version. If version is of the form 'git:<branch name>', then the specified cassandra branch will be downloaded from the git repo and compiled. (takes precedence over --install-dir)", default=None)
         parser.add_option("--install-dir", type="string", dest="install_dir",
             help="Path to the cassandra or dse directory to use [default %default]", default="./")
+        parser.add_option('-n', '--node', type="string", dest="node",
+            help="Set directory only for the specified node")
         return parser
 
     def validate(self, parser, options, args):
@@ -444,7 +446,13 @@ class ClusterSetdirCmd(Cmd):
 
     def run(self):
         try:
-            self.cluster.set_install_dir(install_dir=self.options.install_dir, version=self.options.version, verbose=True)
+            target = self.cluster
+            if self.options.node:
+                target = self.cluster.nodes.get(self.options.node)
+                if not target:
+                    print_("Node not found: %s" % self.options.node)
+                    return
+            target.set_install_dir(install_dir=self.options.install_dir, version=self.options.version, verbose=True)
         except common.ArgumentError as e:
             print_(str(e), file=sys.stderr)
             exit(1)
