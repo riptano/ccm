@@ -1189,6 +1189,12 @@ class Node(object):
         append_pattern = '<fileNamePattern>.*</fileNamePattern>'
         common.replace_in_file(conf_file, append_pattern, '<fileNamePattern>' + log_file + '.%i.zip</fileNamePattern>')
 
+        self.__update_logback_loglevel(conf_file)
+
+        tools_conf_file = os.path.join(self.get_conf_dir(), common.LOGBACK_TOOLS_CONF)
+        self.__update_logback_loglevel(tools_conf_file)
+
+    def __update_logback_loglevel(self, conf_file):
         # Setting the right log level
 
         # Replace the global log level
