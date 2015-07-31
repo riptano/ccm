@@ -702,7 +702,7 @@ class Node(object):
         return CliSession(subprocess.Popen([cli] + args, env=env, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE))
 
     def set_log_level(self, new_level, class_name=None):
-        known_level = ['TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR']
+        known_level = ['TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR', 'OFF']
         if new_level not in known_level:
             raise common.ArgumentError("Unknown log level %s (use one of %s)" % (new_level, " ".join(known_level)))
 
