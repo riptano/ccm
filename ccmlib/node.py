@@ -858,9 +858,9 @@ class Node(object):
         env = common.make_cassandra_env(cdir, self.get_path())
 
         if dry_run==True:
-            cmd = [sstableofflinerelevel, keyspace, cf]
-        else:
             cmd = [sstableofflinerelevel, "--dry-run", keyspace, cf]
+        else:
+            cmd = [sstableofflinerelevel, keyspace, cf]
 
         if output == True:
             p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=env)
