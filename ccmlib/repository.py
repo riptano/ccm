@@ -1,23 +1,23 @@
 # downloaded sources handling
 from __future__ import with_statement
 
-from six import print_
-
-from six.moves import urllib
+import json
 import os
+import re
 import shutil
-import subprocess
 import stat
+import subprocess
 import sys
 import tarfile
 import tempfile
 import time
-import json
-import re
 from distutils.version import LooseVersion
 
+from six import print_
+
 from ccmlib.common import (ArgumentError, CCMError, get_default_path,
-                           platform_binary, validate_install_dir, rmdirs)
+                           platform_binary, rmdirs, validate_install_dir)
+from six.moves import urllib
 
 DSE_ARCHIVE="http://downloads.datastax.com/enterprise/dse-%s-bin.tar.gz"
 OPSC_ARCHIVE="http://downloads.datastax.com/community/opscenter-%s.tar.gz"

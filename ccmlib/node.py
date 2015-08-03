@@ -1,15 +1,12 @@
 # ccm node
 from __future__ import with_statement
 
-from six import print_, iteritems, string_types
-from six.moves import xrange
-
-from datetime import datetime
 import errno
 import glob
 import itertools
 import os
 import re
+import shlex
 import shutil
 import signal
 import stat
@@ -17,12 +14,16 @@ import subprocess
 import sys
 import time
 import warnings
-import yaml
-import shlex
+from datetime import datetime
 
-from ccmlib.repository import setup
-from ccmlib.cli_session import CliSession
+from six import iteritems, print_, string_types
+
+import yaml
 from ccmlib import common
+from ccmlib.cli_session import CliSession
+from ccmlib.repository import setup
+from six.moves import xrange
+
 
 class Status():
     UNINITIALIZED = "UNINITIALIZED"

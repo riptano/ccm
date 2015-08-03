@@ -1,17 +1,18 @@
 # ccm clusters
 
-from six import print_, iteritems
-from six.moves import xrange
-
-import yaml
 import os
 import random
-import subprocess
 import shutil
+import subprocess
 import time
 
+from six import iteritems, print_
+
+import yaml
 from ccmlib import common, repository
 from ccmlib.node import Node, NodeError
+from six.moves import xrange
+
 
 class Cluster(object):
     def __init__(self, path, name, partitioner=None, install_dir=None, create_directory=True, version=None, verbose=False, **kwargs):
