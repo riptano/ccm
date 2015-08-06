@@ -510,7 +510,7 @@ class NodeGetsstablesCmd(Cmd):
     def run(self):
         sstablefiles = self.node.get_sstablespath(datafiles=self.datafiles, keyspace=self.keyspace,
                                    tables=self.tables)
-        print_(sstablefiles)
+        print_('\n'.join(sstablefiles))
 
 class NodeUpdateconfCmd(Cmd):
     def description(self):
