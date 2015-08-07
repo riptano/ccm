@@ -234,11 +234,10 @@ class DseNode(Node):
 
         return stdout, stderr
 
-    def dsetool(self, cmd): 
+    def dsetool(self, cmd):
         env = common.make_dse_env(self.get_install_dir(), self.get_path())
-        host = self.address()
         dsetool = common.join_bin(self.get_install_dir(), 'bin', 'dsetool')
-        args = [dsetool, '-h', host, '-j', str(self.jmx_port)]
+        args = [dsetool, '-h', 'localhost', '-j', str(self.jmx_port)]
         args += cmd.split()
         p = subprocess.Popen(args, env=env)
         p.wait()
