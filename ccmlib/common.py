@@ -2,6 +2,7 @@
 # Cassandra Cluster Management lib
 #
 
+import fnmatch
 import os
 import platform
 import re
@@ -10,10 +11,11 @@ import socket
 import stat
 import subprocess
 import sys
-from six import print_
 import time
+
+from six import print_
+
 import yaml
-import fnmatch
 
 BIN_DIR= "bin"
 CASSANDRA_CONF_DIR= "conf"

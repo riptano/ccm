@@ -1,5 +1,6 @@
 import sys
-from threading  import Thread
+from threading import Thread
+
 try:
     from Queue import Queue, Empty
 except ImportError:

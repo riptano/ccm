@@ -1,20 +1,20 @@
 # ccm node
 from __future__ import with_statement
 
-from six import print_
-
-import re
 import os
+import re
 import shutil
+import signal
 import stat
 import subprocess
 import time
-import yaml
-import signal
 
-from ccmlib.node import Node
-from ccmlib.node import NodeError
+from six import print_
+
+import yaml
 from ccmlib import common
+from ccmlib.node import Node, NodeError
+
 
 class DseNode(Node):
     """

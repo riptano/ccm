@@ -1,11 +1,11 @@
 import sys
+from optparse import BadOptionError, Option, OptionParser
 
 from six import print_
 
-from optparse import OptionParser, BadOptionError, Option
-
 from ccmlib import common
 from ccmlib.cluster_factory import ClusterFactory
+
 
 # This is fairly fragile, but handy for now
 class ForgivingParser(OptionParser):

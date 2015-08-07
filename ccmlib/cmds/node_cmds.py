@@ -4,8 +4,9 @@ import sys
 from six import print_
 
 from ccmlib import common
-from ccmlib.node import NodeError
 from ccmlib.cmds.command import Cmd
+from ccmlib.node import NodeError
+
 
 def node_cmds():
     return [
