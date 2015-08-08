@@ -376,6 +376,23 @@ def check_socket_available(itf):
         addr, port = itf
         raise UnavailableSocketError("Inet address %s:%s is not available: %s" % (addr, port, msg))
 
+
+def check_socket_listening(itf, timeout=60):
+    end = time.time() + timeout
+    while time.time() <= end:
+        try:
+            sock = socket.socket()
+            sock.connect(itf)
+            sock.close()
+            return True
+        except socket.error:
+            # Try again in another 200ms
+            time.sleep(.2)
+            continue
+
+    return False
+
+
 def interface_is_ipv6(itf):
     info = socket.getaddrinfo(itf[0], itf[1], socket.AF_UNSPEC, socket.SOCK_STREAM)
     if not info:

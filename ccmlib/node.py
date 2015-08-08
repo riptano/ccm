@@ -415,6 +415,22 @@ class Node(object):
         tofind = ["%s.* now UP" % node.address() for node in tofind]
         self.watch_log_for(tofind, from_mark=from_mark, timeout=timeout)
 
+    def wait_for_binary_interface(self, **kwargs):
+        """
+        Waits for the Binary CQL interface to be listening.  If > 1.2 will check
+        log for 'Starting listening for CQL clients' before checking for the
+        interface to be listening.
+
+        Emits a warning if not listening after 10 seconds.
+        """
+        if self.cluster.version() >= '1.2':
+            self.watch_log_for("Starting listening for CQL clients", **kwargs)
+
+        binary_itf = self.network_interfaces['binary']
+        if not common.check_socket_listening(binary_itf, timeout=10):
+            warnings.warn("Binary interface %s:%s is not listening after 10 seconds, node may have failed to start."
+                          % (binary_itf[0], binary_itf[1]))
+
     def start(self,
               join_ring=True,
               no_wait=False,
@@ -521,11 +537,8 @@ class Node(object):
             for node, mark in marks:
                 node.watch_log_for_alive(self, from_mark=mark)
 
-        if wait_for_binary_proto and self.cluster.version() >= '1.2':
-            self.watch_log_for("Starting listening for CQL clients", from_mark=self.mark)
-            # we're probably fine at that point but just wait some tiny bit more because
-            # the msg is logged just before starting the binary protocol server
-            time.sleep(0.2)
+        if wait_for_binary_proto:
+            self.wait_for_binary_interface(from_mark=self.mark)
 
         return process
 
