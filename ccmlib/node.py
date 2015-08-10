@@ -844,6 +844,23 @@ class Node(object):
         if output_file == None:
             return results
 
+    def run_sstableexpiredblockers(self, output_file=None, keyspace=None, column_family=None):
+        cdir = self.get_install_dir()
+        sstableexpiredblockers = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstableexpiredblockers')
+        env = common.make_cassandra_env(cdir, self.get_path())
+        cmd = [sstableexpiredblockers, keyspace, column_family]
+        results = []
+        if output_file == None:
+            p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=env)
+            (out, err) = p.communicate()
+            rc = p.returncode
+            results.append((out, err, rc))
+        else:
+            subprocess.call(cmd, env=env, stdout=output_file)
+        if output_file == None:
+            return results
+
+        
     def get_sstablespath(self, output_file=None, datafiles=None, keyspace=None, tables=None):
         sstablefiles = self.__gather_sstables(datafiles=datafiles, keyspace=keyspace, columnfamilies=tables)
         return sstablefiles
