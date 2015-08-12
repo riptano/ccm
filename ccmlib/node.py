@@ -6,7 +6,6 @@ import glob
 import itertools
 import os
 import re
-import shlex
 import shutil
 import signal
 import stat
@@ -803,7 +802,7 @@ class Node(object):
 
         for sstablefile in sstablefiles:
             in_file_name = os.path.abspath(in_file.name)
-            args = shlex.split("{json2sstable} -s -K {ks} -c {cf} {in_file_name} {sstablefile}".format(**locals()))
+            args = [json2sstable, "-s", "-K", ks, "-c", cf, in_file_name, sstablefile]
             subprocess.call(args, env=env)
 
     def run_sstablesplit(self, datafiles=None,  size=None, keyspace=None, column_families=None,
