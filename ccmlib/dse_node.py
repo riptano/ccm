@@ -350,7 +350,7 @@ class DseNode(Node):
 
     def _get_directories(self):
         dirs = {}
-        for i in ['data', 'commitlogs', 'saved_caches', 'logs', 'bin', 'keys', 'resources']:
+        for i in ['data', 'commitlogs', 'saved_caches', 'logs', 'bin', 'keys', 'resources', os.path.join('data','hints')]:
             dirs[i] = os.path.join(self.get_path(), i)
         return dirs
 
