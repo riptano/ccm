@@ -785,6 +785,12 @@ class Node(object):
                 common.rmdirs(full_dir)
                 os.mkdir(full_dir)
 
+        # Needed for any subdirs stored underneath a data directory.
+        # Common for hints post CASSANDRA-6230
+        for dir in self._get_directories():
+            if not os.path.exists(dir):
+                os.mkdir(dir)
+
     def run_sstable2json(self, out_file=None, keyspace=None, datafiles=None, column_families=None, enumerate_keys=False):
         print_("running")
         if out_file is None:
