@@ -511,3 +511,7 @@ class Cluster(object):
 
         self._config_options['server_encryption_options'] = node_ssl_options
         self._update_config()
+
+    def set_data_dirs(self, directories):
+        for node in list(self.nodes.values()):
+            node.set_data_dirs(directories)
