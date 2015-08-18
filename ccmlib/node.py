@@ -561,6 +561,12 @@ class Node(object):
                 # We have recurring issues with nodes not stopping / releasing files in the CI
                 # environment so it makes more sense just to murder it hard since there's
                 # really little downside.
+
+                # We want the node to flush its data before shutdown as some tests rely on small writes being present.
+                # The default Periodic sync at 10 ms may not have flushed data yet, causing tests to fail.
+                if gently is True:
+                    self.flush()
+
                 os.system("taskkill /F /PID " + str(self.pid))
                 if self._find_pid_on_windows():
                     print_("WARN: Failed to terminate node: {0} with pid: {1}".format(self.name, self.pid))
@@ -859,7 +865,7 @@ class Node(object):
         if output_file == None:
             return results
 
-        
+
     def get_sstablespath(self, output_file=None, datafiles=None, keyspace=None, tables=None):
         sstablefiles = self.__gather_sstables(datafiles=datafiles, keyspace=keyspace, columnfamilies=tables)
         return sstablefiles
@@ -1359,9 +1365,9 @@ class Node(object):
         return found
 
     def _get_directories(self):
-        dirs = {}
-        for i in ['data', 'commitlogs', 'saved_caches', 'logs', 'conf', 'bin']:
-            dirs[i] = os.path.join(self.get_path(), i)
+        dirs = []
+        for i in ['data', 'commitlogs', 'saved_caches', 'logs', 'conf', 'bin', os.path.join('data','hints')]:
+            dirs.append(os.path.join(self.get_path(), i))
         return dirs
 
     def __get_status_string(self):
