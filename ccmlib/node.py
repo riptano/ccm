@@ -859,7 +859,7 @@ class Node(object):
         if output_file == None:
             return results
 
-        
+
     def get_sstablespath(self, output_file=None, datafiles=None, keyspace=None, tables=None):
         sstablefiles = self.__gather_sstables(datafiles=datafiles, keyspace=keyspace, columnfamilies=tables)
         return sstablefiles
@@ -1341,9 +1341,9 @@ class Node(object):
         return found
 
     def _get_directories(self):
-        dirs = {}
-        for i in ['data', 'commitlogs', 'saved_caches', 'logs', 'conf', 'bin']:
-            dirs[i] = os.path.join(self.get_path(), i)
+        dirs = []
+        for i in ['data', 'commitlogs', 'saved_caches', 'logs', 'conf', 'bin', os.path.join('data','hints')]:
+            dirs.append(os.path.join(self.get_path(), i))
         return dirs
 
     def __get_status_string(self):

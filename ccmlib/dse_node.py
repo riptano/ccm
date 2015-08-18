@@ -349,9 +349,9 @@ class DseNode(Node):
             f.close()
 
     def _get_directories(self):
-        dirs = {}
-        for i in ['data', 'commitlogs', 'saved_caches', 'logs', 'bin', 'keys', 'resources']:
-            dirs[i] = os.path.join(self.get_path(), i)
+        dirs = []
+        for i in ['data', 'commitlogs', 'saved_caches', 'logs', 'bin', 'keys', 'resources', os.path.join('data','hints')]:
+            dirs.append(os.path.join(self.get_path(), i))
         return dirs
 
     def _copy_agent(self):
