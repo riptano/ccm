@@ -828,7 +828,7 @@ class Node(object):
             subprocess.call(cmd, cwd=os.path.join(self.get_install_dir(), 'bin'), env=env, **kwargs)
 
         for sstablefile in sstablefiles:
-            do_split(sstablefile)
+            do_split(sstablefile) 
 
     def run_sstablemetadata(self, output_file=None, datafiles=None, keyspace=None, column_families=None):
         cdir = self.get_install_dir()
