@@ -1160,6 +1160,9 @@ class Node(object):
         with open(conf_file, 'r') as f:
             data = yaml.load(f)
 
+        with open(conf_file, 'r') as f:
+            yaml_text = f.read()
+
         data['cluster_name'] = self.cluster.name
         data['auto_bootstrap'] = self.auto_bootstrap
         data['initial_token'] = self.initial_token
@@ -1179,6 +1182,8 @@ class Node(object):
         data['data_file_directories'] = [os.path.join(self.get_path(), 'data')]
         data['commitlog_directory'] = os.path.join(self.get_path(), 'commitlogs')
         data['saved_caches_directory'] = os.path.join(self.get_path(), 'saved_caches')
+        if self.cluster.version() > '3.0' and 'hints_directory' in yaml_text:
+            data['hints_directory'] = os.path.join(self.get_path(), 'data', 'hints')
 
         if self.cluster.partitioner:
             data['partitioner'] = self.cluster.partitioner
