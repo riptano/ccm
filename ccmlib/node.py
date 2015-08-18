@@ -561,6 +561,12 @@ class Node(object):
                 # We have recurring issues with nodes not stopping / releasing files in the CI
                 # environment so it makes more sense just to murder it hard since there's
                 # really little downside.
+
+                # We want the node to flush its data before shutdown as some tests rely on small writes being present.
+                # The default Periodic sync at 10 ms may not have flushed data yet, causing tests to fail.
+                if gently is True:
+                    self.flush()
+
                 os.system("taskkill /F /PID " + str(self.pid))
                 if self._find_pid_on_windows():
                     print_("WARN: Failed to terminate node: {0} with pid: {1}".format(self.name, self.pid))

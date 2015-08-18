@@ -209,7 +209,7 @@ class Cluster(object):
 
     def remove(self, node=None):
         if node is not None:
-            if not node.name in self.nodes:
+            if node.name not in self.nodes:
                 return
 
             del self.nodes[node.name]
@@ -217,10 +217,25 @@ class Cluster(object):
                 self.seeds.remove(node)
             self._update_config()
             node.stop(gently=False)
-            common.rmdirs(node.get_path())
+            self.remove_dir_with_retry(node.get_path())
         else:
             self.stop(gently=False)
-            common.rmdirs(self.get_path())
+            self.remove_dir_with_retry(self.get_path())
+
+    # We can race w/shutdown on Windows and get Access is denied attempting to delete node logs.
+    # see CASSANDRA-10075
+    def remove_dir_with_retry(self, path):
+        tries = 0
+        removed = False
+        while removed is False:
+            try:
+                common.rmdirs(path)
+                removed = True
+            except Exception as e:
+                tries = tries + 1
+                time.sleep(.1)
+                if tries == 5:
+                    raise e
 
     def clear(self):
         self.stop()
