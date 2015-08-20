@@ -993,6 +993,9 @@ class Node(object):
         else:
             stress_options.append('-node')
             stress_options.append(self.address())
+        # specify used jmx port if not already set
+        if not [ opt for opt in stress_options if opt.startswith('jmx=') ]:
+            stress_options.extend(['-port', 'jmx=' + self.jmx_port])
         args = [stress] + stress_options
         try:
             subprocess.call(args, cwd=common.parse_path(stress), **kwargs)
