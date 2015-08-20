@@ -173,7 +173,7 @@ class Cluster(object):
                                     thrift_interface=(ipformat % i, 9160),
                                     storage_interface=(ipformat % i, 7000),
                                     jmx_port=str(7000 + i * 100),
-                                    remote_debug_port=(str(0),  str(2000 + i * 100))[debug == True],
+                                    remote_debug_port=str(2000 + i * 100) if debug else str(0),
                                     initial_token=tk,
                                     binary_interface=binary)
             self.add(node, True, dc)
