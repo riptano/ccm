@@ -168,14 +168,14 @@ class Cluster(object):
             binary = None
             if self.cassandra_version() >= '1.2':
                 binary = (ipformat % i, 9042)
-            node = self.create_node('node%s' % i,
-                        False,
-                        (ipformat % i, 9160),
-                        (ipformat % i, 7000),
-                        str(7000 + i * 100),
-                        (str(0),  str(2000 + i * 100))[debug == True],
-                        tk,
-                        binary_interface=binary)
+            node = self.create_node(name='node%s' % i,
+                                    auto_bootstrap=False,
+                                    thrift_interface=(ipformat % i, 9160),
+                                    storage_interface=(ipformat % i, 7000),
+                                    jmx_port=str(7000 + i * 100),
+                                    remote_debug_port=(str(0),  str(2000 + i * 100))[debug == True],
+                                    initial_token=tk,
+                                    binary_interface=binary)
             self.add(node, True, dc)
             self._update_config()
         return self
