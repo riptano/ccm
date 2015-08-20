@@ -818,7 +818,7 @@ class Node(object):
             subprocess.call(args, env=env)
 
     def run_sstablesplit(self, datafiles=None,  size=None, keyspace=None, column_families=None,
-                         no_snapshot=False, **kwargs):
+                         no_snapshot=False, debug=False, **kwargs):
         sstablesplit = self._find_cmd('sstablesplit')
         env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
         sstablefiles = self.__gather_sstables(datafiles, keyspace, column_families)
@@ -830,6 +830,8 @@ class Node(object):
                 cmd += ['-s', str(size)]
             if no_snapshot:
                 cmd.append('--no-snapshot')
+            if debug:
+                cmd.append('--debug')
             cmd.append(f)
             subprocess.call(cmd, cwd=os.path.join(self.get_install_dir(), 'bin'), env=env, **kwargs)
 
