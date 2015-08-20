@@ -33,8 +33,8 @@ class Cluster(object):
         if self.name.lower() == "current":
             raise RuntimeError("Cannot name a cluster 'current'.")
 
-        ##This is incredibly important for
-        ##backwards compatibility.
+        # This is incredibly important for
+        # backwards compatibility.
         if 'cassandra_version' in kwargs:
             version = kwargs['cassandra_version']
         if 'cassandra_dir' in kwargs:
@@ -88,7 +88,7 @@ class Cluster(object):
             node.import_config_files()
 
         # if any nodes have a data center, let's update the topology
-        if any( [node.data_center for node in self.nodes.values()] ):
+        if any([node.data_center for node in self.nodes.values()]):
             self.__update_topology_files()
 
         return self
@@ -101,7 +101,7 @@ class Cluster(object):
         return False
 
     def nodelist(self):
-        return [ self.nodes[name] for name in sorted(self.nodes.keys()) ]
+        return [self.nodes[name] for name in sorted(self.nodes.keys())]
 
     def version(self):
         return self.__version
@@ -134,7 +134,7 @@ class Cluster(object):
         dcs = []
         self.use_vnodes = use_vnodes
         if isinstance(nodes, list):
-            self.set_configuration_options(values={'endpoint_snitch' : 'org.apache.cassandra.locator.PropertyFileSnitch'})
+            self.set_configuration_options(values={'endpoint_snitch': 'org.apache.cassandra.locator.PropertyFileSnitch'})
             node_count = 0
             i = 0
             for c in nodes:
@@ -187,7 +187,7 @@ class Cluster(object):
         if self.cassandra_version() >= '1.2' and not self.partitioner:
             ptokens = [(i*(2**64//node_count)) for i in xrange(0, node_count)]
             return [int(t - 2**63) for t in ptokens]
-        return [ int(i*(2**127//node_count)) for i in range(0, node_count) ]
+        return [int(i*(2**127//node_count)) for i in range(0, node_count)]
 
     def balanced_tokens_across_dcs(self, dcs):
         tokens = []
@@ -246,7 +246,7 @@ class Cluster(object):
         return os.path.join(self.__path, self.name)
 
     def get_seeds(self):
-        return [ s.network_interfaces['storage'][0] for s in self.seeds ]
+        return [s.network_interfaces['storage'][0] for s in self.seeds]
 
     def show(self, verbose):
         msg = "Cluster: '%s'" % self.name
@@ -277,7 +277,7 @@ class Cluster(object):
                 started.append((node, p, mark))
 
         if no_wait and not verbose:
-            time.sleep(2) # waiting 2 seconds to check for early errors and for the pid to be set
+            time.sleep(2)  # waiting 2 seconds to check for early errors and for the pid to be set
         else:
             for node, p, mark in started:
                 try:
@@ -320,7 +320,7 @@ class Cluster(object):
         return not_running
 
     def set_log_level(self, new_level, class_names=None):
-        known_level = [ 'TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR', 'OFF' ]
+        known_level = ['TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR', 'OFF']
         if new_level not in known_level:
             raise common.ArgumentError("Unknown log level %s (use one of %s)" % (new_level, " ".join(known_level)))
 
@@ -359,14 +359,14 @@ class Cluster(object):
 
     def stress(self, stress_options):
         stress = common.get_stress_bin(self.get_install_dir())
-        livenodes = [ node.network_interfaces['storage'][0] for node in list(self.nodes.values()) if node.is_live() ]
+        livenodes = [node.network_interfaces['storage'][0] for node in list(self.nodes.values()) if node.is_live()]
         if len(livenodes) == 0:
             print_("No live node")
             return
         if self.cassandra_version() <= '2.1':
-            args = [ stress, '-d', ",".join(livenodes) ] + stress_options
+            args = [stress, '-d', ",".join(livenodes)] + stress_options
         else:
-            args = [ stress ] + stress_options + ['-node', ','.join(livenodes) ]
+            args = [stress] + stress_options + ['-node', ','.join(livenodes)]
         try:
             # need to set working directory for env on Windows
             if common.is_win():
@@ -378,7 +378,7 @@ class Cluster(object):
         return self
 
     def run_cli(self, cmds=None, show_output=False, cli_options=[]):
-        livenodes = [ node for node in list(self.nodes.values()) if node.is_live() ]
+        livenodes = [node for node in list(self.nodes.values()) if node.is_live()]
         if len(livenodes) == 0:
             raise common.ArgumentError("No live node")
         livenodes[0].run_cli(cmds, show_output, cli_options)
@@ -457,20 +457,20 @@ class Cluster(object):
         return common.get_version_from_build(self.get_install_dir())
 
     def _update_config(self):
-        node_list = [ node.name for node in list(self.nodes.values()) ]
-        seed_list = [ node.name for node in self.seeds ]
+        node_list = [node.name for node in list(self.nodes.values())]
+        seed_list = [node.name for node in self.seeds]
         filename = os.path.join(self.__path, self.name, 'cluster.conf')
         with open(filename, 'w') as f:
             yaml.safe_dump({
-                'name' : self.name,
-                'nodes' : node_list,
-                'seeds' : seed_list,
-                'partitioner' : self.partitioner,
-                'install_dir' : self.__install_dir,
-                'config_options' : self._config_options,
-                'dse_config_options' : self._dse_config_options,
-                'log_level' : self.__log_level,
-                'use_vnodes' : self.use_vnodes
+                'name': self.name,
+                'nodes': node_list,
+                'seeds': seed_list,
+                'partitioner': self.partitioner,
+                'install_dir': self.__install_dir,
+                'config_options': self._config_options,
+                'dse_config_options': self._dse_config_options,
+                'log_level': self.__log_level,
+                'use_vnodes': self.use_vnodes
             }, f)
 
     def __update_pids(self, started):
@@ -495,19 +495,19 @@ class Cluster(object):
     def enable_ssl(self, ssl_path, require_client_auth):
         shutil.copyfile(os.path.join(ssl_path, 'keystore.jks'), os.path.join(self.get_path(), 'keystore.jks'))
         shutil.copyfile(os.path.join(ssl_path, 'cassandra.crt'), os.path.join(self.get_path(), 'cassandra.crt'))
-        ssl_options = {'enabled' : True,
-            'keystore' : os.path.join(self.get_path(), 'keystore.jks'),
-            'keystore_password' : 'cassandra'
-            }
+        ssl_options = {'enabled': True,
+                       'keystore': os.path.join(self.get_path(), 'keystore.jks'),
+                       'keystore_password': 'cassandra'
+                       }
 
         # determine if truststore client encryption options should be enabled
         truststore_file = os.path.join(ssl_path, 'truststore.jks')
         if os.path.isfile(truststore_file):
             shutil.copyfile(truststore_file, os.path.join(self.get_path(), 'truststore.jks'))
-            truststore_ssl_options = {'require_client_auth' : require_client_auth,
-                'truststore' : os.path.join(self.get_path(), 'truststore.jks'),
-                'truststore_password' : 'cassandra'
-                }
+            truststore_ssl_options = {'require_client_auth': require_client_auth,
+                                      'truststore': os.path.join(self.get_path(), 'truststore.jks'),
+                                      'truststore_password': 'cassandra'
+                                      }
             ssl_options.update(truststore_ssl_options)
 
         self._config_options['client_encryption_options'] = ssl_options
