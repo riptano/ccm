@@ -601,7 +601,7 @@ class ClusterStressCmd(Cmd):
 
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, load_cluster=True)
-        self.stress_options = parser.get_ignored() + args
+        self.stress_options = args + parser.get_ignored()
 
     def run(self):
         try:
