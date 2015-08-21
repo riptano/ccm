@@ -464,7 +464,7 @@ class Node(object):
                 common.check_socket_available(itf)
 
         if wait_other_notice:
-            marks = [(node, node.mark_log()) for node in list(self.cluster.nodes.values()) if node.is_running()]
+            marks = [(node, node.mark_log()) for node in list(self.cluster.nodes.values()) if node.is_live()]
 
         self.mark = self.mark_log()
 
@@ -553,7 +553,7 @@ class Node(object):
         """
         if self.is_running():
             if wait_other_notice:
-                marks = [(node, node.mark_log()) for node in list(self.cluster.nodes.values()) if node.is_running() and node is not self]
+                marks = [(node, node.mark_log()) for node in list(self.cluster.nodes.values()) if node.is_live() and node is not self]
 
             if common.is_win():
                 # Just taskkill the instance, don't bother trying to shut it down gracefully.
