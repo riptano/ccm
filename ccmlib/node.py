@@ -564,8 +564,12 @@ class Node(object):
 
                 # We want the node to flush its data before shutdown as some tests rely on small writes being present.
                 # The default Periodic sync at 10 ms may not have flushed data yet, causing tests to fail.
+                # This is not a hard requirement, however, so we swallow any exceptions this may throw and kill anyway.
                 if gently is True:
-                    self.flush()
+                    try:
+                        self.flush()
+                    except:
+                        pass
 
                 os.system("taskkill /F /PID " + str(self.pid))
                 if self._find_pid_on_windows():
