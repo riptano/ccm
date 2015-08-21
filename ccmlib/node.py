@@ -818,10 +818,12 @@ class Node(object):
             subprocess.call(args, env=env)
 
     def run_sstablesplit(self, datafiles=None,  size=None, keyspace=None, column_families=None,
-                         no_snapshot=False, **kwargs):
+                         no_snapshot=False, debug=False, **kwargs):
         sstablesplit = self._find_cmd('sstablesplit')
         env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
         sstablefiles = self.__gather_sstables(datafiles, keyspace, column_families)
+
+        results = []
 
         def do_split(f):
             print_("-- {0}-----".format(os.path.basename(f)))
@@ -830,11 +832,20 @@ class Node(object):
                 cmd += ['-s', str(size)]
             if no_snapshot:
                 cmd.append('--no-snapshot')
+            if debug:
+                cmd.append('--debug')
             cmd.append(f)
-            subprocess.call(cmd, cwd=os.path.join(self.get_install_dir(), 'bin'), env=env, **kwargs)
+            p = subprocess.Popen(cmd, cwd=os.path.join(self.get_install_dir(), 'bin'),
+                                 env=env, stderr=subprocess.PIPE, stdout=subprocess.PIPE,
+                                 **kwargs)
+            (out, err) = p.communicate()
+            rc = p.returncode
+            results.append((out, err, rc))
 
         for sstablefile in sstablefiles:
             do_split(sstablefile)
+
+        return results
 
     def run_sstablemetadata(self, output_file=None, datafiles=None, keyspace=None, column_families=None):
         cdir = self.get_install_dir()
