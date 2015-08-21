@@ -320,6 +320,7 @@ class Cluster(object):
         return not_running
 
     def set_log_level(self, new_level, class_names=None):
+        class_names = class_names or []
         known_level = ['TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR', 'OFF']
         if new_level not in known_level:
             raise common.ArgumentError("Unknown log level %s (use one of %s)" % (new_level, " ".join(known_level)))
