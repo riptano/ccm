@@ -599,7 +599,7 @@ class NodeStressCmd(Cmd):
 
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
-        self.stress_options = parser.get_ignored() + args[1:]
+        self.stress_options = args[1:] + parser.get_ignored()
 
     def run(self):
         try:
