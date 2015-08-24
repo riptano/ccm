@@ -1009,7 +1009,7 @@ class Node(object):
             stress_options.append('-node')
             stress_options.append(self.address())
         # specify used jmx port if not already set
-        if not [ opt for opt in stress_options if opt.startswith('jmx=') ]:
+        if not [opt for opt in stress_options if opt.startswith('jmx=')]:
             stress_options.extend(['-port', 'jmx=' + self.jmx_port])
         args = [stress] + stress_options
         try:
@@ -1137,6 +1137,12 @@ class Node(object):
         run_pattern = ".*-cp.*"
         common.replace_in_file(bat_file, run_pattern, "wmic process call create \"" + run_text + "\" > \"" +
                                self.get_path() + "/dirty_pid.tmp\"\n")
+
+        # On Windows, remove the VerifyPorts check from cassandra.ps1
+        common.replace_in_file(os.path.join(self.get_path(), 'bin', 'cassandra.ps1'), '        VerifyPortsAreAvailable', '')
+
+        # Specifically call the .ps1 file in our node's folder
+        common.replace_in_file(bat_file, 'powershell /file .*', 'powershell /file "' + os.path.join(self.get_path(), 'bin', 'cassandra.ps1" %*'))
 
     def _save(self):
         self.__update_yaml()
