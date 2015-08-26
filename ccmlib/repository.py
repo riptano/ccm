@@ -75,7 +75,7 @@ def clone_development(git_repo, version, verbose=False):
         git_repo_name = 'apache'
         git_branch = version.split(':', 1)[1]
     local_git_cache = os.path.join(__get_dir(), '_git_cache_' + git_repo_name)
-    logfile = os.path.join(__get_dir(), "last.log")
+    logfile = lastlogfilename()
     with open(logfile, 'w') as lf:
         try:
             #Checkout/fetch a local repository cache to reduce the number of
@@ -236,7 +236,7 @@ def download_version(version, url=None, verbose=False, binary=False):
 
 def compile_version(version, target_dir, verbose=False):
     # compiling cassandra and the stress tool
-    logfile = os.path.join(__get_dir(), "last.log")
+    logfile = lastlogfilename()
     if verbose:
         print_("Compiling Cassandra %s ..." % version)
     with open(logfile, 'w') as lf:
@@ -390,3 +390,6 @@ def __get_dir():
     if not os.path.exists(repo):
         os.mkdir(repo)
     return repo
+
+def lastlogfilename():
+    return os.path.join(__get_dir(), "last.log")

@@ -40,6 +40,7 @@ def cluster_cmds():
         "verify",
         "invalidatecache",
         "checklogerror",
+        "showlastlog"
     ]
 
 def parse_populate_count(v):
@@ -837,3 +838,20 @@ class ClusterChecklogerrorCmd(Cmd):
             for mylist in errors:
                 for line in mylist:
                     print_(line)
+
+
+class ClusterShowlastlogCmd(Cmd):
+    def description(self):
+        return "Show the last.log for the most recent build through your $PAGER"
+
+    def get_parser(self):
+        usage = "usage: ccm showlastlog"
+        return self._get_default_parser(usage, self.description())
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, load_cluster=True)
+
+    def run(self):
+        log = repository.lastlogfilename()
+        pager = os.environ.get('PAGER', common.platform_pager())
+        os.execvp(pager, (pager, log))
