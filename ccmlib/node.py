@@ -569,6 +569,7 @@ class Node(object):
                     try:
                         self.flush()
                     except:
+                        print_("WARN: Failed to flush node: {0} on shutdown.".format(self.name))
                         pass
 
                 os.system("taskkill /F /PID " + str(self.pid))
