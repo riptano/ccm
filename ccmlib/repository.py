@@ -113,7 +113,11 @@ def clone_development(git_repo, version, verbose=False):
                     print_("Checking out requested branch (%s)" % git_branch)
                 out = subprocess.call(['git', 'checkout', git_branch], cwd=target_dir, stdout=lf, stderr=lf)
                 if int(out) != 0:
-                    raise CCMError("Could not check out git branch %s. Is this a valid branch name? (see last.log for details)" % git_branch)
+                    raise CCMError('Could not check out git branch {branch}. '
+                                   'Is this a valid branch name? (see {lastlog} or run '
+                                   '"ccm showlastlog" for details)'.format(
+                                       branch=git_branch, lastlog=logfile
+                                   ))
                 # now compile
                 compile_version(git_branch, target_dir, verbose)
             else: # branch is already checked out. See if it is behind and recompile if needed.
@@ -248,7 +252,8 @@ def compile_version(version, target_dir, verbose=False):
                 ret_val = subprocess.call([platform_binary('ant'),'jar'], cwd=target_dir, stdout=lf, stderr=lf)
                 attempt += 1
             if ret_val is not 0:
-                raise CCMError("Error compiling Cassandra. See %s for details" % logfile)
+                raise CCMError('Error compiling Cassandra. See {logfile} or run '
+                               '"ccm showlastlog" for details'.format(logfile=logfile))
         except OSError as e:
             raise CCMError("Error compiling Cassandra. Is ant installed? See %s for details" % logfile)
 
