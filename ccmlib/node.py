@@ -303,7 +303,16 @@ class Node(object):
         in the Cassandra log of this node
         """
         with open(self.logfilename()) as f:
+            if hasattr(self, 'error_mark'):
+                f.seek(self.error_mark)
             return _grep_log_for_errors(f.read())
+
+    def mark_log_for_errors(self):
+        """
+        Ignore errors behind this point when calling
+        node.grep_log_for_errors()
+        """
+        self.error_mark = self.mark_log()
 
     def mark_log(self):
         """
