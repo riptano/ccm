@@ -1,5 +1,6 @@
 import os
 import sys
+import subprocess
 
 from six import print_
 
@@ -50,7 +51,8 @@ def node_cmds():
         "sqoop",
         "spark",
         "pause",
-        "resume"
+        "resume",
+        "jconsole"
     ]
 
 class NodeShowCmd(Cmd):
@@ -795,3 +797,22 @@ class NodeResumeCmd(Cmd):
 
     def run(self):
         self.node.resume()
+
+class NodeJconsoleCmd(Cmd):
+    def description(self):
+        return "Opens jconsole client and connect to running node"
+
+    def get_parser(self):
+        usage = "usage: ccm node_name jconsole"
+        return self._get_default_parser(usage, self.description())
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
+
+    def run(self):
+        cmds = ["jconsole", "localhost:%s" % self.node.jmx_port]
+        try:
+            subprocess.call(cmds)
+        except OSError as e:
+            print_("Could not start jconsole. Please make sure jconsole can be found in your $PATH.")
+            exit(1)

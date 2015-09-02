@@ -1,5 +1,6 @@
 import os
 import sys
+import subprocess
 
 from six import print_
 
@@ -40,7 +41,8 @@ def cluster_cmds():
         "verify",
         "invalidatecache",
         "checklogerror",
-        "showlastlog"
+        "showlastlog",
+        "jconsole"
     ]
 
 def parse_populate_count(v):
@@ -855,3 +857,22 @@ class ClusterShowlastlogCmd(Cmd):
         log = repository.lastlogfilename()
         pager = os.environ.get('PAGER', common.platform_pager())
         os.execvp(pager, (pager, log))
+
+class ClusterJconsoleCmd(Cmd):
+    def description(self):
+        return "Opens jconsole client and connects to all running nodes"
+
+    def get_parser(self):
+        usage = "usage: ccm jconsole"
+        return self._get_default_parser(usage, self.description())
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, load_cluster=True)
+
+    def run(self):
+        cmds = ["jconsole"] + [ "localhost:%s" % node.jmx_port for node in self.cluster.nodes.values() ]
+        try:
+            subprocess.call(cmds, stderr=sys.stderr)
+        except OSError as e:
+            print_("Could not start jconsole. Please make sure jconsole can be found in your $PATH.")
+            exit(1)
