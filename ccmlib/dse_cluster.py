@@ -12,6 +12,7 @@ from ccmlib.dse_node import DseNode
 
 
 class DseCluster(Cluster):
+
     def __init__(self, path, name, partitioner=None, install_dir=None, create_directory=True, version=None, dse_username=None, dse_password=None, opscenter=None, verbose=False):
         self.dse_username = dse_username
         self.dse_password = dse_password
