@@ -30,14 +30,19 @@ class Status():
     DOWN = "DOWN"
     DECOMMISIONNED = "DECOMMISIONNED"
 
+
 class NodeError(Exception):
+
     def __init__(self, msg, process=None):
         Exception.__init__(self, msg)
         self.process = process
 
+
 class TimeoutError(Exception):
+
     def __init__(self, data):
         Exception.__init__(self, str(data))
+
 
 class NodetoolError(Exception):
 
@@ -59,6 +64,7 @@ class NodetoolError(Exception):
 
 # Groups: 1 = cf, 2 = tmp or none, 3 = suffix (Compacted or Data.db)
 _sstable_regexp = re.compile('((?P<keyspace>[^\s-]+)-(?P<cf>[^\s-]+)-)?(?P<tmp>tmp(link)?-)?(?P<version>[^\s-]+)-(?P<number>\d+)-(?P<big>big-)?(?P<suffix>[a-zA-Z]+)\.[a-zA-Z0-9]+$')
+
 
 class Node(object):
     """
@@ -357,7 +363,7 @@ class Node(object):
                 if process.returncode is not None:
                     self.print_process_output(self.name, process, verbose)
                     if process.returncode != 0:
-                        raise RuntimeError() # Shouldn't reuse RuntimeError but I'm lazy
+                        raise RuntimeError()  # Shouldn't reuse RuntimeError but I'm lazy
 
         with open(self.logfilename()) as f:
             if from_mark:
@@ -372,7 +378,7 @@ class Node(object):
                         if process.returncode is not None:
                             self.print_process_output(self.name, process, verbose)
                             if process.returncode != 0:
-                                raise RuntimeError() # Shouldn't reuse RuntimeError but I'm lazy
+                                raise RuntimeError()  # Shouldn't reuse RuntimeError but I'm lazy
 
                 line = f.readline()
                 if line:
@@ -516,8 +522,8 @@ class Node(object):
             args.append('-Dcassandra.boot_without_jna=true')
         env['JVM_EXTRA_OPTS'] = env.get('JVM_EXTRA_OPTS', "") + " ".join(jvm_args)
 
-        #In case we are restarting a node
-        #we risk reading the old cassandra.pid file
+        # In case we are restarting a node
+        # we risk reading the old cassandra.pid file
         self._delete_old_pid()
 
         process = None
@@ -674,7 +680,7 @@ class Node(object):
     def verify(self, options):
         verify_bin = self.get_tool('sstableverify')
         env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
-        os.execve(verify_bin, [ common.platform_binary('sstableverify') ] + options, env)
+        os.execve(verify_bin, [common.platform_binary('sstableverify')] + options, env)
 
     def run_cli(self, cmds=None, show_output=False, cli_options=[]):
         cli = self.get_tool('cassandra-cli')
@@ -831,7 +837,7 @@ class Node(object):
             args = [json2sstable, "-s", "-K", ks, "-c", cf, in_file_name, sstablefile]
             subprocess.call(args, env=env)
 
-    def run_sstablesplit(self, datafiles=None,  size=None, keyspace=None, column_families=None,
+    def run_sstablesplit(self, datafiles=None, size=None, keyspace=None, column_families=None,
                          no_snapshot=False, debug=False):
         sstablesplit = self._find_cmd('sstablesplit')
         env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
@@ -855,7 +861,6 @@ class Node(object):
             rc = p.returncode
             results.append((out, err, rc))
 
-
         for sstablefile in sstablefiles:
             do_split(sstablefile)
 
@@ -870,14 +875,14 @@ class Node(object):
 
         for sstable in sstablefiles:
             cmd = [sstablemetadata, sstable]
-            if output_file == None:
+            if output_file is None:
                 p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=env)
                 (out, err) = p.communicate()
                 rc = p.returncode
                 results.append((out, err, rc))
             else:
                 subprocess.call(cmd, env=env, stdout=output_file)
-        if output_file == None:
+        if output_file is None:
             return results
 
     def run_sstableexpiredblockers(self, output_file=None, keyspace=None, column_family=None):
@@ -886,16 +891,15 @@ class Node(object):
         env = common.make_cassandra_env(cdir, self.get_path())
         cmd = [sstableexpiredblockers, keyspace, column_family]
         results = []
-        if output_file == None:
+        if output_file is None:
             p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=env)
             (out, err) = p.communicate()
             rc = p.returncode
             results.append((out, err, rc))
         else:
             subprocess.call(cmd, env=env, stdout=output_file)
-        if output_file == None:
+        if output_file is None:
             return results
-
 
     def get_sstablespath(self, output_file=None, datafiles=None, keyspace=None, tables=None):
         sstablefiles = self.__gather_sstables(datafiles=datafiles, keyspace=keyspace, columnfamilies=tables)
@@ -909,11 +913,10 @@ class Node(object):
 
         for sstable in sstablefiles:
             if set_repaired == True:
-                cmd = [sstablerepairedset,"--really-set", "--is-repaired", sstable]
+                cmd = [sstablerepairedset, "--really-set", "--is-repaired", sstable]
             else:
                 cmd = [sstablerepairedset, "--really-set", "--is-unrepaired", sstable]
             subprocess.call(cmd, env=env)
-
 
     def run_sstablelevelreset(self, keyspace, cf, output=False):
         cdir = self.get_install_dir()
@@ -922,7 +925,7 @@ class Node(object):
 
         cmd = [sstablelevelreset, "--really-reset", keyspace, cf]
 
-        if output==True:
+        if output == True:
             p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=env)
             (stdout, stderr) = p.communicate()
             rc = p.returncode
@@ -935,7 +938,7 @@ class Node(object):
         sstableofflinerelevel = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstableofflinerelevel')
         env = common.make_cassandra_env(cdir, self.get_path())
 
-        if dry_run==True:
+        if dry_run == True:
             cmd = [sstableofflinerelevel, "--dry-run", keyspace, cf]
         else:
             cmd = [sstableofflinerelevel, keyspace, cf]
@@ -954,7 +957,7 @@ class Node(object):
         env = common.make_cassandra_env(cdir, self.get_path())
 
         cmd = [sstableverify, keyspace, cf]
-        if options!=None:
+        if options is not None:
             cmd[1:1] = options
 
         if output == True:
@@ -1228,10 +1231,10 @@ class Node(object):
         if self.cluster.partitioner:
             data['partitioner'] = self.cluster.partitioner
 
-        full_options = dict(list(self.cluster._config_options.items()) + list(self.__config_options.items())) # last win and we want node options to win
+        full_options = dict(list(self.cluster._config_options.items()) + list(self.__config_options.items()))  # last win and we want node options to win
         for name in full_options:
             value = full_options[name]
-            if type(value) is str and (value is None or len(value) == 0):
+            if isinstance(value, str) and (value is None or len(value) == 0):
                 try:
                     del data[name]
                 except KeyError:
@@ -1326,12 +1329,12 @@ class Node(object):
             if itf is not None and common.interface_is_ipv6(itf):
                 if common.is_win():
                     common.replace_in_file(conf_file,
-                                       '-Djava.net.preferIPv4Stack=true',
-                                       '\t$env:JVM_OPTS="$env:JVM_OPTS -Djava.net.preferIPv4Stack=false -Djava.net.preferIPv6Addresses=true"')
+                                           '-Djava.net.preferIPv4Stack=true',
+                                           '\t$env:JVM_OPTS="$env:JVM_OPTS -Djava.net.preferIPv4Stack=false -Djava.net.preferIPv6Addresses=true"')
                 else:
                     common.replace_in_file(conf_file,
-                                       '-Djava.net.preferIPv4Stack=true',
-                                       'JVM_OPTS="$JVM_OPTS -Djava.net.preferIPv4Stack=false -Djava.net.preferIPv6Addresses=true"')
+                                           '-Djava.net.preferIPv4Stack=true',
+                                           'JVM_OPTS="$JVM_OPTS -Djava.net.preferIPv4Stack=false -Djava.net.preferIPv6Addresses=true"')
                 break
 
     def __update_status(self):
@@ -1393,7 +1396,7 @@ class Node(object):
 
     def _get_directories(self):
         dirs = []
-        for i in ['data', 'commitlogs', 'saved_caches', 'logs', 'conf', 'bin', os.path.join('data','hints')]:
+        for i in ['data', 'commitlogs', 'saved_caches', 'logs', 'conf', 'bin', os.path.join('data', 'hints')]:
             dirs.append(os.path.join(self.get_path(), i))
         return dirs
 
@@ -1569,6 +1572,7 @@ class Node(object):
                 print_("WARN: psutil not installed. Resume functionality will not work properly on Windows.")
             else:
                 os.kill(self.pid, signal.SIGCONT)
+
 
 def _get_load_from_info_output(info):
     load_lines = [s for s in info.split('\n')

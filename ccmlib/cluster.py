@@ -15,6 +15,7 @@ from six.moves import xrange
 
 
 class Cluster(object):
+
     def __init__(self, path, name, partitioner=None, install_dir=None, create_directory=True, version=None, verbose=False, **kwargs):
         self.name = name
         self.nodes = {}
@@ -157,13 +158,13 @@ class Cluster(object):
                 tokens = self.balanced_tokens_across_dcs(dcs)
 
         if not ipformat:
-            ipformat = ipprefix+"%d"
+            ipformat = ipprefix + "%d"
 
         for i in xrange(1, node_count + 1):
             tk = None
-            if tokens is not None and i-1 < len(tokens):
-                tk = tokens[i-1]
-            dc = dcs[i-1] if i-1 < len(dcs) else None
+            if tokens is not None and i - 1 < len(tokens):
+                tk = tokens[i - 1]
+            dc = dcs[i - 1] if i - 1 < len(dcs) else None
 
             binary = None
             if self.cassandra_version() >= '1.2':
@@ -185,9 +186,9 @@ class Cluster(object):
 
     def balanced_tokens(self, node_count):
         if self.cassandra_version() >= '1.2' and not self.partitioner:
-            ptokens = [(i*(2**64//node_count)) for i in xrange(0, node_count)]
+            ptokens = [(i * (2**64 // node_count)) for i in xrange(0, node_count)]
             return [int(t - 2**63) for t in ptokens]
-        return [int(i*(2**127//node_count)) for i in range(0, node_count)]
+        return [int(i * (2**127 // node_count)) for i in range(0, node_count)]
 
     def balanced_tokens_across_dcs(self, dcs):
         tokens = []
@@ -198,12 +199,12 @@ class Cluster(object):
             if dc == current_dc:
                 count += 1
             else:
-                new_tokens = [tk+(dc_count*100) for tk in self.balanced_tokens(count)]
+                new_tokens = [tk + (dc_count * 100) for tk in self.balanced_tokens(count)]
                 tokens.extend(new_tokens)
                 current_dc = dc
                 count = 1
                 dc_count += 1
-        new_tokens = [tk+(dc_count*100) for tk in self.balanced_tokens(count)]
+        new_tokens = [tk + (dc_count * 100) for tk in self.balanced_tokens(count)]
         tokens.extend(new_tokens)
         return tokens
 
@@ -251,7 +252,7 @@ class Cluster(object):
     def show(self, verbose):
         msg = "Cluster: '%s'" % self.name
         print_(msg)
-        print_('-'*len(msg))
+        print_('-' * len(msg))
         if len(list(self.nodes.values())) == 0:
             print_("No node in this cluster yet")
             return

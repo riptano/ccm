@@ -8,6 +8,7 @@ from ccmlib.node import Node
 
 
 class ClusterFactory():
+
     @staticmethod
     def load(path, name):
         cluster_path = os.path.join(path, name)

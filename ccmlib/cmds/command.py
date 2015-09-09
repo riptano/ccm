@@ -9,6 +9,7 @@ from ccmlib.cluster_factory import ClusterFactory
 
 # This is fairly fragile, but handy for now
 class ForgivingParser(OptionParser):
+
     def __init__(self, usage=None, option_list=None, option_class=Option, version=None, conflict_handler="error", description=None, formatter=None, add_help_option=True, prog=None, epilog=None):
         OptionParser.__init__(self, usage, option_list, option_class, version, conflict_handler, description, formatter, add_help_option, prog, epilog)
         self.ignored = []
@@ -36,7 +37,9 @@ class ForgivingParser(OptionParser):
     def get_ignored(self):
         return self.ignored
 
+
 class Cmd(object):
+
     def get_parser(self):
         pass
 
@@ -49,17 +52,17 @@ class Cmd(object):
             self.path = options.config_dir
 
         if cluster_name:
-          if len(args) == 0:
-              print_('Missing cluster name', file=sys.stderr)
-              parser.print_help()
-              exit(1)
-          self.name = args[0]
+            if len(args) == 0:
+                print_('Missing cluster name', file=sys.stderr)
+                parser.print_help()
+                exit(1)
+            self.name = args[0]
         if node_name:
-          if len(args) == 0:
-              print_('Missing node name', file=sys.stderr)
-              parser.print_help()
-              exit(1)
-          self.name = args[0]
+            if len(args) == 0:
+                print_('Missing node name', file=sys.stderr)
+                parser.print_help()
+                exit(1)
+            self.name = args[0]
 
         if load_cluster:
             self.cluster = self._load_current_cluster()
@@ -79,7 +82,7 @@ class Cmd(object):
         else:
             parser = OptionParser(usage=usage, description=description)
         parser.add_option('--config-dir', type="string", dest="config_dir",
-            help="Directory for the cluster files [default to {0}]".format(common.get_default_path_display_name()))
+                          help="Directory for the cluster files [default to {0}]".format(common.get_default_path_display_name()))
         return parser
 
     def description(self):
