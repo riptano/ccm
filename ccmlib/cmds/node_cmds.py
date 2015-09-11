@@ -52,7 +52,8 @@ def node_cmds():
         "spark",
         "pause",
         "resume",
-        "jconsole"
+        "jconsole",
+        "versionfrombuild"
     ]
 
 
@@ -890,3 +891,20 @@ class NodeJconsoleCmd(Cmd):
         except OSError as e:
             print_("Could not start jconsole. Please make sure jconsole can be found in your $PATH.")
             exit(1)
+
+
+class NodeVersionfrombuildCmd(Cmd):
+
+    def description(self):
+        return "Print the node's version as grepped from build.xml. Can be used when the node isn't running."
+
+    def get_parser(self):
+        usage = "usage: ccm node_name versionfrombuild"
+        parser = self._get_default_parser(usage, self.description())
+        return parser
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
+
+    def run(self):
+        print_(common.get_version_from_build(self.node.get_install_dir()))
