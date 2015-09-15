@@ -1013,7 +1013,7 @@ class Node(object):
                 files.remove(f)
         return files
 
-    def stress(self, stress_options=[], **kwargs):
+    def stress(self, stress_options=[], capture_output=False, **kwargs):
         stress = common.get_stress_bin(self.get_install_dir())
         if self.cluster.cassandra_version() <= '2.1':
             stress_options.append('-d')
@@ -1026,7 +1026,17 @@ class Node(object):
                 stress_options.extend(['-port', 'jmx=' + self.jmx_port])
         args = [stress] + stress_options
         try:
-            subprocess.call(args, cwd=common.parse_path(stress), **kwargs)
+            if capture_output:
+                p = subprocess.Popen(args, cwd=common.parse_path(stress),
+                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                     **kwargs)
+                stdout, stderr = p.communicate()
+            else:
+                p = subprocess.Popen(args, cwd=common.parse_path(stress),
+                                     **kwargs)
+                stdout, stderr = None, None
+            p.wait()
+            return stdout, stderr
         except KeyboardInterrupt:
             pass
 
