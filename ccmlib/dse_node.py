@@ -259,6 +259,8 @@ class DseNode(Node):
         for product in ['dse', 'cassandra', 'hadoop', 'sqoop', 'hive', 'tomcat', 'spark', 'shark', 'mahout', 'pig', 'solr']:
             src_conf = os.path.join(self.get_install_dir(), 'resources', product, 'conf')
             dst_conf = os.path.join(self.get_path(), 'resources', product, 'conf')
+            if not os.path.isdir(src_conf):
+                continue
             if os.path.isdir(dst_conf):
                 common.rmdirs(dst_conf)
             shutil.copytree(src_conf, dst_conf)
