@@ -28,7 +28,7 @@ class Status():
     UNINITIALIZED = "UNINITIALIZED"
     UP = "UP"
     DOWN = "DOWN"
-    DECOMMISIONNED = "DECOMMISIONNED"
+    DECOMMISSIONED = "DECOMMISSIONED"
 
 class NodeError(Exception):
     def __init__(self, msg, process=None):
@@ -75,7 +75,7 @@ class Node(object):
           - storage_interface: the (host, port) tuple for internal cluster communication
           - jmx_port: the port for JMX to bind to
           - remote_debug_port: the port for remote debugging
-          - initial_token: the token for this node. If None, use Cassandra token auto-assigment
+          - initial_token: the token for this node. If None, use Cassandra token auto-assignment
           - save: copy all data useful for this node to the right position.  Leaving this true
             is almost always the right choice.
         """
@@ -267,11 +267,11 @@ class Node(object):
         Return true if the node is running
         """
         self.__update_status()
-        return self.status == Status.UP or self.status == Status.DECOMMISIONNED
+        return self.status == Status.UP or self.status == Status.DECOMMISSIONED
 
     def is_live(self):
         """
-        Return true if the node is live (it's run and is not decommissionned).
+        Return true if the node is live (it's run and is not decommissioned).
         """
         self.__update_status()
         return self.status == Status.UP
@@ -407,7 +407,7 @@ class Node(object):
     def watch_log_for_alive(self, nodes, from_mark=None, timeout=120):
         """
         Watch the log of this node until it detects that the provided other
-        nodes are marked UP. This method works similarily to watch_log_for_death.
+        nodes are marked UP. This method works similarly to watch_log_for_death.
         """
         tofind = nodes if isinstance(nodes, list) else [nodes]
         tofind = ["%s.* now UP" % node.address() for node in tofind]
@@ -977,7 +977,7 @@ class Node(object):
 
     def decommission(self):
         self.nodetool("decommission")
-        self.status = Status.DECOMMISIONNED
+        self.status = Status.DECOMMISSIONED
         self._update_config()
 
     def removeToken(self, token):
@@ -1218,7 +1218,7 @@ class Node(object):
 
     def __update_status(self):
         if self.pid is None:
-            if self.status == Status.UP or self.status == Status.DECOMMISIONNED:
+            if self.status == Status.UP or self.status == Status.DECOMMISSIONED:
                 self.status = Status.DOWN
             return
 
@@ -1233,11 +1233,11 @@ class Node(object):
             except OSError as err:
                 if err.errno == errno.ESRCH:
                     # not running
-                    if self.status == Status.UP or self.status == Status.DECOMMISIONNED:
+                    if self.status == Status.UP or self.status == Status.DECOMMISSIONED:
                         self.status = Status.DOWN
                 elif err.errno == errno.EPERM:
                     # no permission to signal this process
-                    if self.status == Status.UP or self.status == Status.DECOMMISIONNED:
+                    if self.status == Status.UP or self.status == Status.DECOMMISSIONED:
                         self.status = Status.DOWN
                 else:
                     # some other error
@@ -1392,7 +1392,7 @@ class Node(object):
                     datafile = os.path.join(os.getcwd(), datafile)
 
                 if not datafile.startswith(cf_dir + '-') and not datafile.startswith(cf_dir + os.sep):
-                    raise NodeError("File doesn't appear to belong to the specified keyspace and column familily: " + datafile)
+                    raise NodeError("File doesn't appear to belong to the specified keyspace and column family: " + datafile)
 
                 sstable = _sstable_regexp.match(os.path.basename(datafile))
                 if not sstable:
