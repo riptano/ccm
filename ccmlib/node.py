@@ -514,6 +514,7 @@ class Node(object):
 
         pidfile = os.path.join(self.get_path(), 'cassandra.pid')
         args = [launch_bin, '-p', pidfile, '-Dcassandra.join_ring=%s' % str(join_ring)]
+        args.append('-Dcassandra.logdir=%s' % os.path.join(self.get_path(), 'logs'))
         if replace_token is not None:
             args.append('-Dcassandra.replace_token=%s' % str(replace_token))
         if replace_address is not None:
@@ -1286,13 +1287,7 @@ class Node(object):
             common.replace_or_add_into_file_tail(conf_file, full_logger_pattern, full_logger_pattern + self.__classes_log_level[class_name])
 
     def __update_logback(self):
-        append_pattern = '<file>.*</file>'
         conf_file = os.path.join(self.get_conf_dir(), common.LOGBACK_CONF)
-        log_file = os.path.join(self.get_path(), 'logs', 'system.log')
-        common.replace_in_file(conf_file, append_pattern, '<file>' + log_file + '</file>')
-
-        append_pattern = '<fileNamePattern>.*</fileNamePattern>'
-        common.replace_in_file(conf_file, append_pattern, '<fileNamePattern>' + log_file + '.%i.zip</fileNamePattern>')
 
         self.__update_logback_loglevel(conf_file)
 
