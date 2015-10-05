@@ -1297,10 +1297,12 @@ class Node(object):
     def __update_logback_loglevel(self, conf_file):
         # Setting the right log level
 
-        # Replace the global log level
+        # Replace the global log level and org.apache.cassandra log level
         if self.__global_log_level is not None:
-            append_pattern = '<root level=".*">'
-            common.replace_in_file(conf_file, append_pattern, '<root level="' + self.__global_log_level + '">')
+            root_append_pattern = '<root level=".*">'
+            cassandra_append_pattern = '<logger name="org.apache.cassandra" level=".*"/>'
+            common.replace_in_file(conf_file, root_append_pattern, '<root level="' + self.__global_log_level + '">')
+            common.replace_in_file(conf_file, cassandra_append_pattern, '  <logger name="org.apache.cassandra" level="' + self.__global_log_level + '"/>')
 
         # Class specific log levels
         for class_name in self.__classes_log_level:
