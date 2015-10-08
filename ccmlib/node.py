@@ -920,7 +920,12 @@ class Node(object):
                 files.remove(f)
         return files
 
-    def stress(self, stress_options=[], **kwargs):
+    def stress(self, stress_options=None, **kwargs):
+        if stress_options is None:
+            stress_options = []
+        else:
+            stress_options = stress_options[:]
+
         stress = common.get_stress_bin(self.get_install_dir())
         if self.cluster.cassandra_version() <= '2.1':
             stress_options.append('-d')
