@@ -289,46 +289,47 @@ class Node(object):
         """
         return os.path.join(self.get_path(), 'logs', 'system.log')
 
-    def grep_log(self, expr):
+    def grep_log(self, expr, filename='system.log'):
         """
         Returns a list of lines matching the regular expression in parameter
         in the Cassandra log of this node
         """
         matchings = []
         pattern = re.compile(expr)
-        with open(self.logfilename()) as f:
+        with open(os.path.join(self.get_path(), 'logs', filename)) as f:
             for line in f:
                 m = pattern.search(line)
                 if m:
                     matchings.append((line, m))
         return matchings
 
-    def grep_log_for_errors(self):
+    def grep_log_for_errors(self, filename='system.log'):
         """
         Returns a list of errors with stack traces
         in the Cassandra log of this node
         """
-        with open(self.logfilename()) as f:
+        with open(os.path.join(self.get_path(), 'logs', filename)) as f:
             if hasattr(self, 'error_mark'):
                 f.seek(self.error_mark)
             return _grep_log_for_errors(f.read())
 
-    def mark_log_for_errors(self):
+    def mark_log_for_errors(self, filename='system.log'):
         """
         Ignore errors behind this point when calling
         node.grep_log_for_errors()
         """
-        self.error_mark = self.mark_log()
+        self.error_mark = self.mark_log(filename)
 
-    def mark_log(self):
+    def mark_log(self, filename='system.log'):
         """
         Returns "a mark" to the current position of this node Cassandra log.
         This is for use with the from_mark parameter of watch_log_for_* methods,
         allowing to watch the log from the position when this method was called.
         """
-        if not os.path.exists(self.logfilename()):
+        log_file = os.path.join(self.get_path(), 'logs', filename)
+        if not os.path.exists(log_file):
             return 0
-        with open(self.logfilename()) as f:
+        with open(log_file) as f:
             f.seek(0, os.SEEK_END)
             return f.tell()
 
@@ -341,7 +342,7 @@ class Node(object):
             print_("[%s ERROR] %s" % (name, stderr.strip()))
 
     # This will return when exprs are found or it timeouts
-    def watch_log_for(self, exprs, from_mark=None, timeout=600, process=None, verbose=False):
+    def watch_log_for(self, exprs, from_mark=None, timeout=600, process=None, verbose=False, filename='system.log'):
         """
         Watch the log until one or more (regular) expression are found.
         This methods when all the expressions have been found or the method
@@ -356,7 +357,8 @@ class Node(object):
         if len(tofind) == 0:
             return None
 
-        while not os.path.exists(self.logfilename()):
+        log_file = os.path.join(self.get_path(), 'logs', filename)
+        while not os.path.exists(log_file):
             time.sleep(.5)
             if process:
                 process.poll()
@@ -365,7 +367,7 @@ class Node(object):
                     if process.returncode != 0:
                         raise RuntimeError()  # Shouldn't reuse RuntimeError but I'm lazy
 
-        with open(self.logfilename()) as f:
+        with open(log_file) as f:
             if from_mark:
                 f.seek(from_mark)
 
@@ -406,7 +408,7 @@ class Node(object):
                         if process.returncode == 0:
                             return None
 
-    def watch_log_for_death(self, nodes, from_mark=None, timeout=600):
+    def watch_log_for_death(self, nodes, from_mark=None, timeout=600, filename='system.log'):
         """
         Watch the log of this node until it detects that the provided other
         nodes are marked dead. This method returns nothing but throw a
@@ -418,16 +420,16 @@ class Node(object):
         """
         tofind = nodes if isinstance(nodes, list) else [nodes]
         tofind = ["%s is now [dead|DOWN]" % node.address() for node in tofind]
-        self.watch_log_for(tofind, from_mark=from_mark, timeout=timeout)
+        self.watch_log_for(tofind, from_mark=from_mark, timeout=timeout, filename=filename)
 
-    def watch_log_for_alive(self, nodes, from_mark=None, timeout=120):
+    def watch_log_for_alive(self, nodes, from_mark=None, timeout=120, filename='system.log'):
         """
         Watch the log of this node until it detects that the provided other
         nodes are marked UP. This method works similarly to watch_log_for_death.
         """
         tofind = nodes if isinstance(nodes, list) else [nodes]
         tofind = ["%s.* now UP" % node.address() for node in tofind]
-        self.watch_log_for(tofind, from_mark=from_mark, timeout=timeout)
+        self.watch_log_for(tofind, from_mark=from_mark, timeout=timeout, filename=filename)
 
     def wait_for_binary_interface(self, **kwargs):
         """
