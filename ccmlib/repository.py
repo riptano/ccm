@@ -1,29 +1,30 @@
 # downloaded sources handling
 from __future__ import with_statement
 
-from six import print_
-
-from six.moves import urllib
+import json
 import os
+import re
 import shutil
-import subprocess
 import stat
+import subprocess
 import sys
 import tarfile
 import tempfile
 import time
-import json
-import re
 from distutils.version import LooseVersion
 
-from ccmlib.common import (ArgumentError, CCMError, get_default_path,
-                           platform_binary, validate_install_dir, rmdirs)
+from six import print_
 
-DSE_ARCHIVE="http://downloads.datastax.com/enterprise/dse-%s-bin.tar.gz"
-OPSC_ARCHIVE="http://downloads.datastax.com/community/opscenter-%s.tar.gz"
-ARCHIVE="http://archive.apache.org/dist/cassandra"
-GIT_REPO="http://git-wip-us.apache.org/repos/asf/cassandra.git"
-GITHUB_TAGS="https://api.github.com/repos/apache/cassandra/git/refs/tags"
+from ccmlib.common import (ArgumentError, CCMError, get_default_path,
+                           platform_binary, rmdirs, validate_install_dir)
+from six.moves import urllib
+
+DSE_ARCHIVE = "http://downloads.datastax.com/enterprise/dse-%s-bin.tar.gz"
+OPSC_ARCHIVE = "http://downloads.datastax.com/community/opscenter-%s.tar.gz"
+ARCHIVE = "http://archive.apache.org/dist/cassandra"
+GIT_REPO = "http://git-wip-us.apache.org/repos/asf/cassandra.git"
+GITHUB_TAGS = "https://api.github.com/repos/apache/cassandra/git/refs/tags"
+
 
 def setup(version, verbose=False):
     binary = False
@@ -31,15 +32,20 @@ def setup(version, verbose=False):
         clone_development(GIT_REPO, version, verbose=verbose)
         return (version_directory(version), None)
     elif version.startswith('binary:'):
-        version = version.replace('binary:','')
+        version = version.replace('binary:', '')
         binary = True
-    if version in ('stable','oldstable','testing'):
+    elif version.startswith('github:'):
+        user_name, _ = github_username_and_branch_name(version)
+        clone_development(github_repo_for_user(user_name), version, verbose=verbose)
+        return (directory_name(version), None)
+    if version in ('stable', 'oldstable', 'testing'):
         version = get_tagged_version_numbers(version)[0]
     cdir = version_directory(version)
     if cdir is None:
         download_version(version, verbose=verbose, binary=binary)
         cdir = version_directory(version)
     return (cdir, version)
+
 
 def setup_dse(version, username, password, verbose=False):
     cdir = version_directory(version)
@@ -48,28 +54,37 @@ def setup_dse(version, username, password, verbose=False):
         cdir = version_directory(version)
     return (cdir, version)
 
+
 def setup_opscenter(opscenter, verbose=False):
     ops_version = 'opsc' + opscenter
     odir = version_directory(ops_version)
     if odir is None:
-        download_opscenter_version(opscenter, ops_version, verbose = verbose)
+        download_opscenter_version(opscenter, ops_version, verbose=verbose)
         odir = version_directory(ops_version)
     return odir
+
 
 def validate(path):
     if path.startswith(__get_dir()):
         _, version = os.path.split(os.path.normpath(path))
         setup(version)
 
+
 def clone_development(git_repo, version, verbose=False):
-    local_git_cache = os.path.join(__get_dir(), '_git_cache')
-    target_dir = os.path.join(__get_dir(), version.replace(':', '_')) # handle git branches like 'git:trunk'.
-    git_branch = version[4:] # the part of the version after the 'git:'
-    logfile = os.path.join(__get_dir(), "last.log")
+    print_(git_repo, version)
+    target_dir = directory_name(version)
+    assert target_dir
+    if 'github' in version:
+        git_repo_name, git_branch = github_username_and_branch_name(version)
+    else:
+        git_repo_name = 'apache'
+        git_branch = version.split(':', 1)[1]
+    local_git_cache = os.path.join(__get_dir(), '_git_cache_' + git_repo_name)
+    logfile = lastlogfilename()
     with open(logfile, 'w') as lf:
         try:
-            #Checkout/fetch a local repository cache to reduce the number of
-            #remote fetches we need to perform:
+            # Checkout/fetch a local repository cache to reduce the number of
+            # remote fetches we need to perform:
             if not os.path.exists(local_git_cache):
                 if verbose:
                     print_("Cloning Cassandra...")
@@ -84,7 +99,7 @@ def clone_development(git_repo, version, verbose=False):
                     ['git', 'fetch', '-fup', 'origin', '+refs/*:refs/*'],
                     cwd=local_git_cache, stdout=lf, stderr=lf)
 
-            #Checkout the version we want from the local cache:
+            # Checkout the version we want from the local cache:
             if not os.path.exists(target_dir):
                 # development branch doesn't exist. Check it out.
                 if verbose:
@@ -99,14 +114,23 @@ def clone_development(git_repo, version, verbose=False):
                     subprocess.call(['git', 'clone', local_git_cache, target_dir], cwd=__get_dir(), stdout=lf, stderr=lf)
 
                 # now check out the right version
+                # we use checkout -B with --track so we can specify that we want to track a specific branch
+                # otherwise, you get errors on branch names that are also valid SHAs or SHA shortcuts, like 10360
+                # we use -B instead of -b so we reset branches that already exist and create a new one otherwise
                 if verbose:
                     print_("Checking out requested branch (%s)" % git_branch)
-                out = subprocess.call(['git', 'checkout', git_branch], cwd=target_dir, stdout=lf, stderr=lf)
+                out = subprocess.call(['git', 'checkout', '-B', git_branch,
+                                       '--track', 'origin/{git_branch}'.format(git_branch=git_branch)],
+                                      cwd=target_dir, stdout=lf, stderr=lf)
                 if int(out) != 0:
-                    raise CCMError("Could not check out git branch %s. Is this a valid branch name? (see last.log for details)" % git_branch)
+                    raise CCMError('Could not check out git branch {branch}. '
+                                   'Is this a valid branch name? (see {lastlog} or run '
+                                   '"ccm showlastlog" for details)'.format(
+                                       branch=git_branch, lastlog=logfile
+                                   ))
                 # now compile
                 compile_version(git_branch, target_dir, verbose)
-            else: # branch is already checked out. See if it is behind and recompile if needed.
+            else:  # branch is already checked out. See if it is behind and recompile if needed.
                 out = subprocess.call(['git', 'fetch', 'origin'], cwd=target_dir, stdout=lf, stderr=lf)
                 assert out == 0, "Could not do a git fetch"
                 status = subprocess.Popen(['git', 'status', '-sb'], cwd=target_dir, stdout=subprocess.PIPE, stderr=lf).communicate()[0]
@@ -128,6 +152,7 @@ def clone_development(git_repo, version, verbose=False):
             except:
                 raise CCMError("Building C* version %s failed. Attempted to delete %s but failed. This will need to be manually deleted" % (version, target_dir))
             raise
+
 
 def download_dse_version(version, username, password, verbose=False):
     url = DSE_ARCHIVE % version
@@ -151,6 +176,7 @@ def download_dse_version(version, username, password, verbose=False):
     except tarfile.ReadError as e:
         raise ArgumentError("Unable to uncompress downloaded file: %s" % str(e))
 
+
 def download_opscenter_version(version, target_version, verbose=False):
     url = OPSC_ARCHIVE % version
     _, target = tempfile.mkstemp(suffix=".tar.gz", prefix="ccm-")
@@ -172,6 +198,7 @@ def download_opscenter_version(version, target_version, verbose=False):
         raise ArgumentError(msg)
     except tarfile.ReadError as e:
         raise ArgumentError("Unable to uncompress downloaded file: %s" % str(e))
+
 
 def download_version(version, url=None, verbose=False, binary=False):
     """Download, extract, and build Cassandra tarball.
@@ -220,9 +247,10 @@ def download_version(version, url=None, verbose=False, binary=False):
             raise CCMError("Building C* version %s failed. Attempted to delete %s but failed. This will need to be manually deleted" % (version, target_dir))
         raise e
 
+
 def compile_version(version, target_dir, verbose=False):
     # compiling cassandra and the stress tool
-    logfile = os.path.join(__get_dir(), "last.log")
+    logfile = lastlogfilename()
     if verbose:
         print_("Compiling Cassandra %s ..." % version)
     with open(logfile, 'w') as lf:
@@ -235,20 +263,21 @@ def compile_version(version, target_dir, verbose=False):
             while attempt < 3 and ret_val is not 0:
                 if attempt > 0:
                     lf.write("\n\n`ant jar` failed. Retry #%s...\n\n" % attempt)
-                ret_val = subprocess.call([platform_binary('ant'),'jar'], cwd=target_dir, stdout=lf, stderr=lf)
+                ret_val = subprocess.call([platform_binary('ant'), 'jar'], cwd=target_dir, stdout=lf, stderr=lf)
                 attempt += 1
             if ret_val is not 0:
-                raise CCMError("Error compiling Cassandra. See %s for details" % logfile)
+                raise CCMError('Error compiling Cassandra. See {logfile} or run '
+                               '"ccm showlastlog" for details'.format(logfile=logfile))
         except OSError as e:
             raise CCMError("Error compiling Cassandra. Is ant installed? See %s for details" % logfile)
 
         lf.write("\n\n--- cassandra/stress build ------------\n")
         stress_dir = os.path.join(target_dir, "tools", "stress") if (
-                version >= "0.8.0") else \
-                os.path.join(target_dir, "contrib", "stress")
+            version >= "0.8.0") else \
+            os.path.join(target_dir, "contrib", "stress")
 
         build_xml = os.path.join(stress_dir, 'build.xml')
-        if os.path.exists(build_xml): # building stress separately is only necessary pre-1.1
+        if os.path.exists(build_xml):  # building stress separately is only necessary pre-1.1
             try:
                 # set permissions correctly, seems to not always be the case
                 stress_bin_dir = os.path.join(stress_dir, 'bin')
@@ -259,15 +288,30 @@ def compile_version(version, target_dir, verbose=False):
                 if subprocess.call([platform_binary('ant'), 'build'], cwd=stress_dir, stdout=lf, stderr=lf) is not 0:
                     if subprocess.call([platform_binary('ant'), 'stress-build'], cwd=target_dir, stdout=lf, stderr=lf) is not 0:
                         raise CCMError("Error compiling Cassandra stress tool.  "
-                                "See %s for details (you will still be able to use ccm "
-                                "but not the stress related commands)" % logfile)
+                                       "See %s for details (you will still be able to use ccm "
+                                       "but not the stress related commands)" % logfile)
             except IOError as e:
                 raise CCMError("Error compiling Cassandra stress tool: %s (you will "
-                "still be able to use ccm but not the stress related commands)" % str(e))
+                               "still be able to use ccm but not the stress related commands)" % str(e))
+
+
+def directory_name(version):
+    version = version.replace(':', 'COLON')  # handle git branches like 'git:trunk'.
+    version = version.replace('/', 'SLASH')  # handle git branches like 'github:mambocab/trunk'.
+    return os.path.join(__get_dir(), version)
+
+
+def github_username_and_branch_name(version):
+    assert version.startswith('github')
+    return version.split(':', 1)[1].split('/', 1)
+
+
+def github_repo_for_user(username):
+    return 'git@github.com:{username}/cassandra.git'.format(username=username)
+
 
 def version_directory(version):
-    version = version.replace(':', '_') # handle git branches like 'git:trunk'.
-    dir = os.path.join(__get_dir(), version)
+    dir = directory_name(version)
     if os.path.exists(dir):
         try:
             validate_install_dir(dir)
@@ -278,8 +322,10 @@ def version_directory(version):
     else:
         return None
 
+
 def clean_all():
     rmdirs(__get_dir())
+
 
 def get_tagged_version_numbers(series='stable'):
     """Retrieve git tags and find version numbers for a release series
@@ -294,7 +340,7 @@ def get_tagged_version_numbers(series='stable'):
         tag_regex = re.compile('^refs/tags/cassandra-([0-9]+\.[0-9]+\.[0-9]+$)')
 
     r = urllib.request.urlopen(GITHUB_TAGS)
-    for ref in (i.get('ref','') for i in json.loads(r.read())) :
+    for ref in (i.get('ref', '') for i in json.loads(r.read())):
         m = tag_regex.match(ref)
         if m:
             releases.append(LooseVersion(m.groups()[0]))
@@ -316,6 +362,7 @@ def get_tagged_version_numbers(series='stable'):
         return [r.vstring for r in oldstable_releases]
     else:
         raise AssertionError("unknown release series: {series}".format(series=series))
+
 
 def __download(url, target, username=None, password=None, show_progress=False):
     if username is not None:
@@ -343,7 +390,7 @@ def __download(url, target, username=None, password=None, show_progress=False):
             if attempts >= 5:
                 raise CCMError("Error downloading file (nothing read after %i attempts, downloded only %i of %i bytes)" % (attempts, file_size_dl, file_size))
             time.sleep(0.5 * attempts)
-            continue;
+            continue
         else:
             attempts = 0
 
@@ -351,7 +398,7 @@ def __download(url, target, username=None, password=None, show_progress=False):
         f.write(buffer)
         if show_progress:
             status = r"%10d  [%3.2f%%]" % (file_size_dl, file_size_dl * 100. / file_size)
-            status = chr(8)*(len(status)+1) + status
+            status = chr(8) * (len(status) + 1) + status
             print_(status, end='')
 
     if show_progress:
@@ -359,8 +406,13 @@ def __download(url, target, username=None, password=None, show_progress=False):
     f.close()
     u.close()
 
+
 def __get_dir():
     repo = os.path.join(get_default_path(), 'repository')
     if not os.path.exists(repo):
         os.mkdir(repo)
     return repo
+
+
+def lastlogfilename():
+    return os.path.join(__get_dir(), "last.log")

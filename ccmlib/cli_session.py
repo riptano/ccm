@@ -1,5 +1,6 @@
 import sys
-from threading  import Thread
+from threading import Thread
+
 try:
     from Queue import Queue, Empty
 except ImportError:
@@ -7,14 +8,16 @@ except ImportError:
 
 ON_POSIX = 'posix' in sys.builtin_module_names
 
+
 class CliSession():
+
     def __init__(self, process):
         self.process = process
         self.stdout = Queue()
         self.stderr = Queue()
         self.thread_out = Thread(target=self.__enqueue_output, args=(process.stdout, self.stdout))
         self.thread_err = Thread(target=self.__enqueue_output, args=(process.stderr, self.stderr))
-        for t in [ self.thread_out, self.thread_err ]:
+        for t in [self.thread_out, self.thread_err]:
             t.daemon = True
             t.start()
         self.__outputs = []
@@ -45,7 +48,7 @@ class CliSession():
     def has_errors(self):
         self.__read_errors()
         for err in self.__errors:
-            if 'WARNING' not in err and err != '': 
+            if 'WARNING' not in err and err != '':
                 return True
         return False
 

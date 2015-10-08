@@ -1,19 +1,20 @@
 # ccm node
 from __future__ import with_statement
 
-from six import print_
-
 import os
+import re
 import shutil
+import signal
 import stat
 import subprocess
 import time
-import yaml
-import signal
 
-from ccmlib.node import Node
-from ccmlib.node import NodeError
+from six import print_
+
+import yaml
 from ccmlib import common
+from ccmlib.node import Node, NodeError
+
 
 class DseNode(Node):
     """
@@ -87,8 +88,7 @@ class DseNode(Node):
                 common.check_socket_available(itf)
 
         if wait_other_notice:
-            marks = [ (node, node.mark_log()) for node in list(self.cluster.nodes.values()) if node.is_running() ]
-
+            marks = [(node, node.mark_log()) for node in list(self.cluster.nodes.values()) if node.is_running()]
 
         cdir = self.get_install_dir()
         launch_bin = common.join_bin(cdir, 'bin', 'dse')
@@ -103,13 +103,13 @@ class DseNode(Node):
         if profile_options is not None:
             config = common.get_config()
             if not 'yourkit_agent' in config:
-                raise NodeError("Cannot enable profile. You need to set 'yourkit_agent' to the path of your agent in a ~/.ccm/config")
+                raise NodeError("Cannot enable profile. You need to set 'yourkit_agent' to the path of your agent in a {0}/config".format(common.get_default_path_display_name()))
             cmd = '-agentpath:%s' % config['yourkit_agent']
             if 'options' in profile_options:
                 cmd = cmd + '=' + profile_options['options']
             print_(cmd)
             # Yes, it's fragile as shit
-            pattern=r'cassandra_parms="-Dlog4j.configuration=log4j-server.properties -Dlog4j.defaultInitOverride=true'
+            pattern = r'cassandra_parms="-Dlog4j.configuration=log4j-server.properties -Dlog4j.defaultInitOverride=true'
             common.replace_in_file(launch_bin, pattern, '    ' + pattern + ' ' + cmd + '"')
 
         os.chmod(launch_bin, os.stat(launch_bin).st_mode | stat.S_IEXEC)
@@ -117,7 +117,7 @@ class DseNode(Node):
         env = common.make_dse_env(self.get_install_dir(), self.get_path())
 
         if common.is_win():
-            self._clean_win_jmx();
+            self._clean_win_jmx()
 
         pidfile = os.path.join(self.get_path(), 'cassandra.pid')
         args = [launch_bin, 'cassandra']
@@ -131,7 +131,7 @@ class DseNode(Node):
                 args.append('-k')
             if 'cfs' in self.workload:
                 args.append('-c')
-        args += [ '-p', pidfile, '-Dcassandra.join_ring=%s' % str(join_ring) ]
+        args += ['-p', pidfile, '-Dcassandra.join_ring=%s' % str(join_ring)]
         if replace_token is not None:
             args.append('-Dcassandra.replace_token=%s' % str(replace_token))
         if replace_address is not None:
@@ -156,7 +156,7 @@ class DseNode(Node):
             self._update_pid(process)
         elif update_pid:
             if no_wait:
-                time.sleep(2) # waiting 2 seconds nevertheless to check for early errors and for the pid to be set
+                time.sleep(2)  # waiting 2 seconds nevertheless to check for early errors and for the pid to be set
             else:
                 for line in process.stdout:
                     if verbose:
@@ -172,10 +172,7 @@ class DseNode(Node):
                 node.watch_log_for_alive(self, from_mark=mark)
 
         if wait_for_binary_proto:
-            self.watch_log_for("Starting listening for CQL clients")
-            # we're probably fine at that point but just wait some tiny bit more because
-            # the msg is logged just before starting the binary protocol server
-            time.sleep(0.2)
+            self.wait_for_binary_interface()
 
         if self.cluster.hasOpscenter():
             self._start_agent()
@@ -262,6 +259,8 @@ class DseNode(Node):
         for product in ['dse', 'cassandra', 'hadoop', 'sqoop', 'hive', 'tomcat', 'spark', 'shark', 'mahout', 'pig', 'solr']:
             src_conf = os.path.join(self.get_install_dir(), 'resources', product, 'conf')
             dst_conf = os.path.join(self.get_path(), 'resources', product, 'conf')
+            if not os.path.isdir(src_conf):
+                continue
             if os.path.isdir(dst_conf):
                 common.rmdirs(dst_conf)
             shutil.copytree(src_conf, dst_conf)
@@ -297,21 +296,15 @@ class DseNode(Node):
 
         full_options = dict(list(self.cluster._dse_config_options.items()))
         for name in full_options:
-            if not name is 'dse_yaml_file':
-                value = full_options[name]
-                if value is None:
-                    try:
-                        del data[name]
-                    except KeyError:
-                        # it is fine to remove a key not there:w
-                        pass
-                else:
-                    data[name] = full_options[name]
-
-        if 'dse_yaml_file' in full_options:
-            with open(full_options['dse_yaml_file'], 'r') as f:
-                user_yaml = yaml.load(f)
-                data = common.yaml_merge(data, user_yaml)
+            value = full_options[name]
+            if isinstance(value, str) and (value is None or len(value) == 0):
+                try:
+                    del data[name]
+                except KeyError:
+                    # it is fine to remove a key not there
+                    pass
+            else:
+                data[name] = full_options[name]
 
         with open(conf_file, 'w') as f:
             yaml.safe_dump(data, f, default_flow_style=False)
@@ -357,9 +350,9 @@ class DseNode(Node):
             f.close()
 
     def _get_directories(self):
-        dirs = {}
-        for i in ['data', 'commitlogs', 'saved_caches', 'logs', 'bin', 'keys', 'resources']:
-            dirs[i] = os.path.join(self.get_path(), i)
+        dirs = []
+        for i in ['data', 'commitlogs', 'saved_caches', 'logs', 'bin', 'keys', 'resources', os.path.join('data', 'hints')]:
+            dirs.append(os.path.join(self.get_path(), i))
         return dirs
 
     def _copy_agent(self):

@@ -1,16 +1,18 @@
 # ccm clusters
 import os
 import shutil
-import subprocess
 import signal
+import subprocess
 
 from six import iteritems
-from ccmlib import repository
+
+from ccmlib import common, repository
 from ccmlib.cluster import Cluster
 from ccmlib.dse_node import DseNode
-from ccmlib import common
+
 
 class DseCluster(Cluster):
+
     def __init__(self, path, name, partitioner=None, install_dir=None, create_directory=True, version=None, dse_username=None, dse_password=None, opscenter=None, verbose=False):
         self.dse_username = dse_username
         self.dse_password = dse_password

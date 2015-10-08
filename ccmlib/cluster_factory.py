@@ -1,14 +1,14 @@
 import os
-import yaml
 
-from ccmlib import common
+import yaml
+from ccmlib import common, repository
 from ccmlib.cluster import Cluster
 from ccmlib.dse_cluster import DseCluster
-from ccmlib import repository
 from ccmlib.node import Node
 
 
 class ClusterFactory():
+
     @staticmethod
     def load(path, name):
         cluster_path = os.path.join(path, name)
@@ -47,5 +47,3 @@ class ClusterFactory():
             cluster.seeds.append(cluster.nodes[seed_name])
 
         return cluster
-
-
