@@ -113,10 +113,32 @@ def clone_development(git_repo, version, verbose=False):
                 else:
                     subprocess.call(['git', 'clone', local_git_cache, target_dir], cwd=__get_dir(), stdout=lf, stderr=lf)
 
+                # determine if the request is for a branch
+                is_branch = False
+                try:
+                    branch_listing = subprocess.check_output(['git', 'branch', '--all'], cwd=target_dir)
+                    branch_listing = branch_listing.replace('remotes/origin/', '')
+                    for branch in branch_listing.splitlines(True):
+                        if git_branch == branch.strip():
+                            is_branch = True
+                except subprocess.CalledProcessError, cpe:
+                        print_("Error Running Branch Filter: %s\nAssumming request is not for a branch" % cpe.output)
+
                 # now check out the right version
                 if verbose:
-                    print_("Checking out requested branch (%s)" % git_branch)
-                out = subprocess.call(['git', 'checkout', git_branch], cwd=target_dir, stdout=lf, stderr=lf)
+                    branch_or_sha_tag = 'SHA/tag'
+                    if is_branch:
+                        branch_or_sha_tag = 'branch'
+                    print_("Checking out requested %s (%s)" % (branch_or_sha_tag, git_branch))
+                if is_branch:
+                    # we use checkout -B with --track so we can specify that we want to track a specific branch
+                    # otherwise, you get errors on branch names that are also valid SHAs or SHA shortcuts, like 10360
+                    # we use -B instead of -b so we reset branches that already exist and create a new one otherwise
+                    out = subprocess.call(['git', 'checkout', '-B', git_branch,
+                                           '--track', 'origin/{git_branch}'.format(git_branch=git_branch)],
+                                           cwd=target_dir, stdout=lf, stderr=lf)
+                else:
+                    out = subprocess.call(['git', 'checkout', git_branch], cwd=target_dir, stdout=lf, stderr=lf)
                 if int(out) != 0:
                     raise CCMError('Could not check out git branch {branch}. '
                                    'Is this a valid branch name? (see {lastlog} or run '
