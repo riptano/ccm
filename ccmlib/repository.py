@@ -116,20 +116,16 @@ def clone_development(git_repo, version, verbose=False):
                 # determine if the request is for a branch
                 is_branch = False
                 try:
-                    branch_listing = subprocess.check_output(['git', 'branch', '--all'], cwd=target_dir)
-                    branch_listing = branch_listing.replace('remotes/origin/', '')
-                    for branch in branch_listing.splitlines(True):
-                        if git_branch == branch.strip():
-                            is_branch = True
-                except subprocess.CalledProcessError, cpe:
-                        print_("Error Running Branch Filter: %s\nAssumming request is not for a branch" % cpe.output)
+                    branch_listing = subprocess.check_output(['git', 'branch', '--all'], cwd=target_dir).decode('utf-8')
+                    branches = [b.strip() for b in branch_listing.replace('remotes/origin/', '').split()]
+                    is_branch = git_branch in branches
+                except subprocess.CalledProcessError as cpe:
+                        print_("Error Running Branch Filter: {}\nAssumming request is not for a branch".format(cpe.output))
 
                 # now check out the right version
                 if verbose:
-                    branch_or_sha_tag = 'SHA/tag'
-                    if is_branch:
-                        branch_or_sha_tag = 'branch'
-                    print_("Checking out requested %s (%s)" % (branch_or_sha_tag, git_branch))
+                    branch_or_sha_tag = 'branch' if is_branch else 'SHA/tag'
+                    print_("Checking out requested {} ({})".format(branch_or_sha_tag, git_branch))
                 if is_branch:
                     # we use checkout -B with --track so we can specify that we want to track a specific branch
                     # otherwise, you get errors on branch names that are also valid SHAs or SHA shortcuts, like 10360
