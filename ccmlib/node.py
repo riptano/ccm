@@ -1176,7 +1176,8 @@ class Node(object):
                                self.get_path() + "/dirty_pid.tmp\"\n")
 
         # On Windows, remove the VerifyPorts check from cassandra.ps1
-        common.replace_in_file(os.path.join(self.get_path(), 'bin', 'cassandra.ps1'), '        VerifyPortsAreAvailable', '')
+        if self.cluster.version() >= '2.1':
+            common.replace_in_file(os.path.join(self.get_path(), 'bin', 'cassandra.ps1'), '        VerifyPortsAreAvailable', '')
 
         # Specifically call the .ps1 file in our node's folder
         common.replace_in_file(bat_file, 'powershell /file .*', 'powershell /file "' + os.path.join(self.get_path(), 'bin', 'cassandra.ps1" %*'))
