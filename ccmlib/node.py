@@ -523,7 +523,7 @@ class Node(object):
             args.append('-Dcassandra.replace_address=%s' % str(replace_address))
         if use_jna is False:
             args.append('-Dcassandra.boot_without_jna=true')
-        env['JVM_EXTRA_OPTS'] = env.get('JVM_EXTRA_OPTS', "") + " ".join(jvm_args)
+        env['JVM_EXTRA_OPTS'] = env.get('JVM_EXTRA_OPTS', "") + " " + " ".join(jvm_args)
 
         # In case we are restarting a node
         # we risk reading the old cassandra.pid file
