@@ -638,6 +638,8 @@ class Node(object):
         if capture_output is also False. wait=False allows us to return
         while nodetool is still running.
         """
+        if capture_output and not wait:
+            raise common.ArgumentError("Cannot set capture_output while wait is False.")
         env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
         nodetool = self.get_tool('nodetool')
         args = [nodetool, '-h', 'localhost', '-p', str(self.jmx_port)]
