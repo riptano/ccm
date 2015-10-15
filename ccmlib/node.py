@@ -534,15 +534,22 @@ class Node(object):
 
         process = None
         FNULL = open(os.devnull, 'w')
+        stdout_sink = subprocess.PIPE if verbose else FNULL
         if common.is_win():
             # clean up any old dirty_pid files from prior runs
             if (os.path.isfile(self.get_path() + "/dirty_pid.tmp")):
                 os.remove(self.get_path() + "/dirty_pid.tmp")
-            process = subprocess.Popen(args, cwd=self.get_bin_dir(), env=env, stdout=FNULL, stderr=subprocess.PIPE)
+            process = subprocess.Popen(args, cwd=self.get_bin_dir(), env=env, stdout=stdout_sink, stderr=subprocess.PIPE)
         else:
-            process = subprocess.Popen(args, env=env, stdout=FNULL, stderr=subprocess.PIPE)
+            process = subprocess.Popen(args, env=env, stdout=stdout_sink, stderr=subprocess.PIPE)
         # Our modified batch file writes a dirty output with more than just the pid - clean it to get in parity
         # with *nix operation here.
+
+        if verbose:
+            stdout, stderr = process.communicate()
+            print stdout
+            print stderr
+
         if common.is_win():
             self.__clean_win_pid()
             self._update_pid(process)
