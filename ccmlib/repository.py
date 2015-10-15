@@ -15,7 +15,7 @@ from distutils.version import LooseVersion
 
 from six import print_
 
-from common import get_jdk_version, get_version_from_build
+from common import assert_jdk_valid_for_cassandra_version, get_version_from_build
 from ccmlib.common import (ArgumentError, CCMError, get_default_path,
                            platform_binary, rmdirs, validate_install_dir)
 from six.moves import urllib
@@ -219,6 +219,8 @@ def download_version(version, url=None, verbose=False, binary=False):
 
     if binary == True, download precompiled tarball, otherwise build from source tarball.
     """
+    assert_jdk_valid_for_cassandra_version(version)
+
     if binary:
         u = "%s/%s/apache-cassandra-%s-bin.tar.gz" % (ARCHIVE, version.split('-')[0], version) if url is None else url
     else:
@@ -263,9 +265,7 @@ def download_version(version, url=None, verbose=False, binary=False):
 
 
 def compile_version(version, target_dir, verbose=False):
-    if get_version_from_build(target_dir) >= '3.0' and get_jdk_version() < '1.8':
-        print_('ERROR: Cassandra 3.0+ requires Java >= 1.8, found Java {}'.format(get_jdk_version()))
-        exit(1)
+    assert_jdk_valid_for_cassandra_version(get_version_from_build(target_dir))
 
     # compiling cassandra and the stress tool
     logfile = lastlogfilename()

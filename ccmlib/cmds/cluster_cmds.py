@@ -129,9 +129,7 @@ class ClusterCreateCmd(Cmd):
                 parser.print_help()
                 parser.error("%s is not a valid cassandra directory. You must define a cassandra dir or version." % options.install_dir)
 
-            if common.get_version_from_build(options.install_dir) >= '3.0' and common.get_jdk_version() < '1.8':
-                print_('Cassandra 3.0+ requires Java >= 1.8, found Java {}'.format(common.get_jdk_version()))
-                exit(1)
+            common.assert_jdk_valid_for_cassandra_version(common.get_version_from_build(options.install_dir))
 
     def run(self):
         try:
