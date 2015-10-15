@@ -569,3 +569,9 @@ def is_dse_cluster(path):
 
 def invalidate_cache():
     rmdirs(os.path.join(get_default_path(), 'repository'))
+
+
+def get_jdk_version():
+    version = subprocess.check_output(['java', '-version'], stderr=subprocess.STDOUT)
+    ver_pattern = '\"(\d+\.\d+).*\"'
+    return re.search(ver_pattern, version).groups()[0]

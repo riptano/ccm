@@ -264,6 +264,10 @@ class Cluster(object):
                 node.show(only_status=True)
 
     def start(self, no_wait=False, verbose=False, wait_for_binary_proto=False, wait_other_notice=False, jvm_args=[], profile_options=None):
+        if self.cassandra_version() >= '3.0' and common.get_jdk_version() < '1.8':
+            print_('Cassandra 3.0+ requires Java >= 1.8, found Java {}'.format(common.get_jdk_version()))
+            exit(1)
+
         if wait_other_notice:
             marks = [(node, node.mark_log()) for node in list(self.nodes.values())]
 
