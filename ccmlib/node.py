@@ -635,7 +635,14 @@ class Node(object):
                 break
             time.sleep(10)
 
-    def nodetool(self, cmd, capture_output=True):
+    def nodetool(self, cmd, capture_output=True, wait=True):
+        """
+        Setting wait=False makes it impossible to detect errors,
+        if capture_output is also False. wait=False allows us to return
+        while nodetool is still running.
+        """
+        if capture_output and not wait:
+            raise common.ArgumentError("Cannot set capture_output while wait is False.")
         env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
         nodetool = self.get_tool('nodetool')
         args = [nodetool, '-h', 'localhost', '-p', str(self.jmx_port)]
@@ -647,9 +654,10 @@ class Node(object):
             p = subprocess.Popen(args, env=env)
             stdout, stderr = None, None
 
-        exit_status = p.wait()
-        if exit_status != 0:
-            raise NodetoolError(" ".join(args), exit_status, stdout, stderr)
+        if wait:
+            exit_status = p.wait()
+            if exit_status != 0:
+                raise NodetoolError(" ".join(args), exit_status, stdout, stderr)
 
         return stdout, stderr
 
@@ -1173,7 +1181,8 @@ class Node(object):
                                self.get_path() + "/dirty_pid.tmp\"\n")
 
         # On Windows, remove the VerifyPorts check from cassandra.ps1
-        common.replace_in_file(os.path.join(self.get_path(), 'bin', 'cassandra.ps1'), '        VerifyPortsAreAvailable', '')
+        if self.cluster.version() >= '2.1':
+            common.replace_in_file(os.path.join(self.get_path(), 'bin', 'cassandra.ps1'), '        VerifyPortsAreAvailable', '')
 
         # Specifically call the .ps1 file in our node's folder
         common.replace_in_file(bat_file, 'powershell /file .*', 'powershell /file "' + os.path.join(self.get_path(), 'bin', 'cassandra.ps1" %*'))
