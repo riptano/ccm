@@ -538,11 +538,17 @@ class Node(object):
             # clean up any old dirty_pid files from prior runs
             if (os.path.isfile(self.get_path() + "/dirty_pid.tmp")):
                 os.remove(self.get_path() + "/dirty_pid.tmp")
-            process = subprocess.Popen(args, cwd=self.get_bin_dir(), env=env, stdout=FNULL, stderr=subprocess.PIPE)
+            process = subprocess.Popen(args, cwd=self.get_bin_dir(), env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         else:
-            process = subprocess.Popen(args, env=env, stdout=FNULL, stderr=subprocess.PIPE)
+            process = subprocess.Popen(args, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         # Our modified batch file writes a dirty output with more than just the pid - clean it to get in parity
         # with *nix operation here.
+
+        stdout, stderr = process.communicate()
+        if os.environ.get("CCM_DEBUG", "false").lower() == "true":
+            print stdout
+            print stderr
+
         if common.is_win():
             self.__clean_win_pid()
             self._update_pid(process)
