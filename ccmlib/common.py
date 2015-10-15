@@ -569,3 +569,15 @@ def is_dse_cluster(path):
 
 def invalidate_cache():
     rmdirs(os.path.join(get_default_path(), 'repository'))
+
+
+def get_jdk_version():
+    version = subprocess.check_output(['java', '-version'], stderr=subprocess.STDOUT)
+    ver_pattern = '\"(\d+\.\d+).*\"'
+    return re.search(ver_pattern, version).groups()[0]
+
+
+def assert_jdk_valid_for_cassandra_version(cassandra_version):
+    if cassandra_version >= '3.0' and get_jdk_version() < '1.8':
+        print_('ERROR: Cassandra 3.0+ requires Java >= 1.8, found Java {}'.format(get_jdk_version()))
+        exit(1)

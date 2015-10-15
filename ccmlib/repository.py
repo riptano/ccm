@@ -15,6 +15,7 @@ from distutils.version import LooseVersion
 
 from six import print_
 
+from common import assert_jdk_valid_for_cassandra_version, get_version_from_build
 from ccmlib.common import (ArgumentError, CCMError, get_default_path,
                            platform_binary, rmdirs, validate_install_dir)
 from six.moves import urllib
@@ -220,6 +221,8 @@ def download_version(version, url=None, verbose=False, binary=False):
 
     if binary == True, download precompiled tarball, otherwise build from source tarball.
     """
+    assert_jdk_valid_for_cassandra_version(version)
+
     if binary:
         u = "%s/%s/apache-cassandra-%s-bin.tar.gz" % (ARCHIVE, version.split('-')[0], version) if url is None else url
     else:
@@ -264,6 +267,8 @@ def download_version(version, url=None, verbose=False, binary=False):
 
 
 def compile_version(version, target_dir, verbose=False):
+    assert_jdk_valid_for_cassandra_version(get_version_from_build(target_dir))
+
     # compiling cassandra and the stress tool
     logfile = lastlogfilename()
     if verbose:
