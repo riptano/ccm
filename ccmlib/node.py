@@ -289,6 +289,9 @@ class Node(object):
         """
         return os.path.join(self.get_path(), 'logs', 'system.log')
 
+    def debuglogfilename(self):
+        return os.path.join(self.get_path(), 'logs', 'debug.log')
+
     def grep_log(self, expr, filename='system.log'):
         """
         Returns a list of lines matching the regular expression in parameter
