@@ -274,7 +274,7 @@ class Cluster(object):
                 if os.path.exists(node.logfilename()):
                     mark = node.mark_log()
 
-                p = node.start(update_pid=False, jvm_args=jvm_args, profile_options=profile_options)
+                p = node.start(update_pid=False, jvm_args=jvm_args, profile_options=profile_options, verbose=verbose)
                 started.append((node, p, mark))
 
         if no_wait and not verbose:
