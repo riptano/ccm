@@ -1321,14 +1321,32 @@ class Node(object):
         self.__update_logback_loglevel(tools_conf_file)
 
     def __update_logback_loglevel(self, conf_file):
-        # Setting the right log level
+        # Setting the right log level - 2.2.2 introduced new debug log
+        if self.get_cassandra_version() >= '2.2.2' and self.__global_log_level:
+            if self.__global_log_level in ['DEBUG', 'TRACE']:
+                root_log_level = self.__global_log_level
+                cassandra_log_level = self.__global_log_level
+            elif self.__global_log_level == 'INFO':
+                root_log_level = self.__global_log_level
+                cassandra_log_level = 'DEBUG'
+            elif self.__global_log_level in ['WARN', 'ERROR']:
+                root_log_level = 'INFO'
+                cassandra_log_level = 'DEBUG'
+                system_log_filter_pattern = '<level>.*</level>'
+                common.replace_in_file(conf_file, system_log_filter_pattern, '      <level>' + self.__global_log_level + '</level>')
+            elif self.__global_log_level == 'OFF':
+                root_log_level = self.__global_log_level
+                cassandra_log_level = self.__global_log_level
+
+            cassandra_append_pattern = '<logger name="org.apache.cassandra" level=".*"/>'
+            common.replace_in_file(conf_file, cassandra_append_pattern, '  <logger name="org.apache.cassandra" level="' + cassandra_log_level + '"/>')
+        else:
+            root_log_level = self.__global_log_level
 
         # Replace the global log level and org.apache.cassandra log level
         if self.__global_log_level is not None:
             root_append_pattern = '<root level=".*">'
-            cassandra_append_pattern = '<logger name="org.apache.cassandra" level=".*"/>'
-            common.replace_in_file(conf_file, root_append_pattern, '<root level="' + self.__global_log_level + '">')
-            common.replace_in_file(conf_file, cassandra_append_pattern, '  <logger name="org.apache.cassandra" level="' + self.__global_log_level + '"/>')
+            common.replace_in_file(conf_file, root_append_pattern, '<root level="' + root_log_level + '">')
 
         # Class specific log levels
         for class_name in self.__classes_log_level:
