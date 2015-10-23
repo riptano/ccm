@@ -92,8 +92,8 @@ tell ccm how to find the sources:
 
           ccm create test -v 2.0.5
 
-     ccm will download the source (from http://archive.apache.org/dist/cassandra),
-     compile it, and set the new cluster to use it. This means
+     ccm will download the binary (from http://archive.apache.org/dist/cassandra),
+     and set the new cluster to use it. This means
      that this command can take a few minutes the first time you
      create a cluster for a given version. ccm saves the compiled
      source in `~/.ccm/repository/`, so creating a cluster for that
@@ -155,13 +155,17 @@ The list of other provided commands is available through
 Each command is then documented through the `-h` (or `--help`) flag. For
 instance `ccm add -h` describes the options for `ccm add`.
 
-### Binary Distribution
+### Source Distribution
 
-If you'd like to use a binary distribution instead of compiling from sources each time (for example, for Continuous Integration), you can prefix cassandra version with `binary:`, for example:
+If you'd like to use a source distribution instead of the default binary each time (for example, for Continuous Integration), you can prefix cassandra version with `source:`, for example:
 
 ```
-ccm create test -v binary:2.0.5 -n 3 -s
+ccm create test -v source:2.0.5 -n 3 -s
 ```
+
+### Automatic Version Fallback
+
+If 'binary:' or 'source:' are not explicitly specified in your version string, then ccm will fallback to building the requested version from git if it cannot access the apache mirrors.
 
 ### Git and GitHub
 
