@@ -29,24 +29,47 @@ GITHUB_TAGS = "https://api.github.com/repos/apache/cassandra/git/refs/tags"
 
 def setup(version, verbose=False):
     binary = True
+    fallback = True
+
     if version.startswith('git:'):
         clone_development(GIT_REPO, version, verbose=verbose)
         return (version_directory(version), None)
+
     elif version.startswith('binary:'):
         version = version.replace('binary:', '')
+        fallback = False
+
     elif version.startswith('github:'):
         user_name, _ = github_username_and_branch_name(version)
         clone_development(github_repo_for_user(user_name), version, verbose=verbose)
         return (directory_name(version), None)
+
     elif version.startswith('source:'):
         version = version.replace('source:', '')
         binary = False
+        fallback = False
+
     if version in ('stable', 'oldstable', 'testing'):
         version = get_tagged_version_numbers(version)[0]
+
     cdir = version_directory(version)
     if cdir is None:
-        download_version(version, verbose=verbose, binary=binary)
-        cdir = version_directory(version)
+        try:
+            download_version(version, verbose=verbose, binary=binary)
+            cdir = version_directory(version)
+        except Exception as e:
+            # If we failed to download from ARCHIVE,
+            # then we build from source from the git repo,
+            # as it is more reliable.
+            # We don't do this if binary: or source: were
+            # explicitly specified.
+            if fallback:
+                print_("WARN:Downloading {} failed, due to {}. Trying to build from git instead.".format(version, e))
+                version = 'git:cassandra-{}'.format(version)
+                clone_development(GIT_REPO, version, verbose=verbose)
+                return (version_directory(version), None)
+            else:
+                raise e
     return (cdir, version)
 
 
