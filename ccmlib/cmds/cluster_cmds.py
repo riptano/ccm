@@ -136,7 +136,11 @@ class ClusterCreateCmd(Cmd):
                 parser.print_help()
                 parser.error("%s is not a valid cassandra directory. You must define a cassandra dir or version." % options.install_dir)
 
-            common.assert_jdk_valid_for_cassandra_version(common.get_version_from_build(options.install_dir))
+            if common.get_dse_version(options.install_dir) is not None:
+                common.assert_jdk_valid_for_cassandra_version(common.get_dse_cassandra_version(options.install_dir))
+            else:
+                common.assert_jdk_valid_for_cassandra_version(common.get_version_from_build(options.install_dir))
+
         if common.is_win() and os.path.exists('c:\windows\system32\java.exe'):
             print_("""WARN: c:\windows\system32\java.exe exists.
                 This may cause registry issues, and jre7 to be used, despite jdk8 being installed.
