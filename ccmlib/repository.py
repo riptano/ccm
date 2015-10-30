@@ -15,9 +15,9 @@ from distutils.version import LooseVersion
 
 from six import print_
 
-from common import assert_jdk_valid_for_cassandra_version, get_version_from_build
 from ccmlib.common import (ArgumentError, CCMError, get_default_path,
-                           platform_binary, rmdirs, validate_install_dir)
+                           platform_binary, rmdirs, validate_install_dir,
+                           assert_jdk_valid_for_cassandra_version, get_version_from_build)
 from six.moves import urllib
 
 DSE_ARCHIVE = "http://downloads.datastax.com/enterprise/dse-%s-bin.tar.gz"
