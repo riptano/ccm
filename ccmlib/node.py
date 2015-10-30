@@ -1262,7 +1262,7 @@ class Node(object):
         data['data_file_directories'] = [os.path.join(self.get_path(), 'data')]
         data['commitlog_directory'] = os.path.join(self.get_path(), 'commitlogs')
         data['saved_caches_directory'] = os.path.join(self.get_path(), 'saved_caches')
-        if self.cluster.version() > '3.0' and 'hints_directory' in yaml_text:
+        if self.get_cassandra_version() > '3.0' and 'hints_directory' in yaml_text:
             data['hints_directory'] = os.path.join(self.get_path(), 'data', 'hints')
 
         if self.cluster.partitioner:
