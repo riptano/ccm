@@ -547,8 +547,8 @@ class Node(object):
 
         if verbose:
             stdout, stderr = process.communicate()
-            print stdout
-            print stderr
+            print_(stdout)
+            print_(stderr)
 
         if common.is_win():
             self.__clean_win_pid()

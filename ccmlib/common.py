@@ -574,7 +574,7 @@ def invalidate_cache():
 def get_jdk_version():
     version = subprocess.check_output(['java', '-version'], stderr=subprocess.STDOUT)
     ver_pattern = '\"(\d+\.\d+).*\"'
-    return re.search(ver_pattern, version).groups()[0]
+    return re.search(ver_pattern, str(version)).groups()[0]
 
 
 def assert_jdk_valid_for_cassandra_version(cassandra_version):
