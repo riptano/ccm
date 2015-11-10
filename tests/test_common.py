@@ -1,3 +1,5 @@
+import unittest
+
 from ccmlib import common
 from . import ccmtest
 
