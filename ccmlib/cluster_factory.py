@@ -1,6 +1,7 @@
 import os
 
 import yaml
+
 from ccmlib import common, repository
 from ccmlib.cluster import Cluster
 from ccmlib.dse_cluster import DseCluster

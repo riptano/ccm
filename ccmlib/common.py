@@ -13,9 +13,8 @@ import subprocess
 import sys
 import time
 
-from six import print_
-
 import yaml
+from six import print_
 
 BIN_DIR = "bin"
 CASSANDRA_CONF_DIR = "conf"

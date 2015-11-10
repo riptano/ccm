@@ -15,13 +15,13 @@ import time
 import warnings
 from datetime import datetime
 
-from six import iteritems, print_, string_types
-
 import yaml
+from six import iteritems, print_, string_types
+from six.moves import xrange
+
 from ccmlib import common
 from ccmlib.cli_session import CliSession
 from ccmlib.repository import setup
-from six.moves import xrange
 
 
 class Status():

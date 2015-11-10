@@ -1,11 +1,12 @@
-from . import TEST_DIR
-from . import ccmtest
-from ccmlib.cluster import Cluster
-from ccmlib import common
-import subprocess
 import os
+import subprocess
+
 import yaml
 from six import print_
+
+from ccmlib import common
+from . import TEST_DIR
+from . import ccmtest
 
 CLUSTER_PATH = TEST_DIR
 

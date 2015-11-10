@@ -9,9 +9,9 @@ import stat
 import subprocess
 import time
 
+import yaml
 from six import print_
 
-import yaml
 from ccmlib import common
 from ccmlib.node import Node, NodeError
 

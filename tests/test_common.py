@@ -1,6 +1,5 @@
-from . import ccmtest
 from ccmlib import common
-import yaml
+from . import ccmtest
 
 
 class TestCommon(ccmtest.Tester):
