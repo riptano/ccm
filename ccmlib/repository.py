@@ -146,7 +146,7 @@ def clone_development(git_repo, version, verbose=False):
                     branches = [b.strip() for b in branch_listing.replace('remotes/origin/', '').split()]
                     is_branch = git_branch in branches
                 except subprocess.CalledProcessError as cpe:
-                        print_("Error Running Branch Filter: {}\nAssumming request is not for a branch".format(cpe.output))
+                    print_("Error Running Branch Filter: {}\nAssumming request is not for a branch".format(cpe.output))
 
                 # now check out the right version
                 if verbose:
