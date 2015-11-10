@@ -261,6 +261,7 @@ def is_ps_unrestricted():
     else:
         try:
             p = subprocess.Popen(['powershell', 'Get-ExecutionPolicy'], stdout=subprocess.PIPE)
+        # pylint: disable=E0602
         except WindowsError:
             print_("ERROR: Could not find powershell. Is it in your path?")
         if "Unrestricted" in p.communicate()[0]:
