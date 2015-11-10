@@ -102,6 +102,7 @@ class Node(object):
         self.__install_dir = None
         self.__global_log_level = None
         self.__classes_log_level = {}
+        self.__conf_updated = False
         if save:
             self.import_config_files()
             self.import_bin_files()
@@ -164,7 +165,10 @@ class Node(object):
         return [common.join_bin(self.get_install_dir(), 'bin', toolname)]
 
     def get_env(self):
-        return common.make_cassandra_env(self.get_install_dir(), self.get_path())
+        update_conf = not self.__conf_updated
+        if update_conf:
+            self.__conf_updated = True
+        return common.make_cassandra_env(self.get_install_dir(), self.get_path(), update_conf)
 
     def get_install_cassandra_root(self):
         return self.get_install_dir()
@@ -207,6 +211,7 @@ class Node(object):
             self.__install_dir = dir
         self.import_config_files()
         self.import_bin_files()
+        self.__conf_updated = False
         return self
 
     def set_workload(self, workload):
@@ -512,7 +517,7 @@ class Node(object):
 
         os.chmod(launch_bin, os.stat(launch_bin).st_mode | stat.S_IEXEC)
 
-        env = common.make_cassandra_env(cdir, self.get_path())
+        env = self.get_env()
 
         if common.is_win():
             self._clean_win_jmx()
@@ -650,7 +655,7 @@ class Node(object):
         """
         if capture_output and not wait:
             raise common.ArgumentError("Cannot set capture_output while wait is False.")
-        env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
+        env = self.get_env()
         nodetool = self.get_tool('nodetool')
         args = [nodetool, '-h', 'localhost', '-p', str(self.jmx_port)]
         args += cmd.split()
@@ -688,24 +693,24 @@ class Node(object):
 
     def bulkload(self, options):
         loader_bin = common.join_bin(self.get_path(), 'bin', 'sstableloader')
-        env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
+        env = self.get_env()
         host, port = self.network_interfaces['thrift']
         args = ['-d', host, '-p', str(port)]
         os.execve(loader_bin, [common.platform_binary('sstableloader')] + args + options, env)
 
     def scrub(self, options):
         scrub_bin = self.get_tool('sstablescrub')
-        env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
+        env = self.get_env()
         os.execve(scrub_bin, [common.platform_binary('sstablescrub')] + options, env)
 
     def verify(self, options):
         verify_bin = self.get_tool('sstableverify')
-        env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
+        env = self.get_env()
         os.execve(verify_bin, [common.platform_binary('sstableverify')] + options, env)
 
     def run_cli(self, cmds=None, show_output=False, cli_options=[]):
         cli = self.get_tool('cassandra-cli')
-        env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
+        env = self.get_env()
         host = self.network_interfaces['thrift'][0]
         port = self.network_interfaces['thrift'][1]
         args = ['-h', host, '-p', str(port), '--jmxport', str(self.jmx_port)] + cli_options
@@ -730,7 +735,7 @@ class Node(object):
 
     def run_cqlsh(self, cmds=None, show_output=False, cqlsh_options=[], return_output=False):
         cqlsh = self.get_tool('cqlsh')
-        env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
+        env = self.get_env()
         host = self.network_interfaces['thrift'][0]
         if self.get_base_cassandra_version() >= 2.1:
             port = self.network_interfaces['binary'][1]
@@ -766,7 +771,7 @@ class Node(object):
     def cli(self):
         cdir = self.get_install_dir()
         cli = common.join_bin(cdir, 'bin', 'cassandra-cli')
-        env = common.make_cassandra_env(cdir, self.get_path())
+        env = self.get_env()
         host = self.network_interfaces['thrift'][0]
         port = self.network_interfaces['thrift'][1]
         args = ['-h', host, '-p', str(port), '--jmxport', str(self.jmx_port)]
@@ -837,7 +842,7 @@ class Node(object):
         if out_file is None:
             out_file = sys.stdout
         sstable2json = self._find_cmd('sstable2json')
-        env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
+        env = self.get_env()
         sstablefiles = self.__gather_sstables(datafiles, keyspace, column_families)
         print_(sstablefiles)
         for sstablefile in sstablefiles:
@@ -850,7 +855,7 @@ class Node(object):
 
     def run_json2sstable(self, in_file, ks, cf, keyspace=None, datafiles=None, column_families=None, enumerate_keys=False):
         json2sstable = self._find_cmd('json2sstable')
-        env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
+        env = self.get_env()
         sstablefiles = self.__gather_sstables(datafiles, keyspace, column_families)
 
         for sstablefile in sstablefiles:
@@ -861,7 +866,7 @@ class Node(object):
     def run_sstablesplit(self, datafiles=None, size=None, keyspace=None, column_families=None,
                          no_snapshot=False, debug=False):
         sstablesplit = self._find_cmd('sstablesplit')
-        env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
+        env = self.get_env()
         sstablefiles = self.__gather_sstables(datafiles, keyspace, column_families)
 
         results = []
@@ -890,7 +895,7 @@ class Node(object):
     def run_sstablemetadata(self, output_file=None, datafiles=None, keyspace=None, column_families=None):
         cdir = self.get_install_dir()
         sstablemetadata = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstablemetadata')
-        env = common.make_cassandra_env(cdir, self.get_path())
+        env = self.get_env()
         sstablefiles = self.__gather_sstables(datafiles=datafiles, keyspace=keyspace, columnfamilies=column_families)
         results = []
 
@@ -909,7 +914,7 @@ class Node(object):
     def run_sstableexpiredblockers(self, output_file=None, keyspace=None, column_family=None):
         cdir = self.get_install_dir()
         sstableexpiredblockers = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstableexpiredblockers')
-        env = common.make_cassandra_env(cdir, self.get_path())
+        env = self.get_env()
         cmd = [sstableexpiredblockers, keyspace, column_family]
         results = []
         if output_file is None:
@@ -929,7 +934,7 @@ class Node(object):
     def run_sstablerepairedset(self, set_repaired=True, datafiles=None, keyspace=None, column_families=None):
         cdir = self.get_install_dir()
         sstablerepairedset = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstablerepairedset')
-        env = common.make_cassandra_env(cdir, self.get_path())
+        env = self.get_env()
         sstablefiles = self.__gather_sstables(datafiles, keyspace, column_families)
 
         for sstable in sstablefiles:
@@ -942,7 +947,7 @@ class Node(object):
     def run_sstablelevelreset(self, keyspace, cf, output=False):
         cdir = self.get_install_dir()
         sstablelevelreset = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstablelevelreset')
-        env = common.make_cassandra_env(cdir, self.get_path())
+        env = self.get_env()
 
         cmd = [sstablelevelreset, "--really-reset", keyspace, cf]
 
@@ -957,7 +962,7 @@ class Node(object):
     def run_sstableofflinerelevel(self, keyspace, cf, dry_run=False, output=False):
         cdir = self.get_install_dir()
         sstableofflinerelevel = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstableofflinerelevel')
-        env = common.make_cassandra_env(cdir, self.get_path())
+        env = self.get_env()
 
         if dry_run == True:
             cmd = [sstableofflinerelevel, "--dry-run", keyspace, cf]
@@ -975,7 +980,7 @@ class Node(object):
     def run_sstableverify(self, keyspace, cf, options=None, output=False):
         cdir = self.get_install_dir()
         sstableverify = common.join_bin(cdir, 'bin', 'sstableverify')
-        env = common.make_cassandra_env(cdir, self.get_path())
+        env = self.get_env()
 
         cmd = [sstableverify, keyspace, cf]
         if options is not None:
