@@ -158,7 +158,7 @@ def clone_development(git_repo, version, verbose=False):
                     # we use -B instead of -b so we reset branches that already exist and create a new one otherwise
                     out = subprocess.call(['git', 'checkout', '-B', git_branch,
                                            '--track', 'origin/{git_branch}'.format(git_branch=git_branch)],
-                                           cwd=target_dir, stdout=lf, stderr=lf)
+                                          cwd=target_dir, stdout=lf, stderr=lf)
                 else:
                     out = subprocess.call(['git', 'checkout', git_branch], cwd=target_dir, stdout=lf, stderr=lf)
                 if int(out) != 0:

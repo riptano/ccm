@@ -2,6 +2,7 @@ from . import ccmtest
 from ccmlib import common
 import yaml
 
+
 class TestCommon(ccmtest.Tester):
 
     def test_normalize_interface(self):

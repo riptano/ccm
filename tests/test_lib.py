@@ -11,6 +11,7 @@ from six import StringIO
 
 CLUSTER_PATH = TEST_DIR
 
+
 class TestCCMLib(ccmtest.Tester):
 
     def simple_test(self, version='2.0.9'):
@@ -73,7 +74,6 @@ class TestCCMLib(ccmtest.Tester):
         self.cluster.flush()
         self.cluster.stop()
 
-
     def test2(self):
         self.cluster = Cluster(CLUSTER_PATH, "test2", cassandra_version='2.0.3')
         self.cluster.populate(2)
@@ -95,7 +95,6 @@ class TestCCMLib(ccmtest.Tester):
         self.cluster.drain()
         self.cluster.stop()
 
-
     def test3(self):
         self.cluster = Cluster(CLUSTER_PATH, "test3", cassandra_version='2.0.3')
         self.cluster.populate(2)
@@ -107,6 +106,7 @@ class TestCCMLib(ccmtest.Tester):
 
 
 class TestRunCqlsh(ccmtest.Tester):
+
     def setUp(self):
         '''Create a cluster for cqlsh tests. Assumes that ccmtest.Tester's
         teardown() method will safely stop and remove self.cluster.'''
@@ -175,6 +175,7 @@ class TestRunCqlsh(ccmtest.Tester):
 
 
 class TestNodeLoad(ccmtest.Tester):
+
     def test_rejects_multiple_load_lines(self):
         info = 'Load : 699 KB\nLoad : 35 GB'
         with self.assertRaises(RuntimeError):
