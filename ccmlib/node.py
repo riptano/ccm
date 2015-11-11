@@ -527,6 +527,8 @@ class Node(object):
         if use_jna is False:
             args.append('-Dcassandra.boot_without_jna=true')
         env['JVM_EXTRA_OPTS'] = env.get('JVM_EXTRA_OPTS', "") + " " + " ".join(jvm_args)
+        if common.is_win():
+            args.append('-q')
 
         # In case we are restarting a node
         # we risk reading the old cassandra.pid file
