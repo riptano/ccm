@@ -478,6 +478,9 @@ class Node(object):
         if common.is_win() and not common.is_ps_unrestricted() and self.cluster.version() >= '2.1':
             raise NodeError("PS Execution Policy must be unrestricted when running C* 2.1+")
 
+        if not common.is_win() and quiet_start:
+            print_("WARN: Tried to set Windows quiet start behavior, but we're not running on Windows.")
+
         if self.is_running():
             raise NodeError("%s is already running" % self.name)
 
