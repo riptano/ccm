@@ -542,7 +542,7 @@ class Node(object):
             if (os.path.isfile(self.get_path() + "/dirty_pid.tmp")):
                 os.remove(self.get_path() + "/dirty_pid.tmp")
 
-            if quiet_start:
+            if quiet_start and self.cluster.version() >= '2.2.4':
                 args.append('-q')
 
             process = subprocess.Popen(args, cwd=self.get_bin_dir(), env=env, stdout=stdout_sink, stderr=subprocess.PIPE)
