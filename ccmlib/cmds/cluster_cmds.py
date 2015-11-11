@@ -521,6 +521,7 @@ class ClusterStartCmd(Cmd):
                           help="Start the nodes with yourkit agent (only valid with -s)", default=False)
         parser.add_option('--profile-opts', type="string", action="store", dest="profile_options",
                           help="Yourkit options when profiling", default=None)
+        parser.add_option('--quiet-windows', action="store_true", dest="quiet_start", help="Pass -q on Windows startup. Ignored on linux.", default=False)
         return parser
 
     def validate(self, parser, options, args):
@@ -543,7 +544,8 @@ class ClusterStartCmd(Cmd):
                                   wait_for_binary_proto=self.options.wait_for_binary_proto,
                                   verbose=self.options.verbose,
                                   jvm_args=self.options.jvm_args,
-                                  profile_options=profile_options) is None:
+                                  profile_options=profile_options,
+                                  quiet_start=self.options.quiet_start) is None:
                 details = ""
                 if not self.options.verbose:
                     details = " (you can use --verbose for more information)"

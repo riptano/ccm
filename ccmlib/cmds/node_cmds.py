@@ -183,6 +183,7 @@ class NodeStartCmd(Cmd):
                           help="Replace a node in the ring through the cassandra.replace_address option")
         parser.add_option('--jvm_arg', action="append", dest="jvm_args",
                           help="Specify a JVM argument", default=[])
+        parser.add_option('--quiet-windows', action="store_true", dest="quiet_start", help="Pass -q on Windows startup. Ignored on linux.", default=False)
         return parser
 
     def validate(self, parser, options, args):
@@ -196,7 +197,8 @@ class NodeStartCmd(Cmd):
                             wait_for_binary_proto=self.options.wait_for_binary_proto,
                             verbose=self.options.verbose,
                             replace_address=self.options.replace_address,
-                            jvm_args=self.options.jvm_args)
+                            jvm_args=self.options.jvm_args,
+                            quiet_start=self.options.quiet_start)
         except NodeError as e:
             print_(str(e), file=sys.stderr)
             print_("Standard error output is:", file=sys.stderr)
