@@ -183,7 +183,7 @@ class NodeStartCmd(Cmd):
                           help="Replace a node in the ring through the cassandra.replace_address option")
         parser.add_option('--jvm_arg', action="append", dest="jvm_args",
                           help="Specify a JVM argument", default=[])
-        parser.add_option('--quiet-windows', action="store_true", dest="quiet_start", help="Pass -q on Windows 2.2.4+  startup. Ignored on linux.", default=False)
+        parser.add_option('--quiet-windows', action="store_true", dest="quiet_start", help="Pass -q on Windows 2.2.4+ and 3.0+ startup. Ignored on linux.", default=False)
         return parser
 
     def validate(self, parser, options, args):
