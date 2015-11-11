@@ -174,7 +174,7 @@ def rmdirs(path):
         shutil.rmtree(path)
 
 
-def make_cassandra_env(install_dir, node_path):
+def make_cassandra_env(install_dir, node_path, update_conf=True):
     if is_win() and get_version_from_build(node_path=node_path) >= '2.1':
         sh_file = os.path.join(CASSANDRA_CONF_DIR, CASSANDRA_WIN_ENV)
     else:
@@ -183,19 +183,21 @@ def make_cassandra_env(install_dir, node_path):
     dst = os.path.join(node_path, sh_file)
     if not os.path.exists(dst):
         shutil.copy(orig, dst)
-    replacements = ""
-    if is_win() and get_version_from_build(node_path=node_path) >= '2.1':
-        replacements = [
-            ('env:CASSANDRA_HOME =', '        $env:CASSANDRA_HOME="%s"' % install_dir),
-            ('env:CASSANDRA_CONF =', '    $env:CCM_DIR="' + node_path + '\\conf"\n    $env:CASSANDRA_CONF="$env:CCM_DIR"'),
-            ('cp = ".*?env:CASSANDRA_HOME.conf', '    $cp = """$env:CASSANDRA_CONF"""')
-        ]
-    else:
-        replacements = [
-            ('CASSANDRA_HOME=', '\tCASSANDRA_HOME=%s' % install_dir),
-            ('CASSANDRA_CONF=', '\tCASSANDRA_CONF=%s' % os.path.join(node_path, 'conf'))
-        ]
-    replaces_in_file(dst, replacements)
+
+    if update_conf:
+        replacements = ""
+        if is_win() and get_version_from_build(node_path=node_path) >= '2.1':
+            replacements = [
+                ('env:CASSANDRA_HOME =', '        $env:CASSANDRA_HOME="%s"' % install_dir),
+                ('env:CASSANDRA_CONF =', '    $env:CCM_DIR="' + node_path + '\\conf"\n    $env:CASSANDRA_CONF="$env:CCM_DIR"'),
+                ('cp = ".*?env:CASSANDRA_HOME.conf', '    $cp = """$env:CASSANDRA_CONF"""')
+            ]
+        else:
+            replacements = [
+                ('CASSANDRA_HOME=', '\tCASSANDRA_HOME=%s' % install_dir),
+                ('CASSANDRA_CONF=', '\tCASSANDRA_CONF=%s' % os.path.join(node_path, 'conf'))
+            ]
+        replaces_in_file(dst, replacements)
 
     # If a cluster-wide cassandra.in.sh file exists in the parent
     # directory, append it to the node specific one:
