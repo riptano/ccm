@@ -263,7 +263,7 @@ class Cluster(object):
             else:
                 node.show(only_status=True)
 
-    def start(self, no_wait=False, verbose=False, wait_for_binary_proto=False, wait_other_notice=False, jvm_args=[], profile_options=None):
+    def start(self, no_wait=False, verbose=False, wait_for_binary_proto=False, wait_other_notice=False, jvm_args=[], profile_options=None, quiet_start=False):
         common.assert_jdk_valid_for_cassandra_version(self.cassandra_version())
 
         if wait_other_notice:
@@ -276,7 +276,7 @@ class Cluster(object):
                 if os.path.exists(node.logfilename()):
                     mark = node.mark_log()
 
-                p = node.start(update_pid=False, jvm_args=jvm_args, profile_options=profile_options, verbose=verbose)
+                p = node.start(update_pid=False, jvm_args=jvm_args, profile_options=profile_options, verbose=verbose, quiet_start=quiet_start)
                 started.append((node, p, mark))
 
         if no_wait and not verbose:
