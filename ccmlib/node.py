@@ -467,7 +467,8 @@ class Node(object):
               jvm_args=[],
               wait_for_binary_proto=False,
               profile_options=None,
-              use_jna=False):
+              use_jna=False,
+              quiet_start=False):
         """
         Start the node. Options includes:
           - join_ring: if false, start the node with -Dcassandra.join_ring=False
@@ -481,6 +482,9 @@ class Node(object):
         # Validate Windows env
         if common.is_win() and not common.is_ps_unrestricted() and self.cluster.version() >= '2.1':
             raise NodeError("PS Execution Policy must be unrestricted when running C* 2.1+")
+
+        if not common.is_win() and quiet_start:
+            print_("WARN: Tried to set Windows quiet start behavior, but we're not running on Windows.")
 
         if self.is_running():
             raise NodeError("%s is already running" % self.name)
@@ -545,6 +549,10 @@ class Node(object):
             # clean up any old dirty_pid files from prior runs
             if (os.path.isfile(self.get_path() + "/dirty_pid.tmp")):
                 os.remove(self.get_path() + "/dirty_pid.tmp")
+
+            if quiet_start and self.cluster.version() >= '2.2.4':
+                args.append('-q')
+
             process = subprocess.Popen(args, cwd=self.get_bin_dir(), env=env, stdout=stdout_sink, stderr=subprocess.PIPE)
         else:
             process = subprocess.Popen(args, env=env, stdout=stdout_sink, stderr=subprocess.PIPE)
