@@ -1,6 +1,6 @@
 import os
-import sys
 import subprocess
+import sys
 
 from six import print_
 
@@ -718,7 +718,7 @@ class NodeSetworkloadCmd(Cmd):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
         self.workload = args[1]
         workloads = ['cassandra', 'solr', 'hadoop', 'spark', 'cfs']
-        if not self.workload in workloads:
+        if self.workload not in workloads:
             print_(self.workload, ' is not a valid workload')
             exit(1)
 

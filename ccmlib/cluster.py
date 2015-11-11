@@ -6,12 +6,12 @@ import shutil
 import subprocess
 import time
 
-from six import iteritems, print_
-
 import yaml
+from six import iteritems, print_
+from six.moves import xrange
+
 from ccmlib import common, repository
 from ccmlib.node import Node, NodeError
-from six.moves import xrange
 
 
 class Cluster(object):

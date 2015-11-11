@@ -13,9 +13,8 @@ import subprocess
 import sys
 import time
 
-from six import print_
-
 import yaml
+from six import print_
 
 BIN_DIR = "bin"
 CASSANDRA_CONF_DIR = "conf"
@@ -157,7 +156,7 @@ def replaces_or_add_into_file_tail(file, replacement_list):
                 if "</configuration>" not in line:
                     f_tmp.write(line)
             # In case, entry is not found, and need to be added
-            if is_line_found == False:
+            if not is_line_found:
                 f_tmp.write('\n' + replace + "\n")
             # We are moving the closing tag to the end of the file.
             # Previously, we were having an issue where new lines we wrote
@@ -248,7 +247,7 @@ def check_win_requirements():
 
         # Confirm matching architectures
         # 32-bit python distributions will launch 32-bit cmd environments, losing PowerShell execution privileges on a 64-bit system
-        if sys.maxsize <= 2**32 and platform.machine().endswith('64'):
+        if sys.maxsize <= 2 ** 32 and platform.machine().endswith('64'):
             sys.exit("ERROR!  64-bit os and 32-bit python distribution found.  ccm requires matching architectures.")
 
 
@@ -262,6 +261,7 @@ def is_ps_unrestricted():
     else:
         try:
             p = subprocess.Popen(['powershell', 'Get-ExecutionPolicy'], stdout=subprocess.PIPE)
+        # pylint: disable=E0602
         except WindowsError:
             print_("ERROR: Could not find powershell. Is it in your path?")
         if "Unrestricted" in p.communicate()[0]:

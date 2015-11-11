@@ -14,11 +14,11 @@ import time
 from distutils.version import LooseVersion
 
 from six import print_
+from six.moves import urllib
 
 from ccmlib.common import (ArgumentError, CCMError, get_default_path,
                            platform_binary, rmdirs, validate_install_dir,
                            assert_jdk_valid_for_cassandra_version, get_version_from_build)
-from six.moves import urllib
 
 DSE_ARCHIVE = "http://downloads.datastax.com/enterprise/dse-%s-bin.tar.gz"
 OPSC_ARCHIVE = "http://downloads.datastax.com/community/opscenter-%s.tar.gz"
@@ -146,7 +146,7 @@ def clone_development(git_repo, version, verbose=False):
                     branches = [b.strip() for b in branch_listing.replace('remotes/origin/', '').split()]
                     is_branch = git_branch in branches
                 except subprocess.CalledProcessError as cpe:
-                        print_("Error Running Branch Filter: {}\nAssumming request is not for a branch".format(cpe.output))
+                    print_("Error Running Branch Filter: {}\nAssumming request is not for a branch".format(cpe.output))
 
                 # now check out the right version
                 if verbose:
@@ -158,7 +158,7 @@ def clone_development(git_repo, version, verbose=False):
                     # we use -B instead of -b so we reset branches that already exist and create a new one otherwise
                     out = subprocess.call(['git', 'checkout', '-B', git_branch,
                                            '--track', 'origin/{git_branch}'.format(git_branch=git_branch)],
-                                           cwd=target_dir, stdout=lf, stderr=lf)
+                                          cwd=target_dir, stdout=lf, stderr=lf)
                 else:
                     out = subprocess.call(['git', 'checkout', git_branch], cwd=target_dir, stdout=lf, stderr=lf)
                 if int(out) != 0:

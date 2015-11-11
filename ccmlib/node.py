@@ -15,13 +15,13 @@ import time
 import warnings
 from datetime import datetime
 
-from six import iteritems, print_, string_types
-
 import yaml
+from six import iteritems, print_, string_types
+from six.moves import xrange
+
 from ccmlib import common
 from ccmlib.cli_session import CliSession
 from ccmlib.repository import setup
-from six.moves import xrange
 
 
 class Status():
@@ -67,6 +67,7 @@ _sstable_regexp = re.compile('((?P<keyspace>[^\s-]+)-(?P<cf>[^\s-]+)-)?(?P<tmp>t
 
 
 class Node(object):
+
     """
     Provides interactions to a Cassandra node.
     """
@@ -933,7 +934,7 @@ class Node(object):
         sstablefiles = self.__gather_sstables(datafiles, keyspace, column_families)
 
         for sstable in sstablefiles:
-            if set_repaired == True:
+            if set_repaired:
                 cmd = [sstablerepairedset, "--really-set", "--is-repaired", sstable]
             else:
                 cmd = [sstablerepairedset, "--really-set", "--is-unrepaired", sstable]
@@ -946,7 +947,7 @@ class Node(object):
 
         cmd = [sstablelevelreset, "--really-reset", keyspace, cf]
 
-        if output == True:
+        if output:
             p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=env)
             (stdout, stderr) = p.communicate()
             rc = p.returncode
@@ -959,12 +960,12 @@ class Node(object):
         sstableofflinerelevel = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstableofflinerelevel')
         env = common.make_cassandra_env(cdir, self.get_path())
 
-        if dry_run == True:
+        if dry_run:
             cmd = [sstableofflinerelevel, "--dry-run", keyspace, cf]
         else:
             cmd = [sstableofflinerelevel, keyspace, cf]
 
-        if output == True:
+        if output:
             p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=env)
             (stdout, stderr) = p.communicate()
             rc = p.returncode
@@ -981,7 +982,7 @@ class Node(object):
         if options is not None:
             cmd[1:1] = options
 
-        if output == True:
+        if output:
             p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=env)
             (stdout, stderr) = p.communicate()
             rc = p.returncode

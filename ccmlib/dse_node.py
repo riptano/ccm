@@ -9,14 +9,15 @@ import stat
 import subprocess
 import time
 
+import yaml
 from six import print_
 
-import yaml
 from ccmlib import common
 from ccmlib.node import Node, NodeError
 
 
 class DseNode(Node):
+
     """
     Provides interactions to a DSE node.
     """
@@ -102,7 +103,7 @@ class DseNode(Node):
 
         if profile_options is not None:
             config = common.get_config()
-            if not 'yourkit_agent' in config:
+            if 'yourkit_agent' not in config:
                 raise NodeError("Cannot enable profile. You need to set 'yourkit_agent' to the path of your agent in a {0}/config".format(common.get_default_path_display_name()))
             cmd = '-agentpath:%s' % config['yourkit_agent']
             if 'options' in profile_options:
