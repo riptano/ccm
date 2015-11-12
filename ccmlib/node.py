@@ -440,6 +440,15 @@ class Node(object):
         tofind = ["%s.* now UP" % node.address() for node in tofind]
         self.watch_log_for(tofind, from_mark=from_mark, timeout=timeout, filename=filename)
 
+    def watch_log_for_listening(self, from_mark=None, timeout=120, filename='system.log'):
+        """
+        Watch the log of this node until it is listening for CQL clients.
+        """
+        self.watch_log_for("Starting listening for CQL clients",
+                           from_mark=from_mark,
+                           timeout=timeout,
+                           filename=filename)
+
     def wait_for_binary_interface(self, **kwargs):
         """
         Waits for the Binary CQL interface to be listening.  If > 1.2 will check
