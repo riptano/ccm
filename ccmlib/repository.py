@@ -359,7 +359,7 @@ def version_directory(version):
         try:
             validate_install_dir(dir)
             return dir
-        except ArgumentError as e:
+        except ArgumentError:
             rmdirs(dir)
             return None
     else:
@@ -382,8 +382,8 @@ def get_tagged_version_numbers(series='stable'):
         # Stable and oldstable releases are just a number:
         tag_regex = re.compile('^refs/tags/cassandra-([0-9]+\.[0-9]+\.[0-9]+$)')
 
-    r = urllib.request.urlopen(GITHUB_TAGS)
-    for ref in (i.get('ref', '') for i in json.loads(r.read())):
+    tag_url = urllib.request.urlopen(GITHUB_TAGS)
+    for ref in (i.get('ref', '') for i in json.loads(tag_url.read())):
         m = tag_regex.match(ref)
         if m:
             releases.append(LooseVersion(m.groups()[0]))

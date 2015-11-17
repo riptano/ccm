@@ -344,9 +344,9 @@ class Node(object):
 
     def print_process_output(self, name, proc, verbose=False):
         try:
-            [stdout, stderr] = proc.communicate()
+            stderr = proc.communicate()[1]
         except ValueError:
-            [stdout, stderr] = ['', '']
+            stderr = ''
         if len(stderr) > 1:
             print_("[%s ERROR] %s" % (name, stderr.strip()))
 

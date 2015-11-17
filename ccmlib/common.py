@@ -243,8 +243,8 @@ def check_win_requirements():
     if is_win():
         # Make sure ant.bat is in the path and executable before continuing
         try:
-            process = subprocess.Popen('ant.bat', stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        except Exception as e:
+            subprocess.Popen('ant.bat', stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        except Exception:
             sys.exit("ERROR!  Could not find or execute ant.bat.  Please fix this before attempting to run ccm on Windows.")
 
         # Confirm matching architectures

@@ -18,7 +18,7 @@ class ForgivingParser(OptionParser):
         opt = rargs[0]
         try:
             OptionParser._process_short_opts(self, rargs, values)
-        except BadOptionError as e:
+        except BadOptionError:
             self.ignored.append(opt)
             self.eat_args(rargs)
 
@@ -26,7 +26,7 @@ class ForgivingParser(OptionParser):
         opt = rargs[0]
         try:
             OptionParser._process_long_opt(self, rargs, values)
-        except BadOptionError as e:
+        except BadOptionError:
             self.ignored.append(opt)
             self.eat_args(rargs)
 
