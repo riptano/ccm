@@ -890,7 +890,7 @@ class NodeJconsoleCmd(Cmd):
         cmds = ["jconsole", "localhost:%s" % self.node.jmx_port]
         try:
             subprocess.call(cmds)
-        except OSError as e:
+        except OSError:
             print_("Could not start jconsole. Please make sure jconsole can be found in your $PATH.")
             exit(1)
 

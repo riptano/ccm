@@ -138,7 +138,6 @@ class ClusterCreateCmd(Cmd):
             else:
                 cluster = Cluster(self.path, self.name, install_dir=self.options.install_dir, version=self.options.version, verbose=True)
         except OSError as e:
-            cluster_dir = os.path.join(self.path, self.name)
             import traceback
             print_('Cannot create cluster: %s\n%s' % (str(e), traceback.format_exc()), file=sys.stderr)
             exit(1)
@@ -328,7 +327,7 @@ class ClusterListCmd(Cmd):
     def run(self):
         try:
             current = common.current_cluster_name(self.path)
-        except Exception as e:
+        except Exception:
             current = ''
 
         for dir in os.listdir(self.path):
@@ -930,6 +929,6 @@ class ClusterJconsoleCmd(Cmd):
         cmds = ["jconsole"] + ["localhost:%s" % node.jmx_port for node in self.cluster.nodes.values()]
         try:
             subprocess.call(cmds, stderr=sys.stderr)
-        except OSError as e:
+        except OSError:
             print_("Could not start jconsole. Please make sure jconsole can be found in your $PATH.")
             exit(1)
