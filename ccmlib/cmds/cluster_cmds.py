@@ -437,7 +437,7 @@ class ClusterClearCmd(Cmd):
 class ClusterLivesetCmd(Cmd):
 
     def description(self):
-        return "Print a comma-separated list of addresses of running nodes (handful in scripts)"
+        return "Print a comma-separated list of addresses of running nodes (helpful in scripts)"
 
     def get_parser(self):
         usage = "usage: ccm liveset [options]"
