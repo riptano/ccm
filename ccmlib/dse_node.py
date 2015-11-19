@@ -69,7 +69,8 @@ class DseNode(Node):
               jvm_args=[],
               wait_for_binary_proto=False,
               profile_options=None,
-              use_jna=False):
+              use_jna=False,
+              quiet_start=False):
         """
         Start the node. Options includes:
           - join_ring: if false, start the node with -Dcassandra.join_ring=False
