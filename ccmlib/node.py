@@ -1638,6 +1638,14 @@ class Node(object):
             else:
                 os.kill(self.pid, signal.SIGCONT)
 
+    def jstack(self, opts=None):
+        opts = [] if opts is None else opts
+        jstack_location = os.path.abspath(os.path.join(os.environ['JAVA_HOME'],
+                                                       'bin',
+                                                       'jstack'))
+        jstack_cmd = [jstack_location, '-J-d64'] + opts + [str(self.pid)]
+        return subprocess.Popen(jstack_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
 
 def _get_load_from_info_output(info):
     load_lines = [s for s in info.split('\n')
