@@ -198,7 +198,9 @@ class DseNode(Node):
         p = subprocess.Popen(args, env=env)
         p.wait()
 
-    def dse(self, dse_options=[]):
+    def dse(self, dse_options=None):
+        if dse_options is None:
+            dse_options = []
         env = common.make_dse_env(self.get_install_dir(), self.get_path())
         env['JMX_PORT'] = self.jmx_port
         dse = common.join_bin(self.get_install_dir(), 'bin', 'dse')
@@ -207,7 +209,9 @@ class DseNode(Node):
         p = subprocess.Popen(args, env=env)
         p.wait()
 
-    def hadoop(self, hadoop_options=[]):
+    def hadoop(self, hadoop_options=None):
+        if hadoop_options is None:
+            hadoop_options = []
         env = common.make_dse_env(self.get_install_dir(), self.get_path())
         env['JMX_PORT'] = self.jmx_port
         dse = common.join_bin(self.get_install_dir(), 'bin', 'dse')
@@ -216,7 +220,9 @@ class DseNode(Node):
         p = subprocess.Popen(args, env=env)
         p.wait()
 
-    def hive(self, hive_options=[]):
+    def hive(self, hive_options=None):
+        if hive_options is None:
+            hive_options = []
         env = common.make_dse_env(self.get_install_dir(), self.get_path())
         env['JMX_PORT'] = self.jmx_port
         dse = common.join_bin(self.get_install_dir(), 'bin', 'dse')
@@ -225,7 +231,9 @@ class DseNode(Node):
         p = subprocess.Popen(args, env=env)
         p.wait()
 
-    def pig(self, pig_options=[]):
+    def pig(self, pig_options=None):
+        if pig_options is None:
+            pig_options = []
         env = common.make_dse_env(self.get_install_dir(), self.get_path())
         env['JMX_PORT'] = self.jmx_port
         dse = common.join_bin(self.get_install_dir(), 'bin', 'dse')
@@ -234,7 +242,9 @@ class DseNode(Node):
         p = subprocess.Popen(args, env=env)
         p.wait()
 
-    def sqoop(self, sqoop_options=[]):
+    def sqoop(self, sqoop_options=None):
+        if sqoop_options is None:
+            sqoop_options = []
         env = common.make_dse_env(self.get_install_dir(), self.get_path())
         env['JMX_PORT'] = self.jmx_port
         dse = common.join_bin(self.get_install_dir(), 'bin', 'dse')
@@ -243,7 +253,9 @@ class DseNode(Node):
         p = subprocess.Popen(args, env=env)
         p.wait()
 
-    def spark(self, spark_options=[]):
+    def spark(self, spark_options=None):
+        if spark_options is None:
+            spark_options = []
         env = common.make_dse_env(self.get_install_dir(), self.get_path())
         env['JMX_PORT'] = self.jmx_port
         dse = common.join_bin(self.get_install_dir(), 'bin', 'dse')
