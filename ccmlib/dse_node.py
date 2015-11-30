@@ -66,7 +66,7 @@ class DseNode(Node):
               wait_other_notice=False,
               replace_token=None,
               replace_address=None,
-              jvm_args=[],
+              jvm_args=None,
               wait_for_binary_proto=False,
               profile_options=None,
               use_jna=False,
@@ -81,6 +81,8 @@ class DseNode(Node):
           - replace_token: start the node with the -Dcassandra.replace_token option.
           - replace_address: start the node with the -Dcassandra.replace_address option.
         """
+        if jvm_args is None:
+            jvm_args = []
 
         if self.is_running():
             raise NodeError("%s is already running" % self.name)

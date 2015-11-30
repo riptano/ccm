@@ -263,7 +263,10 @@ class Cluster(object):
             else:
                 node.show(only_status=True)
 
-    def start(self, no_wait=False, verbose=False, wait_for_binary_proto=False, wait_other_notice=False, jvm_args=[], profile_options=None, quiet_start=False):
+    def start(self, no_wait=False, verbose=False, wait_for_binary_proto=False, wait_other_notice=False, jvm_args=None, profile_options=None, quiet_start=False):
+        if jvm_args is None:
+            jvm_args = []
+
         common.assert_jdk_valid_for_cassandra_version(self.cassandra_version())
 
         if wait_other_notice:
