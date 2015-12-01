@@ -687,19 +687,19 @@ class Node(object):
     def dsetool(self, cmd):
         raise common.ArgumentError('Cassandra nodes do not support dsetool')
 
-    def dse(self, dse_options=[]):
+    def dse(self, dse_options=None):
         raise common.ArgumentError('Cassandra nodes do not support dse')
 
-    def hadoop(self, hadoop_options=[]):
+    def hadoop(self, hadoop_options=None):
         raise common.ArgumentError('Cassandra nodes do not support hadoop')
 
-    def hive(self, hive_options=[]):
+    def hive(self, hive_options=None):
         raise common.ArgumentError('Cassandra nodes do not support hive')
 
-    def pig(self, pig_options=[]):
+    def pig(self, pig_options=None):
         raise common.ArgumentError('Cassandra nodes do not support pig')
 
-    def sqoop(self, sqoop_options=[]):
+    def sqoop(self, sqoop_options=None):
         raise common.ArgumentError('Cassandra nodes do not support sqoop')
 
     def bulkload(self, options):
@@ -719,7 +719,9 @@ class Node(object):
         env = self.get_env()
         os.execve(verify_bin, [common.platform_binary('sstableverify')] + options, env)
 
-    def run_cli(self, cmds=None, show_output=False, cli_options=[]):
+    def run_cli(self, cmds=None, show_output=False, cli_options=None):
+        if cli_options is None:
+            cli_options = []
         cli = self.get_tool('cassandra-cli')
         env = self.get_env()
         host = self.network_interfaces['thrift'][0]
@@ -744,7 +746,9 @@ class Node(object):
                         print_(log, end='')
                     i = i + 1
 
-    def run_cqlsh(self, cmds=None, show_output=False, cqlsh_options=[], return_output=False):
+    def run_cqlsh(self, cmds=None, show_output=False, cqlsh_options=None, return_output=False):
+        if cqlsh_options is None:
+            cqlsh_options = []
         cqlsh = self.get_tool('cqlsh')
         env = self.get_env()
         host = self.network_interfaces['thrift'][0]
@@ -1112,7 +1116,9 @@ class Node(object):
         if block_on_log:
             self.watch_log_for("DRAINED", from_mark=mark)
 
-    def repair(self, options=[], **kwargs):
+    def repair(self, options=None, **kwargs):
+        if options is None:
+            options = []
         args = ["repair"] + options
         cmd = ' '.join(args)
         return self.nodetool(cmd, **kwargs)
