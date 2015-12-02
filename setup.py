@@ -16,7 +16,7 @@ if system() == "Windows":
 
 setup(
     name='ccm',
-    version='2.0.5',
+    version='2.0.6',
     description='Cassandra Cluster Manager',
     long_description=open(abspath(join(dirname(__file__), 'README.md'))).read(),
     author='Sylvain Lebresne',
