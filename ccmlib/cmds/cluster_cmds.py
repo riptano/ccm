@@ -78,6 +78,8 @@ class ClusterCreateCmd(Cmd):
                           help="The username to use to download DSE with", default=None)
         parser.add_option("--dse-password", type="string", dest="dse_password",
                           help="The password to use to download DSE with", default=None)
+        parser.add_option("--dse-credentials", type="string", dest="dse_credentials_file",
+                          help="A file containing the dse_username, and dse_password.", default=None)
         parser.add_option("--install-dir", type="string", dest="install_dir",
                           help="Path to the cassandra or dse directory to use [default %default]", default="./")
         parser.add_option('-n', '--nodes', type="string", dest="nodes",
@@ -138,7 +140,7 @@ class ClusterCreateCmd(Cmd):
     def run(self):
         try:
             if self.options.dse or (not self.options.version and common.isDse(self.options.install_dir)):
-                cluster = DseCluster(self.path, self.name, install_dir=self.options.install_dir, version=self.options.version, dse_username=self.options.dse_username, dse_password=self.options.dse_password, opscenter=self.options.opscenter, verbose=True)
+                cluster = DseCluster(self.path, self.name, install_dir=self.options.install_dir, version=self.options.version, dse_username=self.options.dse_username, dse_password=self.options.dse_password, dse_credentials_file=self.options.dse_credentials_file, opscenter=self.options.opscenter, verbose=True)
             else:
                 cluster = Cluster(self.path, self.name, install_dir=self.options.install_dir, version=self.options.version, verbose=True)
         except OSError as e:
