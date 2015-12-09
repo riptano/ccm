@@ -468,7 +468,8 @@ class Node(object):
               wait_for_binary_proto=False,
               profile_options=None,
               use_jna=False,
-              quiet_start=False):
+              quiet_start=False,
+              allow_root=False):
         """
         Start the node. Options includes:
           - join_ring: if false, start the node with -Dcassandra.join_ring=False
@@ -538,6 +539,8 @@ class Node(object):
             args.append('-Dcassandra.replace_address=%s' % str(replace_address))
         if use_jna is False:
             args.append('-Dcassandra.boot_without_jna=true')
+        if allow_root:
+            args.append('-R')
         env['JVM_EXTRA_OPTS'] = env.get('JVM_EXTRA_OPTS', "") + " " + " ".join(jvm_args)
 
         # In case we are restarting a node

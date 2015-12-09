@@ -185,7 +185,7 @@ class ClusterCreateCmd(Cmd):
                         profile_options = {}
                         if self.options.profile_options:
                             profile_options['options'] = self.options.profile_options
-                    if cluster.start(verbose=self.options.debug_log, wait_for_binary_proto=self.options.binary_protocol, jvm_args=self.options.jvm_args, profile_options=profile_options) is None:
+                    if cluster.start(verbose=self.options.debug_log, wait_for_binary_proto=self.options.binary_protocol, jvm_args=self.options.jvm_args, profile_options=profile_options, allow_root=self.options.allow_root) is None:
                         details = ""
                         if not self.options.debug_log:
                             details = " (you can use --debug-log for more information)"
@@ -527,6 +527,7 @@ class ClusterStartCmd(Cmd):
         parser.add_option('--profile-opts', type="string", action="store", dest="profile_options",
                           help="Yourkit options when profiling", default=None)
         parser.add_option('--quiet-windows', action="store_true", dest="quiet_start", help="Pass -q on Windows 2.2.4+ and 3.0+ startup. Ignored on linux.", default=False)
+        parser.add_option('--root', action="store_true", dest="allow_root", help="Allow CCM to start cassandra as root", default=False)
         return parser
 
     def validate(self, parser, options, args):
@@ -550,7 +551,8 @@ class ClusterStartCmd(Cmd):
                                   verbose=self.options.verbose,
                                   jvm_args=self.options.jvm_args,
                                   profile_options=profile_options,
-                                  quiet_start=self.options.quiet_start) is None:
+                                  quiet_start=self.options.quiet_start,
+                                  allow_root=self.options.allow_root) is None:
                 details = ""
                 if not self.options.verbose:
                     details = " (you can use --verbose for more information)"
