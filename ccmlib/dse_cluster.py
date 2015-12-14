@@ -3,7 +3,10 @@ import os
 import shutil
 import signal
 import subprocess
-import ConfigParser
+try:
+    import ConfigParser
+except ImportError:
+    import configparser as ConfigParser
 
 from six import iteritems
 
