@@ -185,7 +185,7 @@ class Cluster(object):
         return Node(name, self, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save, binary_interface)
 
     def balanced_tokens(self, node_count):
-        if self.cassandra_version() >= '1.2' and not self.partitioner:
+        if self.cassandra_version() >= '1.2' and (not self.partitioner or 'Murmur3' in self.partitioner):
             ptokens = [(i * (2**64 // node_count)) for i in xrange(0, node_count)]
             return [int(t - 2**63) for t in ptokens]
         return [int(i * (2**127 // node_count)) for i in range(0, node_count)]
