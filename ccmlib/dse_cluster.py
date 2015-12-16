@@ -18,10 +18,12 @@ from ccmlib.dse_node import DseNode
 class DseCluster(Cluster):
 
     def __init__(self, path, name, partitioner=None, install_dir=None, create_directory=True, version=None, dse_username=None, dse_password=None, dse_credentials_file=None, opscenter=None, verbose=False):
-        if dse_credentials_file:
-            self.load_credentials_from_file(dse_credentials_file)
-        else:
+        self.dse_username = None
+        self.dse_password = None
+        self.load_credentials_from_file(dse_credentials_file)
+        if dse_username is not None:
             self.dse_username = dse_username
+        if dse_password is not None:
             self.dse_password = dse_password
         self.opscenter = opscenter
         super(DseCluster, self).__init__(path, name, partitioner, install_dir, create_directory, version, verbose)
@@ -34,6 +36,12 @@ class DseCluster(Cluster):
         return repository.setup_dse(version, self.dse_username, self.dse_password, verbose)
 
     def load_credentials_from_file(self, dse_credentials_file):
+        # Use .dse.ini if it exists in the default .ccm directory. 
+        if dse_credentials_file is None:
+            creds_file = os.path.join(common.get_default_path(), '.dse.ini')
+            if os.path.isfile(creds_file):
+                dse_credentials_file = creds_file
+        
         parser = ConfigParser.ConfigParser()
         parser.read(dse_credentials_file)
         self.dse_username = parser.get('dse_credentials','dse_username')

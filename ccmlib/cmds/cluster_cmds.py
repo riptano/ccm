@@ -79,7 +79,7 @@ class ClusterCreateCmd(Cmd):
         parser.add_option("--dse-password", type="string", dest="dse_password",
                           help="The password to use to download DSE with", default=None)
         parser.add_option("--dse-credentials", type="string", dest="dse_credentials_file",
-                          help="A file containing the dse_username, and dse_password.", default=None)
+                          help="An ini-style config file containing the dse_username and dse_password under a dse_credentials section. [default to {0}/.dse.ini if it exists]".format(common.get_default_path_display_name()), default=None)
         parser.add_option("--install-dir", type="string", dest="install_dir",
                           help="Path to the cassandra or dse directory to use [default %default]", default="./")
         parser.add_option('-n', '--nodes', type="string", dest="nodes",
