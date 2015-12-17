@@ -3,12 +3,13 @@ import os
 import shutil
 import signal
 import subprocess
+import sys
 try:
     import ConfigParser
 except ImportError:
     import configparser as ConfigParser
 
-from six import iteritems
+from six import iteritems, print_
 
 from ccmlib import common, repository
 from ccmlib.cluster import Cluster
@@ -18,11 +19,18 @@ from ccmlib.dse_node import DseNode
 class DseCluster(Cluster):
 
     def __init__(self, path, name, partitioner=None, install_dir=None, create_directory=True, version=None, dse_username=None, dse_password=None, dse_credentials_file=None, opscenter=None, verbose=False):
-        if dse_credentials_file:
-            self.load_credentials_from_file(dse_credentials_file)
-        else:
+        self.dse_username = None
+        self.dse_password = None
+        self.load_credentials_from_file(dse_credentials_file)
+        if dse_username is not None:
             self.dse_username = dse_username
+        if dse_password is not None:
             self.dse_password = dse_password
+
+        if self.dse_username is None:
+            print_("Warning: No dse username detected, specify one using --dse-username or passing in a credentials file using --dse-credentials.", file=sys.stderr)
+        if self.dse_password is None:
+            print_("Warning: No dse password detected, specify one using --dse-password or passing in a credentials file using --dse-credentials.", file=sys.stderr)
         self.opscenter = opscenter
         super(DseCluster, self).__init__(path, name, partitioner, install_dir, create_directory, version, verbose)
 
@@ -34,10 +42,22 @@ class DseCluster(Cluster):
         return repository.setup_dse(version, self.dse_username, self.dse_password, verbose)
 
     def load_credentials_from_file(self, dse_credentials_file):
-        parser = ConfigParser.ConfigParser()
-        parser.read(dse_credentials_file)
-        self.dse_username = parser.get('dse_credentials','dse_username')
-        self.dse_password = parser.get('dse_credentials','dse_password')
+        # Use .dse.ini if it exists in the default .ccm directory. 
+        if dse_credentials_file is None:
+            creds_file = os.path.join(common.get_default_path(), '.dse.ini')
+            if os.path.isfile(creds_file):
+                dse_credentials_file = creds_file
+       
+        if dse_credentials_file is not None:
+            parser = ConfigParser.ConfigParser()
+            parser.read(dse_credentials_file)
+            if parser.has_section('dse_credentials'):
+                if parser.has_option('dse_credentials', 'dse_username'):
+                    self.dse_username = parser.get('dse_credentials','dse_username')
+                if parser.has_option('dse_credentials', 'dse_password'):
+                    self.dse_password = parser.get('dse_credentials','dse_password')
+            else:
+                print_("Warning: {} does not contain a 'dse_credentials' section.".format(dse_credentials_file), file=sys.stderr)
 
     def hasOpscenter(self):
         return os.path.exists(os.path.join(self.get_path(), 'opscenter'))
