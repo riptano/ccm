@@ -137,6 +137,7 @@ class DseNode(Node):
             if 'cfs' in self.workload:
                 args.append('-c')
         args += ['-p', pidfile, '-Dcassandra.join_ring=%s' % str(join_ring)]
+        args += ['-Dcassandra.logdir=%s' % os.path.join(self.get_path(), 'logs')]
         if replace_token is not None:
             args.append('-Dcassandra.replace_token=%s' % str(replace_token))
         if replace_address is not None:
