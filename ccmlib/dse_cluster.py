@@ -27,10 +27,6 @@ class DseCluster(Cluster):
         if dse_password is not None:
             self.dse_password = dse_password
 
-        if self.dse_username is None:
-            print_("Warning: No dse username detected, specify one using --dse-username or passing in a credentials file using --dse-credentials.", file=sys.stderr)
-        if self.dse_password is None:
-            print_("Warning: No dse password detected, specify one using --dse-password or passing in a credentials file using --dse-credentials.", file=sys.stderr)
         self.opscenter = opscenter
         super(DseCluster, self).__init__(path, name, partitioner, install_dir, create_directory, version, verbose)
 

@@ -197,6 +197,10 @@ def download_dse_version(version, username, password, verbose=False):
     url = DSE_ARCHIVE % version
     _, target = tempfile.mkstemp(suffix=".tar.gz", prefix="ccm-")
     try:
+        if username is None:
+            print_("Warning: No dse username detected, specify one using --dse-username or passing in a credentials file using --dse-credentials.", file=sys.stderr)
+        if password is None:
+            print_("Warning: No dse password detected, specify one using --dse-password or passing in a credentials file using --dse-credentials.", file=sys.stderr)
         __download(url, target, username=username, password=password, show_progress=verbose)
         if verbose:
             print_("Extracting %s as version %s ..." % (target, version))
