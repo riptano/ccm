@@ -180,7 +180,7 @@ class ClusterCreateCmd(Cmd):
                     cluster.set_log_level("DEBUG")
                 if self.options.trace_log:
                     cluster.set_log_level("TRACE")
-                cluster.populate(self.nodes, self.options.debug, self.options.install_byteman, use_vnodes=self.options.vnodes, ipprefix=self.options.ipprefix, ipformat=self.options.ipformat)
+                cluster.populate(self.nodes, self.options.debug, use_vnodes=self.options.vnodes, ipprefix=self.options.ipprefix, ipformat=self.options.ipformat, install_byteman=self.options.install_byteman)
                 if self.options.start_nodes:
                     profile_options = None
                     if self.options.profile:

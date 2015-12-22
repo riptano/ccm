@@ -130,7 +130,7 @@ class Cluster(object):
         node._save()
         return self
 
-    def populate(self, nodes, debug=False, install_byteman=False, tokens=None, use_vnodes=False, ipprefix='127.0.0.', ipformat=None):
+    def populate(self, nodes, debug=False, tokens=None, use_vnodes=False, ipprefix='127.0.0.', ipformat=None, install_byteman=False):
         node_count = nodes
         dcs = []
         self.use_vnodes = use_vnodes
