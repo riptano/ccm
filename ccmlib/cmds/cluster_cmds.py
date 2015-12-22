@@ -113,6 +113,7 @@ class ClusterCreateCmd(Cmd):
         parser.add_option('--node-ssl', type="string", dest="node_ssl_path",
                           help="Path to keystore.jks and truststore.jks for internode encryption", default=None)
         parser.add_option('--root', action="store_true", dest="allow_root", help="Allow CCM to start cassandra as root", default=False)
+        parser.add_option('--byteman', action="store_true", dest="install_byteman", help="Start nodes with byteman agent running", default=False)
         return parser
 
     def validate(self, parser, options, args):
@@ -179,7 +180,7 @@ class ClusterCreateCmd(Cmd):
                     cluster.set_log_level("DEBUG")
                 if self.options.trace_log:
                     cluster.set_log_level("TRACE")
-                cluster.populate(self.nodes, self.options.debug, use_vnodes=self.options.vnodes, ipprefix=self.options.ipprefix, ipformat=self.options.ipformat)
+                cluster.populate(self.nodes, self.options.debug, self.options.install_byteman, use_vnodes=self.options.vnodes, ipprefix=self.options.ipprefix, ipformat=self.options.ipformat)
                 if self.options.start_nodes:
                     profile_options = None
                     if self.options.profile:

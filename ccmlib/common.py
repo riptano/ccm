@@ -140,8 +140,7 @@ def replaces_in_file(file, replacement_list):
 def replace_or_add_into_file_tail(file, regexp, replace):
     replaces_or_add_into_file_tail(file, [(regexp, replace)])
 
-
-def replaces_or_add_into_file_tail(file, replacement_list):
+def replaces_or_add_into_file_tail(file, replacement_list, add_config_close=True):
     rs = [(re.compile(regexp), repl) for (regexp, repl) in replacement_list]
     is_line_found = False
     file_tmp = file + ".tmp"
@@ -161,10 +160,10 @@ def replaces_or_add_into_file_tail(file, replacement_list):
             # We are moving the closing tag to the end of the file.
             # Previously, we were having an issue where new lines we wrote
             # were appearing after the closing tag, and thus being ignored.
-            f_tmp.write("</configuration>\n")
+            if add_config_close:
+                f_tmp.write("</configuration>\n")
 
     shutil.move(file_tmp, file)
-
 
 def rmdirs(path):
     if is_win():

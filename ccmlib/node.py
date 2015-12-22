@@ -72,7 +72,7 @@ class Node(object):
     Provides interactions to a Cassandra node.
     """
 
-    def __init__(self, name, cluster, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save=True, binary_interface=None):
+    def __init__(self, name, cluster, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, byteman_port, initial_token, save=True, binary_interface=None):
         """
         Create a new Node.
           - name: the name for that node
@@ -95,6 +95,7 @@ class Node(object):
                                    'binary': common.normalize_interface(binary_interface)}
         self.jmx_port = jmx_port
         self.remote_debug_port = remote_debug_port
+        self.byteman_port = byteman_port
         self.initial_token = initial_token
         self.pid = None
         self.data_center = None
@@ -131,7 +132,7 @@ class Node(object):
             binary_interface = None
             if 'binary' in itf and itf['binary'] is not None:
                 binary_interface = tuple(itf['binary'])
-            node = cluster.create_node(data['name'], data['auto_bootstrap'], tuple(itf['thrift']), tuple(itf['storage']), data['jmx_port'], remote_debug_port, initial_token, save=False, binary_interface=binary_interface)
+            node = cluster.create_node(data['name'], data['auto_bootstrap'], tuple(itf['thrift']), tuple(itf['storage']), data['jmx_port'], remote_debug_port, data['byteman_port'], initial_token, save=False, binary_interface=binary_interface)
             node.status = data['status']
             if 'pid' in data:
                 node.pid = int(data['pid'])
@@ -271,6 +272,7 @@ class Node(object):
             print_("%s%s=%s" % (indent, 'storage', self.network_interfaces['storage']))
             print_("%s%s=%s" % (indent, 'jmx_port', self.jmx_port))
             print_("%s%s=%s" % (indent, 'remote_debug_port', self.remote_debug_port))
+            print_("%s%s=%s" % (indent, 'byteman_port', self.byteman_port))
             print_("%s%s=%s" % (indent, 'initial_token', self.initial_token))
             if self.pid:
                 print_("%s%s=%s" % (indent, 'pid', self.pid))
@@ -1253,6 +1255,8 @@ class Node(object):
             values['install_dir'] = self.__install_dir
         if self.remote_debug_port:
             values['remote_debug_port'] = self.remote_debug_port
+        if self.byteman_port:
+            values['byteman_port'] = self.byteman_port
         if self.data_center:
             values['data_center'] = self.data_center
         if self.workload is not None:
@@ -1397,6 +1401,21 @@ class Node(object):
         if self.remote_debug_port != '0':
             remote_debug_port_pattern = '((-Xrunjdwp:)|(-agentlib:jdwp=))transport=dt_socket,server=y,suspend=n,address='
             common.replace_in_file(conf_file, remote_debug_port_pattern, remote_debug_options)
+
+        if self.byteman_port != '0':
+            byteman_jar = glob.glob(os.path.join( self.get_install_dir(), 'build', 'lib', 'jars', 'byteman-[0-9]*.jar'))[0]
+            agent_string = "-javaagent:{}=listener:true,boot:{},port:{}".format(byteman_jar, byteman_jar, str(self.byteman_port))
+            if common.is_win() and self.get_base_cassandra_version() >= 2.1:
+                with open(conf_file, "r+") as conf_rewrite:
+                    conf_lines = conf_rewrite.readlines()
+                    #Remove trailing brace, will be replaced
+                    conf_lines = conf_lines[:-1]
+                    conf_lines.append("    $env:JVM_OPTS=\"$env:JVM_OPTS {}\"\n}}\n".format(agent_string))
+                    conf_rewrite.seek(0)
+                    conf_rewrite.truncate()
+                    conf_rewrite.writelines(conf_lines)
+            else:
+                common.replaces_or_add_into_file_tail(conf_file, [('.*byteman.*', "JVM_OPTS=\"$JVM_OPTS {}\"".format(agent_string))], add_config_close=False)
 
         if self.get_cassandra_version() < '2.0.1':
             common.replace_in_file(conf_file, "-Xss", '    JVM_OPTS="$JVM_OPTS -Xss228k"')
@@ -1656,6 +1675,20 @@ class Node(object):
                                                        'jstack'))
         jstack_cmd = [jstack_location, '-J-d64'] + opts + [str(self.pid)]
         return subprocess.Popen(jstack_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    def byteman_submit(self, opts):
+        cdir = self.get_install_dir()
+        byteman_cmd = []
+        byteman_cmd.append(os.path.join(os.environ['JAVA_HOME'],
+                                                       'bin',
+                                                       'java'))
+        byteman_cmd.append('-cp')
+        byteman_cmd.append(glob.glob(os.path.join(cdir, 'build', 'lib', 'jars','byteman-submit-[0-9]*.jar'))[0])
+        byteman_cmd.append('org.jboss.byteman.agent.submit.Submit')
+        byteman_cmd.append('-p')
+        byteman_cmd.append(self.byteman_port)
+        byteman_cmd += opts
+        subprocess.Popen(byteman_cmd).wait()
 
 
 def _get_load_from_info_output(info):
