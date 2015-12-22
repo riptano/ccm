@@ -14,17 +14,19 @@ import time
 from distutils.version import LooseVersion
 
 from six import print_
-from six.moves import urllib
 
-from ccmlib.common import (ArgumentError, CCMError, get_default_path,
-                           platform_binary, rmdirs, validate_install_dir,
-                           assert_jdk_valid_for_cassandra_version, get_version_from_build)
+from ccmlib.common import (ArgumentError, CCMError,
+                           assert_jdk_valid_for_cassandra_version,
+                           get_default_path, get_version_from_build,
+                           platform_binary, rmdirs, validate_install_dir)
+from six.moves import urllib
 
 DSE_ARCHIVE = "http://downloads.datastax.com/enterprise/dse-%s-bin.tar.gz"
 OPSC_ARCHIVE = "http://downloads.datastax.com/community/opscenter-%s.tar.gz"
 ARCHIVE = "http://archive.apache.org/dist/cassandra"
 GIT_REPO = "http://git-wip-us.apache.org/repos/asf/cassandra.git"
 GITHUB_TAGS = "https://api.github.com/repos/apache/cassandra/git/refs/tags"
+LOCAL_GIT_REPO = os.environ.get('LOCAL_GIT_REPO', None)  # absolute path to local cassandra git repo, e.g. /home/user/cassandra/
 
 
 def setup(version, verbose=False):
@@ -33,6 +35,12 @@ def setup(version, verbose=False):
 
     if version.startswith('git:'):
         clone_development(GIT_REPO, version, verbose=verbose)
+        return (version_directory(version), None)
+
+    elif version.startswith('local:'):
+        if LOCAL_GIT_REPO is None:
+            raise CCMError("LOCAL_GIT_REPO is not defined!")
+        clone_development(LOCAL_GIT_REPO, version, verbose=verbose)
         return (version_directory(version), None)
 
     elif version.startswith('binary:'):
@@ -102,6 +110,9 @@ def clone_development(git_repo, version, verbose=False):
     assert target_dir
     if 'github' in version:
         git_repo_name, git_branch = github_username_and_branch_name(version)
+    elif 'local:' in version:
+        git_repo_name = 'local'
+        git_branch = version.split(':', 1)[1]
     else:
         git_repo_name = 'apache'
         git_branch = version.split(':', 1)[1]
