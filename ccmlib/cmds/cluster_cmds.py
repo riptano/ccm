@@ -696,7 +696,7 @@ class ClusterUpdateconfCmd(Cmd):
                           dest="cl_batch", default=False, help="Set commit log to batch mode")
         parser.add_option('--rt', '--rpc-timeout', action="store", type='int',
                           dest="rpc_timeout", help="Set rpc timeout")
-        parser.add_option('-y', '--yaml', action="store_true", dest="literal_yaml", default=False, help="Pass in literal yaml string")
+        parser.add_option('-y', '--yaml', action="store_true", dest="literal_yaml", default=False, help="If enabled, treat argument as yaml, not kv pairs. Option syntax looks like ccm updateconf -y 'a: [b: [c,d]]'")
         return parser
 
     def validate(self, parser, options, args):
