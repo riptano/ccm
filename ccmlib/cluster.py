@@ -182,8 +182,8 @@ class Cluster(object):
             self._update_config()
         return self
 
-    def create_node(self, name, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, byteman_port, initial_token, save=True, binary_interface=None):
-        return Node(name, self, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, byteman_port, initial_token, save, binary_interface)
+    def create_node(self, name, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save=True, binary_interface=None, byteman_port='0'):
+        return Node(name, self, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save, binary_interface, byteman_port)
 
     def balanced_tokens(self, node_count):
         if self.cassandra_version() >= '1.2' and (not self.partitioner or 'Murmur3' in self.partitioner):
