@@ -26,7 +26,7 @@ OPSC_ARCHIVE = "http://downloads.datastax.com/community/opscenter-%s.tar.gz"
 ARCHIVE = "http://archive.apache.org/dist/cassandra"
 GIT_REPO = "http://git-wip-us.apache.org/repos/asf/cassandra.git"
 GITHUB_TAGS = "https://api.github.com/repos/apache/cassandra/git/refs/tags"
-LOCAL_GIT_REPO = os.environ.get('LOCAL_GIT_REPO', None)
+LOCAL_GIT_REPO = os.environ.get('LOCAL_GIT_REPO', None)  # absolute path to local cassandra git repo, e.g. /home/user/cassandra/
 
 
 def setup(version, verbose=False):
