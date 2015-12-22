@@ -1,6 +1,7 @@
 import os
 import subprocess
 import sys
+import yaml
 
 from six import print_
 
@@ -695,12 +696,13 @@ class ClusterUpdateconfCmd(Cmd):
                           dest="cl_batch", default=False, help="Set commit log to batch mode")
         parser.add_option('--rt', '--rpc-timeout', action="store", type='int',
                           dest="rpc_timeout", help="Set rpc timeout")
+        parser.add_option('-y', '--yaml', action="store_true", dest="literal_yaml", default=False, help="Pass in literal yaml string")
         return parser
 
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, load_cluster=True)
         try:
-            self.setting = common.parse_settings(args)
+            self.setting = common.parse_settings(args, literal_yaml=self.options.literal_yaml)
         except common.ArgumentError as e:
             print_(str(e), file=sys.stderr)
             exit(1)
