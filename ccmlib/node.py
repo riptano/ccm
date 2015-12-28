@@ -769,15 +769,15 @@ class Node(object):
             else:
                 os.execve(cqlsh, [common.platform_binary('cqlsh')] + args, env)
         else:
-            p = subprocess.Popen([cqlsh] + args, env=env, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True)
+            p = subprocess.Popen([cqlsh] + args, env=env, stdin=subprocess.PIPE, stderr=subprocess.PIPE,
+                                 stdout=subprocess.PIPE, universal_newlines=True)
+            cmd_str = ''
             for cmd in cmds.split(';'):
                 cmd = cmd.strip()
                 if cmd:
-                    p.stdin.write(cmd + ';\n')
-            p.stdin.write("quit;\n")
-            p.wait()
-
-            output = (p.stdout.read(), p.stderr.read())
+                    cmd_str += (cmd + ';\n')
+            cmd_str += "quit;\n"
+            output = p.communicate(input=cmd_str)
 
             for err in output[1].split('\n'):
                 print_("(EE) ", err, end='')
