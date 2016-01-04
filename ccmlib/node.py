@@ -1308,7 +1308,7 @@ class Node(object):
                     pass
             else:
                 try:
-                    if isinstance(data[name], dict):
+                    if isinstance(data[name], dict) and isinstance(full_options[name], dict):
                         for option in full_options[name]:
                             data[name][option] = full_options[name][option]
                     else:
