@@ -112,8 +112,11 @@ class ClusterCreateCmd(Cmd):
                           help="Enable client authentication (only vaid with --ssl)", default=False)
         parser.add_option('--node-ssl', type="string", dest="node_ssl_path",
                           help="Path to keystore.jks and truststore.jks for internode encryption", default=None)
-        parser.add_option('--root', action="store_true", dest="allow_root", help="Allow CCM to start cassandra as root", default=False)
         parser.add_option('--byteman', action="store_true", dest="install_byteman", help="Start nodes with byteman agent running", default=False)
+        parser.add_option('--root', action="store_true", dest="allow_root",
+                          help="Allow CCM to start cassandra as root", default=False)
+        parser.add_option('--datadirs', type="int", dest="datadirs",
+                          help="Number of data directories to use", default=1)
         return parser
 
     def validate(self, parser, options, args):
@@ -173,6 +176,9 @@ class ClusterCreateCmd(Cmd):
 
         if self.options.node_ssl_path:
             cluster.enable_internode_ssl(self.options.node_ssl_path)
+
+        if self.options.datadirs:
+            cluster.set_datadir_count(self.options.datadirs)
 
         if self.nodes is not None:
             try:
@@ -292,6 +298,7 @@ class ClusterPopulateCmd(Cmd):
                           help="Ipprefix to use to create the ip of a node")
         parser.add_option('-I', '--ip-format', type="string", dest="ipformat",
                           help="Format to use when creating the ip of a node (supports enumerating ipv6-type addresses like fe80::%d%lo0)")
+
         return parser
 
     def validate(self, parser, options, args):

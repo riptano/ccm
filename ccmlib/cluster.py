@@ -30,6 +30,7 @@ class Cluster(object):
         # Classes that are to follow the respective logging level
         self._debug = []
         self._trace = []
+        self.data_dir_count = 1
 
         if self.name.lower() == "current":
             raise RuntimeError("Cannot name a cluster 'current'.")
@@ -73,6 +74,10 @@ class Cluster(object):
     def set_partitioner(self, partitioner):
         self.partitioner = partitioner
         self._update_config()
+        return self
+
+    def set_datadir_count(self, n):
+        self.data_dir_count = int(n)
         return self
 
     def set_install_dir(self, install_dir=None, version=None, verbose=False):
@@ -480,7 +485,8 @@ class Cluster(object):
                 'config_options': self._config_options,
                 'dse_config_options': self._dse_config_options,
                 'log_level': self.__log_level,
-                'use_vnodes': self.use_vnodes
+                'use_vnodes': self.use_vnodes,
+                'datadirs': self.data_dir_count
             }, f)
 
     def __update_pids(self, started):

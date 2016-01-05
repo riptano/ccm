@@ -832,7 +832,7 @@ class Node(object):
         common.copy_file(new_logback_config, cassandra_conf_dir)
 
     def clear(self, clear_all=False, only_data=False):
-        data_dirs = ['data']
+        data_dirs = ['data{0}'.format(x) for x in xrange(0, self.cluster.data_dir_count)]
         if not only_data:
             data_dirs.append("commitlogs")
             if clear_all:
@@ -1031,12 +1031,12 @@ class Node(object):
         return fcmd
 
     def list_keyspaces(self):
-        keyspaces = os.listdir(os.path.join(self.get_path(), 'data'))
+        keyspaces = os.listdir(os.path.join(self.get_path(), 'data0'))
         keyspaces.remove('system')
         return keyspaces
 
-    def get_sstables(self, keyspace, column_family):
-        keyspace_dir = os.path.join(self.get_path(), 'data', keyspace)
+    def get_sstables_per_data_directory(self, keyspace, column_family):
+        keyspace_dirs = [os.path.join(self.get_path(), "data{0}".format(x), keyspace) for x in xrange(0, self.cluster.data_dir_count)]
         cf_glob = '*'
         if column_family:
             # account for changes in data dir layout from CASSANDRA-5202
@@ -1044,20 +1044,26 @@ class Node(object):
                 cf_glob = column_family
             else:
                 cf_glob = column_family + '-*'
-        if not os.path.exists(keyspace_dir):
-            raise common.ArgumentError("Unknown keyspace {0}".format(keyspace))
+        for keyspace_dir in keyspace_dirs:
+            if not os.path.exists(keyspace_dir):
+                raise common.ArgumentError("Unknown keyspace {0}".format(keyspace))
 
         # data directory layout is changed from 1.1
         if self.get_base_cassandra_version() < 1.1:
-            files = glob.glob(os.path.join(keyspace_dir, "{0}*-Data.db".format(column_family)))
+            files = [glob.glob(os.path.join(keyspace_dir, "{0}*-Data.db".format(column_family))) for keyspace_dir in keyspace_dirs]
         elif self.get_base_cassandra_version() < 2.2:
-            files = glob.glob(os.path.join(keyspace_dir, cf_glob, "%s-%s*-Data.db" % (keyspace, column_family)))
+            files = [glob.glob(os.path.join(keyspace_dir, cf_glob, "%s-%s*-Data.db" % (keyspace, column_family))) for keyspace_dir in keyspace_dirs]
         else:
-            files = glob.glob(os.path.join(keyspace_dir, cf_glob, "*big-Data.db"))
-        for f in files:
-            if os.path.exists(f.replace('Data.db', 'Compacted')):
-                files.remove(f)
+            files = [glob.glob(os.path.join(keyspace_dir, cf_glob, "*big-Data.db")) for keyspace_dir in keyspace_dirs]
+
+        for d in files:
+            for f in d:
+                if os.path.exists(f.replace('Data.db', 'Compacted')):
+                    files.remove(f)
         return files
+
+    def get_sstables(self, keyspace, column_family):
+        return [f for sublist in self.get_sstables_per_data_directory(keyspace, column_family) for f in sublist]
 
     def stress(self, stress_options=None, capture_output=False, **kwargs):
         if stress_options is None:
@@ -1288,11 +1294,12 @@ class Node(object):
         if self.network_interfaces['binary'] is not None and self.get_base_cassandra_version() >= 1.2:
             _, data['native_transport_port'] = self.network_interfaces['binary']
 
-        data['data_file_directories'] = [os.path.join(self.get_path(), 'data')]
+        data['data_file_directories'] = [os.path.join(self.get_path(), 'data{0}'.format(x)) for x in xrange(0, self.cluster.data_dir_count)]
         data['commitlog_directory'] = os.path.join(self.get_path(), 'commitlogs')
         data['saved_caches_directory'] = os.path.join(self.get_path(), 'saved_caches')
+
         if self.get_cassandra_version() > '3.0' and 'hints_directory' in yaml_text:
-            data['hints_directory'] = os.path.join(self.get_path(), 'data', 'hints')
+            data['hints_directory'] = os.path.join(self.get_path(), 'hints')
 
         if self.cluster.partitioner:
             data['partitioner'] = self.cluster.partitioner
@@ -1491,8 +1498,10 @@ class Node(object):
 
     def _get_directories(self):
         dirs = []
-        for i in ['data', 'commitlogs', 'saved_caches', 'logs', 'conf', 'bin', os.path.join('data', 'hints')]:
+        for i in ['commitlogs', 'saved_caches', 'logs', 'conf', 'bin', 'hints']:
             dirs.append(os.path.join(self.get_path(), i))
+        for x in xrange(0, self.cluster.data_dir_count):
+            dirs.append(os.path.join(self.get_path(), 'data{0}'.format(x)))
         return dirs
 
     def __get_status_string(self):
@@ -1600,26 +1609,27 @@ class Node(object):
             if not columnfamilies or len(columnfamilies) > 1:
                 raise common.ArgumentError("Exactly one column family must be specified with datafiles")
 
-            cf_dir = os.path.join(os.path.realpath(self.get_path()), 'data', keyspace, columnfamilies[0])
+            for x in xrange(0, self.cluster.data_dir_count):
+                cf_dir = os.path.join(os.path.realpath(self.get_path()), 'data{0}'.format(x), keyspace, columnfamilies[0])
 
-            sstables = set()
-            for datafile in datafiles:
-                if not os.path.isabs(datafile):
-                    datafile = os.path.join(os.getcwd(), datafile)
+                sstables = set()
+                for datafile in datafiles:
+                    if not os.path.isabs(datafile):
+                        datafile = os.path.join(os.getcwd(), datafile)
 
-                if not datafile.startswith(cf_dir + '-') and not datafile.startswith(cf_dir + os.sep):
-                    raise NodeError("File doesn't appear to belong to the specified keyspace and column family: " + datafile)
+                    if not datafile.startswith(cf_dir + '-') and not datafile.startswith(cf_dir + os.sep):
+                        raise NodeError("File doesn't appear to belong to the specified keyspace and column familily: " + datafile)
 
-                sstable = _sstable_regexp.match(os.path.basename(datafile))
-                if not sstable:
-                    raise NodeError("File doesn't seem to be a valid sstable filename: " + datafile)
+                    sstable = _sstable_regexp.match(os.path.basename(datafile))
+                    if not sstable:
+                        raise NodeError("File doesn't seem to be a valid sstable filename: " + datafile)
 
-                sstable = sstable.groupdict()
-                if not sstable['tmp'] and sstable['number'] not in sstables:
-                    if not os.path.exists(datafile):
-                        raise IOError("File doesn't exist: " + datafile)
-                    sstables.add(sstable['number'])
-                    files.append(datafile)
+                    sstable = sstable.groupdict()
+                    if not sstable['tmp'] and sstable['number'] not in sstables:
+                        if not os.path.exists(datafile):
+                            raise IOError("File doesn't exist: " + datafile)
+                        sstables.add(sstable['number'])
+                        files.append(datafile)
 
         return files
 
