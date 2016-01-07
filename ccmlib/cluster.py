@@ -1,5 +1,6 @@
 # ccm clusters
 
+import itertools
 import os
 import random
 import shutil
@@ -269,14 +270,11 @@ class Cluster(object):
             else:
                 node.show(only_status=True)
 
-    def start(self, no_wait=False, verbose=False, wait_for_binary_proto=False, wait_other_notice=False, jvm_args=None, profile_options=None, quiet_start=False, allow_root=False):
+    def start(self, no_wait=False, verbose=False, wait_for_binary_proto=False, wait_other_notice=True, jvm_args=None, profile_options=None, quiet_start=False, allow_root=False):
         if jvm_args is None:
             jvm_args = []
 
         common.assert_jdk_valid_for_cassandra_version(self.cassandra_version())
-
-        if wait_other_notice:
-            marks = [(node, node.mark_log()) for node in list(self.nodes.values())]
 
         started = []
         for node in list(self.nodes.values()):
@@ -288,7 +286,7 @@ class Cluster(object):
                 p = node.start(update_pid=False, jvm_args=jvm_args, profile_options=profile_options, verbose=verbose, quiet_start=quiet_start, allow_root=allow_root)
                 started.append((node, p, mark))
 
-        if no_wait and not verbose:
+        if no_wait:
             time.sleep(2)  # waiting 2 seconds to check for early errors and for the pid to be set
         else:
             for node, p, mark in started:
@@ -304,23 +302,14 @@ class Cluster(object):
             if not node.is_running():
                 raise NodeError("Error starting {0}.".format(node.name), p)
 
-        if not no_wait and self.cassandra_version() >= "0.8":
-            # 0.7 gossip messages seems less predictible that from 0.8 onwards and
-            # I don't care enough
-            for node, _, mark in started:
-                for other_node, _, _ in started:
-                    if other_node is not node:
-                        node.watch_log_for_alive(other_node, from_mark=mark)
+        if not no_wait:
+            if wait_other_notice:
+                for (node, _, mark), (other_node, _, _) in itertools.permutations(started, 2):
+                    node.watch_log_for_alive(other_node, from_mark=mark)
 
-        if wait_other_notice:
-            for old_node, mark in marks:
-                for node, _, _ in started:
-                    if old_node is not node:
-                        old_node.watch_log_for_alive(node, from_mark=mark)
-
-        if wait_for_binary_proto:
-            for node, p, mark in started:
-                node.wait_for_binary_interface(process=p, verbose=verbose, from_mark=mark)
+            if wait_for_binary_proto:
+                for node, p, mark in started:
+                    node.wait_for_binary_interface(process=p, verbose=verbose, from_mark=mark)
 
         return started
 

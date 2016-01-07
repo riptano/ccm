@@ -38,20 +38,20 @@ class DseCluster(Cluster):
         return repository.setup_dse(version, self.dse_username, self.dse_password, verbose)
 
     def load_credentials_from_file(self, dse_credentials_file):
-        # Use .dse.ini if it exists in the default .ccm directory. 
+        # Use .dse.ini if it exists in the default .ccm directory.
         if dse_credentials_file is None:
             creds_file = os.path.join(common.get_default_path(), '.dse.ini')
             if os.path.isfile(creds_file):
                 dse_credentials_file = creds_file
-       
+
         if dse_credentials_file is not None:
             parser = ConfigParser.ConfigParser()
             parser.read(dse_credentials_file)
             if parser.has_section('dse_credentials'):
                 if parser.has_option('dse_credentials', 'dse_username'):
-                    self.dse_username = parser.get('dse_credentials','dse_username')
+                    self.dse_username = parser.get('dse_credentials', 'dse_username')
                 if parser.has_option('dse_credentials', 'dse_password'):
-                    self.dse_password = parser.get('dse_credentials','dse_password')
+                    self.dse_password = parser.get('dse_credentials', 'dse_password')
             else:
                 print_("Warning: {} does not contain a 'dse_credentials' section.".format(dse_credentials_file), file=sys.stderr)
 
@@ -61,7 +61,7 @@ class DseCluster(Cluster):
     def create_node(self, name, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save=True, binary_interface=None, byteman_port='0'):
         return DseNode(name, self, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save, binary_interface, byteman_port)
 
-    def start(self, no_wait=False, verbose=False, wait_for_binary_proto=False, wait_other_notice=False, jvm_args=None, profile_options=None, quiet_start=False, allow_root=False):
+    def start(self, no_wait=False, verbose=False, wait_for_binary_proto=False, wait_other_notice=True, jvm_args=None, profile_options=None, quiet_start=False, allow_root=False):
         if jvm_args is None:
             jvm_args = []
         started = super(DseCluster, self).start(no_wait, verbose, wait_for_binary_proto, wait_other_notice, jvm_args, profile_options, quiet_start=quiet_start, allow_root=allow_root)

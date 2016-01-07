@@ -524,9 +524,12 @@ class ClusterStartCmd(Cmd):
         parser.add_option('-v', '--verbose', action="store_true", dest="verbose",
                           help="Print standard output of cassandra process", default=False)
         parser.add_option('--no-wait', action="store_true", dest="no_wait",
-                          help="Do not wait for cassandra node to be ready", default=False)
-        parser.add_option('--wait-other-notice', action="store_true", dest="wait_other_notice",
-                          help="Wait until all other live nodes of the cluster have marked this node UP", default=False)
+                          help="Do not wait for cassandra node to be ready. Overrides all other wait options.", default=False)
+        # This option (wait-other-notice) is now deprecated, as it was never respected
+        parser.add_option('--wait-other-notice', action="store_true", dest="deprecate",
+                          help="DEPRECATED/IGNORED: Use '--skip-wait-other-notice' instead. This is now on by default.", default=False)
+        parser.add_option('--skip-wait-other-notice', action="store_false", dest="wait_other_notice",
+                          help="Skip waiting until all live nodes of the cluster have marked the other nodes UP", default=True)
         parser.add_option('--wait-for-binary-proto', action="store_true", dest="wait_for_binary_proto",
                           help="Wait for the binary protocol to start", default=False)
         parser.add_option('--jvm_arg', action="append", dest="jvm_args",
@@ -541,6 +544,11 @@ class ClusterStartCmd(Cmd):
 
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, load_cluster=True)
+        if self.options.deprecate:
+            print_("WARN: --wait-other-notice is deprecated. Please see the help text.")
+        if self.options.no_wait and (self.options.wait_for_binary_proto or self.options.deprecate):
+            print_("ERROR: --no-wait was specified alongside one or more wait options. This is invalid.")
+            exit(1)
 
     def run(self):
         try:
