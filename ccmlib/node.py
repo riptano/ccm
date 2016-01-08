@@ -1427,6 +1427,17 @@ class Node(object):
         if self.get_cassandra_version() < '2.0.1':
             common.replace_in_file(conf_file, "-Xss", '    JVM_OPTS="$JVM_OPTS -Xss228k"')
 
+        # gc.log was turned on by default in 2.2.5/3.0.3/3.3
+        if self.get_cassandra_version() >= '2.2.5':
+            gc_log_pattern = "-Xloggc"
+            gc_log_path = os.path.join(self.get_path(), 'logs', 'gc.log')
+            if common.is_win():
+                gc_log_setting = '    $env:JVM_OPTS="$env:JVM_OPTS -Xloggc:{}"'.format(gc_log_path)
+            else:
+                gc_log_setting = 'JVM_OPTS="$JVM_OPTS -Xloggc:{}"'.format(gc_log_path)
+
+            common.replace_in_file(conf_file, gc_log_pattern, gc_log_setting)
+
         for itf in list(self.network_interfaces.values()):
             if itf is not None and common.interface_is_ipv6(itf):
                 if common.is_win():
