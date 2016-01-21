@@ -378,7 +378,7 @@ class Node(object):
                     if process.returncode != 0:
                         raise RuntimeError()  # Shouldn't reuse RuntimeError but I'm lazy
 
-        with open(self.logfilename()) as f:
+        with open(log_file) as f:
             if from_mark:
                 f.seek(from_mark)
 
@@ -778,15 +778,10 @@ class Node(object):
                 if cmd:
                     p.stdin.write(cmd + ';\n')
             p.stdin.write("quit;\n")
-            p.wait()
+            output = p.communicate(input=cmd_str)
 
             for err in output[1].split('\n'):
                 print_("(EE) ", err, end='')
-
-            for err in output[1].split('\n'):
-                err = err.strip()
-                if err:
-                    print_("(EE) ", err, end='')
 
             if show_output:
                 print_(output[0], end='')

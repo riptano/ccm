@@ -66,8 +66,8 @@ class DseNode(Node):
               wait_other_notice=False,
               replace_token=None,
               replace_address=None,
-              jvm_args=[],
-              wait_for_binary_proto=True,
+              jvm_args=None,
+              wait_for_binary_proto=False,
               profile_options=None,
               use_jna=False,
               quiet_start=False,
@@ -178,10 +178,7 @@ class DseNode(Node):
                 node.watch_log_for_alive(self, from_mark=mark)
 
         if wait_for_binary_proto:
-            self.watch_log_for("Starting listening for CQL clients", from_mark=self.mark)
-            # we're probably fine at that point but just wait some tiny bit more because
-            # the msg is logged just before starting the binary protocol server
-            time.sleep(0.2)
+            self.wait_for_binary_interface(from_mark=self.mark)
 
         if self.cluster.hasOpscenter():
             self._start_agent()
