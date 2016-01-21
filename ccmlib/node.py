@@ -1711,6 +1711,8 @@ class Node(object):
         byteman_cmd += opts
         subprocess.Popen(byteman_cmd).wait()
 
+    def data_directories(self):
+        return [os.path.join(self.get_path(), 'data{0}'.format(x)) for x in xrange(0, self.cluster.data_dir_count)]
 
 def _get_load_from_info_output(info):
     load_lines = [s for s in info.split('\n')
