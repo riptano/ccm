@@ -95,6 +95,8 @@ class DseNode(Node):
         if wait_other_notice:
             marks = [(node, node.mark_log()) for node in list(self.cluster.nodes.values()) if node.is_running()]
 
+        self.mark = self.mark_log()
+
         cdir = self.get_install_dir()
         launch_bin = common.join_bin(cdir, 'bin', 'dse')
         # Copy back the dse scripts since profiling may have modified it the previous time
@@ -149,13 +151,16 @@ class DseNode(Node):
         args = args + jvm_args
 
         process = None
+
+        FNULL = open(os.devnull, 'w')
+
         if common.is_win():
             # clean up any old dirty_pid files from prior runs
             if (os.path.isfile(self.get_path() + "/dirty_pid.tmp")):
                 os.remove(self.get_path() + "/dirty_pid.tmp")
-            process = subprocess.Popen(args, cwd=self.get_bin_dir(), env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            process = subprocess.Popen(args, cwd=self.get_bin_dir(), env=env, stdout=FNULL, stderr=subprocess.PIPE)
         else:
-            process = subprocess.Popen(args, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            process = subprocess.Popen(args, env=env, stdout=FNULL, stderr=subprocess.PIPE)
 
         # Our modified batch file writes a dirty output with more than just the pid - clean it to get in parity
         # with *nix operation here.
@@ -163,13 +168,6 @@ class DseNode(Node):
             self.__clean_win_pid()
             self._update_pid(process)
         elif update_pid:
-            if no_wait:
-                time.sleep(2)  # waiting 2 seconds nevertheless to check for early errors and for the pid to be set
-            else:
-                for line in process.stdout:
-                    if verbose:
-                        print_(line.rstrip('\n'))
-
             self._update_pid(process)
 
             if not self.is_running():
@@ -180,7 +178,7 @@ class DseNode(Node):
                 node.watch_log_for_alive(self, from_mark=mark)
 
         if wait_for_binary_proto:
-            self.wait_for_binary_interface()
+            self.wait_for_binary_interface(from_mark=self.mark)
 
         if self.cluster.hasOpscenter():
             self._start_agent()
@@ -193,11 +191,40 @@ class DseNode(Node):
             self._stop_agent()
         return stopped
 
+    def nodetool(self, cmd, username=None, password=None, capture_output=True, wait=True):
+        """
+        Setting wait=False makes it impossible to detect errors,
+        if capture_output is also False. wait=False allows us to return
+        while nodetool is still running.
+        """
+        if capture_output and not wait:
+            raise common.ArgumentError("Cannot set capture_output while wait is False.")
+        env = self.get_env()
+        nodetool = common.join_bin(self.get_install_dir(), 'bin', 'nodetool')
+        args = [nodetool, '-h', 'localhost', '-p', str(self.jmx_port)]
+        if username is not None:
+            args += [ '-u', username]
+        if password is not None:
+            args += [ '-pw', password]
+        args += cmd.split()
+        if capture_output:
+            p = subprocess.Popen(args, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            stdout, stderr = p.communicate()
+        else:
+            p = subprocess.Popen(args, env=env)
+            stdout, stderr = None, None
+
+        if wait:
+            exit_status = p.wait()
+            if exit_status != 0:
+                raise NodetoolError(" ".join(args), exit_status, stdout, stderr)
+
+        return stdout, stderr
+
     def dsetool(self, cmd):
         env = common.make_dse_env(self.get_install_dir(), self.get_path())
-        host = self.address()
         dsetool = common.join_bin(self.get_install_dir(), 'bin', 'dsetool')
-        args = [dsetool, '-h', host, '-j', str(self.jmx_port)]
+        args = [dsetool, '-h', 'localhost', '-j', str(self.jmx_port)]
         args += cmd.split()
         p = subprocess.Popen(args, env=env)
         p.wait()
@@ -306,6 +333,28 @@ class DseNode(Node):
         os.makedirs(os.path.join(self.get_path(), 'resources', 'cassandra', 'bin'))
         common.copy_directory(os.path.join(self.get_install_dir(), 'bin'), self.get_bin_dir())
         common.copy_directory(os.path.join(self.get_install_dir(), 'resources', 'cassandra', 'bin'), os.path.join(self.get_path(), 'resources', 'cassandra', 'bin'))
+
+    def _update_log4j(self):
+        super(DseNode, self)._update_log4j()
+
+        conf_file = os.path.join(self.get_conf_dir(), common.LOG4J_CONF)
+        append_pattern = 'log4j.appender.V.File='
+        log_file = os.path.join(self.get_path(), 'logs', 'solrvalidation.log')
+        if common.is_win():
+            log_file = re.sub("\\\\", "/", log_file)
+        common.replace_in_file(conf_file, append_pattern, append_pattern + log_file)
+
+        append_pattern = 'log4j.appender.A.File='
+        log_file = os.path.join(self.get_path(), 'logs', 'audit.log')
+        if common.is_win():
+            log_file = re.sub("\\\\", "/", log_file)
+        common.replace_in_file(conf_file, append_pattern, append_pattern + log_file)
+
+        append_pattern = 'log4j.appender.B.File='
+        log_file = os.path.join(self.get_path(), 'logs', 'audit', 'dropped-events.log')
+        if common.is_win():
+            log_file = re.sub("\\\\", "/", log_file)
+        common.replace_in_file(conf_file, append_pattern, append_pattern + log_file)
 
     def __update_yaml(self):
         conf_file = os.path.join(self.get_path(), 'resources', 'dse', 'conf', 'dse.yaml')
