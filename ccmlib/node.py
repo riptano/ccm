@@ -1702,8 +1702,8 @@ class Node(object):
         cdir = self.get_install_dir()
         byteman_cmd = []
         byteman_cmd.append(os.path.join(os.environ['JAVA_HOME'],
-                                                       'bin',
-                                                       'java'))
+                                        'bin',
+                                        'java'))
         byteman_cmd.append('-cp')
         byteman_cmd.append(glob.glob(os.path.join(cdir, 'build', 'lib', 'jars', 'byteman-submit-[0-9]*.jar'))[0])
         byteman_cmd.append('org.jboss.byteman.agent.submit.Submit')

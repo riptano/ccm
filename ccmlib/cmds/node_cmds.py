@@ -923,6 +923,7 @@ class NodeVersionfrombuildCmd(Cmd):
 
         print_(version_from_build)
 
+
 class NodeBytemanCmd(Cmd):
 
     def description(self):

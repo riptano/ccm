@@ -58,6 +58,15 @@ class DseNode(Node):
         if workload == 'solr':
             self.__generate_server_xml()
 
+    def watch_log_for_alive(self, nodes, from_mark=None, timeout=720, filename='system.log'):
+        """
+        Watch the log of this node until it detects that the provided other
+        nodes are marked UP. This method works similarly to watch_log_for_death.
+
+        We want to provide a higher default timeout when this is called on DSE.
+        """
+        super(DseNode, self).watch_log_for_alive(nodes, from_mark=from_mark, timeout=timeout, filename=filename)
+
     def start(self,
               join_ring=True,
               no_wait=False,
