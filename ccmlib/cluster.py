@@ -531,3 +531,7 @@ class Cluster(object):
 
         self._config_options['server_encryption_options'] = node_ssl_options
         self._update_config()
+
+    def enable_pwd_auth(self):
+        self._config_options['authenticator'] = 'PasswordAuthenticator'
+        self._update_config()

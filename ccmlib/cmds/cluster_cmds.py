@@ -112,6 +112,8 @@ class ClusterCreateCmd(Cmd):
                           help="Enable client authentication (only vaid with --ssl)", default=False)
         parser.add_option('--node-ssl', type="string", dest="node_ssl_path",
                           help="Path to keystore.jks and truststore.jks for internode encryption", default=None)
+        parser.add_option('--pwd-auth', action="store_true", dest="node_pwd_auth",
+                          help="Change authenticator to PasswordAuthenticator (default credentials)", default=False)
         parser.add_option('--byteman', action="store_true", dest="install_byteman", help="Start nodes with byteman agent running", default=False)
         parser.add_option('--root', action="store_true", dest="allow_root",
                           help="Allow CCM to start cassandra as root", default=False)
@@ -180,6 +182,9 @@ class ClusterCreateCmd(Cmd):
 
         if self.options.node_ssl_path:
             cluster.enable_internode_ssl(self.options.node_ssl_path)
+
+        if self.options.node_pwd_auth:
+            cluster.enable_pwd_auth()
 
         if self.options.datadirs:
             cluster.set_datadir_count(self.options.datadirs)
