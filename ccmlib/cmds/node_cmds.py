@@ -722,7 +722,7 @@ class NodeSetworkloadCmd(Cmd):
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
         self.workload = args[1]
-        workloads = ['cassandra', 'solr', 'hadoop', 'spark', 'cfs']
+        workloads = ['cassandra', 'solr', 'hadoop', 'spark', 'cfs', 'graph']
         if self.workload not in workloads:
             print_(self.workload, ' is not a valid workload')
             exit(1)
