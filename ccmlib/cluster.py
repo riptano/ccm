@@ -284,6 +284,14 @@ class Cluster(object):
                     mark = node.mark_log()
 
                 p = node.start(update_pid=False, jvm_args=jvm_args, profile_options=profile_options, verbose=verbose, quiet_start=quiet_start, allow_root=allow_root)
+
+                # Prior to JDK8, starting every node at once could lead to a
+                # nanotime collision where the RNG that generates a node's tokens
+                # gives identical tokens to several nodes. Thus, we stagger
+                # the node starts
+                if common.get_jdk_version() < '1.8':
+                    time.sleep(1)
+
                 started.append((node, p, mark))
 
         if no_wait:
