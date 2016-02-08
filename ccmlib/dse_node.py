@@ -10,7 +10,7 @@ import subprocess
 import time
 
 import yaml
-from six import print_
+from six import print_,iteritems
 
 from ccmlib import common
 from ccmlib.node import Node, NodeError
@@ -25,6 +25,7 @@ class DseNode(Node):
     def __init__(self, name, cluster, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save=True, binary_interface=None, byteman_port='0'):
         super(DseNode, self).__init__(name, cluster, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save, binary_interface, byteman_port)
         self.get_cassandra_version()
+        self._dse_config_options = {}
         if self.cluster.hasOpscenter():
             self._copy_agent()
 
@@ -47,16 +48,34 @@ class DseNode(Node):
         return [common.join_bin(os.path.join(self.get_install_dir(), 'resources', 'cassandra'), 'bin', 'dse'), toolname]
 
     def get_env(self):
-        return common.make_dse_env(self.get_install_dir(), self.get_path())
+        (node_ip, _) = self.network_interfaces['binary']
+        return common.make_dse_env(self.get_install_dir(), self.get_path(), node_ip)
 
     def get_cassandra_version(self):
         return common.get_dse_cassandra_version(self.get_install_dir())
 
-    def set_workload(self, workload):
-        self.workload = workload
+    def set_workloads(self, workloads):
+        self.workloads = workloads
         self._update_config()
-        if workload == 'solr':
+        if 'solr' in self.workloads:
             self.__generate_server_xml()
+        if 'graph' in self.workloads:
+            (node_ip, _) = self.network_interfaces['binary']
+            self.set_dse_configuration_options({'graph' : {'gremlin_server': {'host': node_ip}}})
+            self.__update_gremlin_config_yaml()
+        if 'dsefs' in self.workloads:
+            dsefs_options = {'dsefs_options' : {'enabled': 'true',
+                                                'keyspace_name': 'dsefs',
+                                                'public_port': '5598',
+                                                'private_port': '5599',
+                                                'data_directories': [os.path.join(self.get_path(), 'dsefs')]}}
+            self.set_dse_configuration_options(dsefs_options)
+
+    def set_dse_configuration_options(self, values=None):
+        if values is not None:
+            for k, v in iteritems(values):
+                self._dse_config_options[k] = v
+        self.import_dse_config_files()
 
     def watch_log_for_alive(self, nodes, from_mark=None, timeout=720, filename='system.log'):
         """
@@ -130,7 +149,7 @@ class DseNode(Node):
 
         os.chmod(launch_bin, os.stat(launch_bin).st_mode | stat.S_IEXEC)
 
-        env = common.make_dse_env(self.get_install_dir(), self.get_path())
+        env = self.get_env()
 
         if common.is_win():
             self._clean_win_jmx()
@@ -138,15 +157,18 @@ class DseNode(Node):
         pidfile = os.path.join(self.get_path(), 'cassandra.pid')
         args = [launch_bin, 'cassandra']
 
-        if self.workload is not None:
-            if 'hadoop' in self.workload:
+        for workload in self.workloads:
+            if 'hadoop' in workload:
                 args.append('-t')
-            if 'solr' in self.workload:
+            if 'solr' in workload:
                 args.append('-s')
-            if 'spark' in self.workload:
+            if 'spark' in workload:
                 args.append('-k')
-            if 'cfs' in self.workload:
+            if 'cfs' in workload:
                 args.append('-c')
+            if 'graph' in workload:
+                args.append('-g')
+
         args += ['-p', pidfile, '-Dcassandra.join_ring=%s' % str(join_ring)]
         args += ['-Dcassandra.logdir=%s' % os.path.join(self.get_path(), 'logs')]
         if replace_token is not None:
@@ -231,7 +253,7 @@ class DseNode(Node):
         return stdout, stderr
 
     def dsetool(self, cmd):
-        env = common.make_dse_env(self.get_install_dir(), self.get_path())
+        env = self.get_env()
         dsetool = common.join_bin(self.get_install_dir(), 'bin', 'dsetool')
         args = [dsetool, '-h', 'localhost', '-j', str(self.jmx_port)]
         args += cmd.split()
@@ -241,7 +263,7 @@ class DseNode(Node):
     def dse(self, dse_options=None):
         if dse_options is None:
             dse_options = []
-        env = common.make_dse_env(self.get_install_dir(), self.get_path())
+        env = self.get_env()
         env['JMX_PORT'] = self.jmx_port
         dse = common.join_bin(self.get_install_dir(), 'bin', 'dse')
         args = [dse]
@@ -252,7 +274,7 @@ class DseNode(Node):
     def hadoop(self, hadoop_options=None):
         if hadoop_options is None:
             hadoop_options = []
-        env = common.make_dse_env(self.get_install_dir(), self.get_path())
+        env = self.get_env()
         env['JMX_PORT'] = self.jmx_port
         dse = common.join_bin(self.get_install_dir(), 'bin', 'dse')
         args = [dse, 'hadoop']
@@ -263,7 +285,7 @@ class DseNode(Node):
     def hive(self, hive_options=None):
         if hive_options is None:
             hive_options = []
-        env = common.make_dse_env(self.get_install_dir(), self.get_path())
+        env = self.get_env()
         env['JMX_PORT'] = self.jmx_port
         dse = common.join_bin(self.get_install_dir(), 'bin', 'dse')
         args = [dse, 'hive']
@@ -274,7 +296,7 @@ class DseNode(Node):
     def pig(self, pig_options=None):
         if pig_options is None:
             pig_options = []
-        env = common.make_dse_env(self.get_install_dir(), self.get_path())
+        env = self.get_env()
         env['JMX_PORT'] = self.jmx_port
         dse = common.join_bin(self.get_install_dir(), 'bin', 'dse')
         args = [dse, 'pig']
@@ -285,7 +307,7 @@ class DseNode(Node):
     def sqoop(self, sqoop_options=None):
         if sqoop_options is None:
             sqoop_options = []
-        env = common.make_dse_env(self.get_install_dir(), self.get_path())
+        env = self.get_env()
         env['JMX_PORT'] = self.jmx_port
         dse = common.join_bin(self.get_install_dir(), 'bin', 'dse')
         args = [dse, 'sqoop']
@@ -296,7 +318,7 @@ class DseNode(Node):
     def spark(self, spark_options=None):
         if spark_options is None:
             spark_options = []
-        env = common.make_dse_env(self.get_install_dir(), self.get_path())
+        env = self.get_env()
         env['JMX_PORT'] = self.jmx_port
         dse = common.join_bin(self.get_install_dir(), 'bin', 'dse')
         args = [dse, 'spark']
@@ -312,7 +334,7 @@ class DseNode(Node):
         self.__update_yaml()
 
     def copy_config_files(self):
-        for product in ['dse', 'cassandra', 'hadoop', 'sqoop', 'hive', 'tomcat', 'spark', 'shark', 'mahout', 'pig', 'solr']:
+        for product in ['dse', 'cassandra', 'hadoop', 'sqoop', 'hive', 'tomcat', 'spark', 'shark', 'mahout', 'pig', 'solr', 'graph']:
             src_conf = os.path.join(self.get_install_dir(), 'resources', product, 'conf')
             dst_conf = os.path.join(self.get_path(), 'resources', product, 'conf')
             if not os.path.isdir(src_conf):
@@ -337,6 +359,12 @@ class DseNode(Node):
                 if os.path.isdir(dst_webapps):
                     common.rmdirs(dst_webapps)
                 shutil.copytree(src_webapps, dst_webapps)
+        src_lib = os.path.join(self.get_install_dir(), 'resources', product, 'gremlin-console', 'conf')
+        dst_lib = os.path.join(self.get_path(), 'resources', product, 'gremlin-console', 'conf')
+        if os.path.isdir(dst_lib):
+            common.rmdirs(dst_lib)
+        if os.path.exists(src_lib):
+            shutil.copytree(src_lib, dst_lib)
 
     def import_bin_files(self):
         os.makedirs(os.path.join(self.get_path(), 'resources', 'cassandra', 'bin'))
@@ -372,7 +400,7 @@ class DseNode(Node):
 
         data['system_key_directory'] = os.path.join(self.get_path(), 'keys')
 
-        full_options = dict(list(self.cluster._dse_config_options.items()))
+        full_options = dict(list(self.cluster._dse_config_options.items()) + list(self._dse_config_options.items()))
         for name in full_options:
             value = full_options[name]
             if isinstance(value, str) and (value is None or len(value) == 0):
@@ -426,6 +454,18 @@ class DseNode(Node):
             f.write('  </Service>\n')
             f.write('</Server>\n')
             f.close()
+
+    def __update_gremlin_config_yaml(self):
+        (node_ip, _) = self.network_interfaces['binary']
+
+        conf_file = os.path.join(self.get_path(), 'resources', 'graph', 'gremlin-console', 'conf', 'remote-objects.yaml')
+        with open(conf_file, 'r') as f:
+            data = yaml.load(f)
+
+        data['hosts'] = [node_ip]
+
+        with open(conf_file, 'w') as f:
+            yaml.safe_dump(data, f, default_flow_style=False)
 
     def _get_directories(self):
         dirs = []
