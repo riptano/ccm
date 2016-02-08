@@ -451,37 +451,41 @@ def normalize_interface(itf):
     return (ip, itf[1])
 
 
-def parse_settings(args):
+def parse_settings(args, literal_yaml=False):
     settings = {}
-    for s in args:
-        if is_win():
-            # Allow for absolute path on Windows for value in key/value pair
-            splitted = s.split(':', 1)
-        else:
-            splitted = s.split(':')
-        if len(splitted) != 2:
-            raise ArgumentError("A new setting should be of the form 'key: value', got " + s)
-        key = splitted[0].strip()
-        val = splitted[1].strip()
-        # ok, that's not super beautiful
-        if val.lower() == "true":
-            val = True
-        elif val.lower() == "false":
-            val = False
-        else:
-            try:
-                val = int(val)
-            except ValueError:
-                pass
-        splitted = key.split('.')
-        if len(splitted) == 2:
-            try:
-                settings[splitted[0]][splitted[1]] = val
-            except KeyError:
-                settings[splitted[0]] = {}
-                settings[splitted[0]][splitted[1]] = val
-        else:
-            settings[key] = val
+    if literal_yaml:
+        for s in args:
+            settings = dict(settings, **yaml.load(s))
+    else:
+        for s in args:
+            if is_win():
+                # Allow for absolute path on Windows for value in key/value pair
+                splitted = s.split(':', 1)
+            else:
+                splitted = s.split(':')
+            if len(splitted) != 2:
+                raise ArgumentError("A new setting should be of the form 'key: value', got " + s)
+            key = splitted[0].strip()
+            val = splitted[1].strip()
+            # ok, that's not super beautiful
+            if val.lower() == "true":
+                val = True
+            elif val.lower() == "false":
+                val = False
+            else:
+                try:
+                    val = int(val)
+                except ValueError:
+                    pass
+            splitted = key.split('.')
+            if len(splitted) == 2:
+                try:
+                    settings[splitted[0]][splitted[1]] = val
+                except KeyError:
+                    settings[splitted[0]] = {}
+                    settings[splitted[0]][splitted[1]] = val
+            else:
+                settings[key] = val
     return settings
 
 #
