@@ -99,7 +99,8 @@ class Node(object):
         self.initial_token = initial_token
         self.pid = None
         self.data_center = None
-        self.workload = None
+        self.workloads = []
+        self._dse_config_options = {}
         self.__config_options = {}
         self.__install_dir = None
         self.__global_log_level = None
@@ -142,8 +143,8 @@ class Node(object):
                 node.__config_options = data['config_options']
             if 'data_center' in data:
                 node.data_center = data['data_center']
-            if 'workload' in data:
-                node.workload = data['workload']
+            if 'workloads' in data:
+                node.workloads = data['workloads']
             return node
         except KeyError as k:
             raise common.LoadError("Error Loading " + filename + ", missing property: " + str(k))
@@ -216,8 +217,8 @@ class Node(object):
         self.__conf_updated = False
         return self
 
-    def set_workload(self, workload):
-        raise common.ArgumentError("Cannot set workload on cassandra node")
+    def set_workloads(self, workloads):
+        raise common.ArgumentError("Cannot set workloads on a cassandra node")
 
     def get_cassandra_version(self):
         try:
@@ -254,6 +255,9 @@ class Node(object):
                 self.__config_options["commitlog_sync_batch_window_in_ms"] = None
 
         self.import_config_files()
+
+    def set_dse_configuration_options(self, values=None):
+        pass
 
     def show(self, only_status=False, show_cluster=True):
         """
@@ -1266,8 +1270,8 @@ class Node(object):
             values['byteman_port'] = self.byteman_port
         if self.data_center:
             values['data_center'] = self.data_center
-        if self.workload is not None:
-            values['workload'] = self.workload
+        if self.workloads is not None:
+            values['workloads'] = self.workloads
         with open(filename, 'w') as f:
             yaml.safe_dump(values, f)
 

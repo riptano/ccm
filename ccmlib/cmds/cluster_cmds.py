@@ -43,7 +43,8 @@ def cluster_cmds():
         "invalidatecache",
         "checklogerror",
         "showlastlog",
-        "jconsole"
+        "jconsole",
+        "setworkload"
     ]
 
 
@@ -968,4 +969,34 @@ class ClusterJconsoleCmd(Cmd):
             subprocess.call(cmds, stderr=sys.stderr)
         except OSError:
             print_("Could not start jconsole. Please make sure jconsole can be found in your $PATH.")
+            exit(1)
+
+class ClusterSetworkloadCmd(Cmd):
+
+    def description(self):
+        return "Sets the workloads for a DSE cluster"
+
+    def get_parser(self):
+        usage = "usage: ccm setworkload [cassandra|solr|hadoop|spark|dsefs|cfs|graph],..."
+        parser = self._get_default_parser(usage, self.description())
+        return parser
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, load_cluster=True)
+        self.workloads = args[0].split(',')
+        valid_workloads = ['cassandra', 'solr', 'hadoop', 'spark', 'dsefs', 'cfs', 'graph']
+        for workload in self.workloads:
+            if workload not in valid_workloads:
+                print_(workload, ' is not a valid workload')
+                exit(1)
+
+    def run(self):
+        try:
+            if len(self.cluster.nodes) == 0:
+                print_("No node in this cluster yet. Use the populate command before starting.")
+                exit(1)
+            for node in list(self.cluster.nodes.values()):
+                node.set_workloads(workloads=self.workloads)
+        except common.ArgumentError as e:
+            print_(str(e), file=sys.stderr)
             exit(1)

@@ -220,7 +220,7 @@ def make_cassandra_env(install_dir, node_path, update_conf=True):
     return env
 
 
-def make_dse_env(install_dir, node_path):
+def make_dse_env(install_dir, node_path, node_ip):
     env = os.environ.copy()
     env['MAX_HEAP_SIZE'] = os.environ.get('CCM_MAX_HEAP_SIZE', '500M')
     env['HEAP_NEWSIZE'] = os.environ.get('CCM_HEAP_NEWSIZE', '50M')
@@ -237,6 +237,14 @@ def make_dse_env(install_dir, node_path):
     env['MAHOUT_CONF_DIR'] = os.path.join(node_path, 'resources', 'mahout', 'conf')
     env['SPARK_CONF_DIR'] = os.path.join(node_path, 'resources', 'spark', 'conf')
     env['SHARK_CONF_DIR'] = os.path.join(node_path, 'resources', 'shark', 'conf')
+    env['GREMLIN_CONSOLE_CONF_DIR'] = os.path.join(node_path, 'resources', 'graph', 'gremlin-console', 'conf')
+    env['SPARK_WORKER_DIR'] = os.path.join(node_path, 'spark', 'worker')
+    env['SPARK_LOCAL_DIRS'] = os.path.join(node_path, 'spark', 'rdd')
+    env['SPARK_WORKER_LOG_DIR'] = os.path.join(node_path, 'logs', 'spark', 'worker')
+    env['SPARK_MASTER_LOG_DIR'] = os.path.join(node_path, 'logs', 'spark', 'master')
+    env['DSE_LOG_ROOT'] = os.path.join(node_path, 'logs', 'dse')
+    env['CASSANDRA_LOG_DIR'] = os.path.join(node_path, 'logs')
+    env['SPARK_LOCAL_IP'] = ''+node_ip
     return env
 
 

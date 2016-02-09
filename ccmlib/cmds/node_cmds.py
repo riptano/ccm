@@ -712,24 +712,25 @@ class NodeSetdirCmd(Cmd):
 class NodeSetworkloadCmd(Cmd):
 
     def description(self):
-        return "Sets the workload for a DSE node"
+        return "Sets the workloads for a DSE node"
 
     def get_parser(self):
-        usage = "usage: ccm node_name setworkload [cassandra|solr|hadoop|spark|cfs]"
+        usage = "usage: ccm node_name setworkload [cassandra|solr|hadoop|spark|dsefs|cfs|graph],..."
         parser = self._get_default_parser(usage, self.description())
         return parser
 
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
-        self.workload = args[1]
-        workloads = ['cassandra', 'solr', 'hadoop', 'spark', 'cfs']
-        if self.workload not in workloads:
-            print_(self.workload, ' is not a valid workload')
-            exit(1)
+        self.workloads = args[1].split(',')
+        valid_workloads = ['cassandra', 'solr', 'hadoop', 'spark', 'dsefs', 'cfs', 'graph']
+        for workload in self.workloads:
+            if workload not in valid_workloads:
+                print_(workload, ' is not a valid workload')
+                exit(1)
 
     def run(self):
         try:
-            self.node.set_workload(workload=self.workload)
+            self.node.set_workloads(workloads=self.workloads)
         except common.ArgumentError as e:
             print_(str(e), file=sys.stderr)
             exit(1)
