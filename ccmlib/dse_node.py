@@ -61,7 +61,12 @@ class DseNode(Node):
             self.__generate_server_xml()
         if 'graph' in self.workloads:
             (node_ip, _) = self.network_interfaces['binary']
-            self.set_dse_configuration_options({'graph' : {'gremlin_server': {'host': node_ip}}})
+            conf_file = os.path.join(self.get_path(), 'resources', 'dse', 'conf', 'dse.yaml')
+            with open(conf_file, 'r') as f:
+                data = yaml.load(f)
+            graph_options = data['graph']
+            graph_options['gremlin_server']['host'] = node_ip
+            self.set_dse_configuration_options({'graph' : graph_options})
             self.__update_gremlin_config_yaml()
         if 'dsefs' in self.workloads:
             dsefs_options = {'dsefs_options' : {'enabled': 'true',
