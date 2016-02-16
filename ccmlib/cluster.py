@@ -120,7 +120,7 @@ class Cluster(object):
                     log_positions[node.name] = node.mark_log()
                     if errors:
                         errordata[node.name] = errors
-            except IOError, e:
+            except IOError as e:
                 if 'No such file or directory' in e.strerror:
                     pass  # most likely log file isn't yet written
                 else:
