@@ -5,14 +5,16 @@ import os
 import random
 import shutil
 import subprocess
+import threading
 import time
+from collections import OrderedDict, defaultdict
 
 import yaml
 from six import iteritems, print_
-from six.moves import xrange
 
 from ccmlib import common, repository
 from ccmlib.node import Node, NodeError
+from six.moves import xrange
 
 
 class Cluster(object):
@@ -99,6 +101,39 @@ class Cluster(object):
             self.__update_topology_files()
 
         return self
+
+    def actively_watch_logs_for_error(self, on_error_call, interval=1):
+        """
+        Begins a timed daemon thread that scans logs for errors every interval seconds.
+
+        If an error is seen and the callback is executed, it will be called with an
+        OrderedDictionary mapping node name to a list of error lines.
+        """
+        log_positions = defaultdict(int)
+
+        def grep_and_mark_all_logs():
+            errordata = OrderedDict()
+
+            try:
+                for node in self.nodelist():
+                    errors = node.grep_log_for_errors_from(seek_start=log_positions[node.name])
+                    log_positions[node.name] = node.mark_log()
+                    if errors:
+                        errordata[node.name] = errors
+            except IOError as e:
+                if 'No such file or directory' in e.strerror:
+                    pass  # most likely log file isn't yet written
+                else:
+                    raise
+
+            if errordata:
+                on_error_call(errordata)
+
+            timer = threading.Timer(interval, grep_and_mark_all_logs)
+            timer.daemon = True  # so it will exit when the main process exits
+            timer.start()
+
+        grep_and_mark_all_logs()
 
     def get_install_dir(self):
         common.validate_install_dir(self.__install_dir)

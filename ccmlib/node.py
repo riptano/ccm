@@ -323,9 +323,11 @@ class Node(object):
         Returns a list of errors with stack traces
         in the Cassandra log of this node
         """
+        return self.grep_log_for_errors_from(seek_start=getattr(self, 'error_mark', 0))
+
+    def grep_log_for_errors_from(self, filename='system.log', seek_start=0):
         with open(os.path.join(self.get_path(), 'logs', filename)) as f:
-            if hasattr(self, 'error_mark'):
-                f.seek(self.error_mark)
+            f.seek(seek_start)
             return _grep_log_for_errors(f.read())
 
     def mark_log_for_errors(self, filename='system.log'):
