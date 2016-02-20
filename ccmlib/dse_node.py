@@ -186,6 +186,8 @@ class DseNode(Node):
             args.append('-R')
         args = args + jvm_args
 
+        self._delete_old_pid()
+
         process = None
 
         FNULL = open(os.devnull, 'w')
