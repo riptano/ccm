@@ -174,6 +174,7 @@ class Cluster(object):
     def populate(self, nodes, debug=False, tokens=None, use_vnodes=False, ipprefix='127.0.0.', ipformat=None, install_byteman=False):
         node_count = nodes
         dcs = []
+
         self.use_vnodes = use_vnodes
         if isinstance(nodes, list):
             self.set_configuration_options(values={'endpoint_snitch': 'org.apache.cassandra.locator.PropertyFileSnitch'})
@@ -305,7 +306,9 @@ class Cluster(object):
             else:
                 node.show(only_status=True)
 
-    def start(self, no_wait=False, verbose=False, wait_for_binary_proto=False, wait_other_notice=True, jvm_args=None, profile_options=None, quiet_start=False, allow_root=False):
+    def start(self, no_wait=False, verbose=False, wait_for_binary_proto=False,
+              wait_other_notice=True, jvm_args=None, profile_options=None,
+              quiet_start=False, allow_root=False):
         if jvm_args is None:
             jvm_args = []
 
