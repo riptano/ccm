@@ -477,7 +477,8 @@ class Node(object):
               profile_options=None,
               use_jna=False,
               quiet_start=False,
-              allow_root=False):
+              allow_root=False,
+              set_migration_task=True):
         """
         Start the node. Options includes:
           - join_ring: if false, start the node with -Dcassandra.join_ring=False
@@ -490,6 +491,10 @@ class Node(object):
         """
         if jvm_args is None:
             jvm_args = []
+
+        if set_migration_task and self.cluster.cassandra_version() >= '3.0.1':
+            jvm_args += ['-Dcassandra.migration_task_wait_in_seconds={}'.format(len(self.cluster.nodes) * 2)]
+
         # Validate Windows env
         if common.is_win() and not common.is_ps_unrestricted() and self.cluster.version() >= '2.1':
             raise NodeError("PS Execution Policy must be unrestricted when running C* 2.1+")
