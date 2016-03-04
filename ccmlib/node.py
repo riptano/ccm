@@ -943,11 +943,49 @@ class Node(object):
         if output_file is None:
             return results
 
+    def run_sstabledump(self, output_file=None, datafiles=None, keyspace=None, column_families=None, enumerate_keys=False):
+        cdir = self.get_install_dir()
+        sstabledump = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstabledump')
+        env = self.get_env()
+        sstablefiles = self.__gather_sstables(datafiles=datafiles, keyspace=keyspace, columnfamilies=column_families)
+        results = []
+
+        for sstable in sstablefiles:
+            if enumerate_keys:
+                cmd = [sstabledump, '-e', sstable]
+            else:
+                cmd = [sstabledump, sstable]
+            if output_file is None:
+                p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=env)
+                (out, err) = p.communicate()
+                rc = p.returncode
+                results.append((out, err, rc))
+            else:
+                subprocess.call(cmd, env=env, stdout=output_file)
+        if output_file is None:
+            return results
+
     def run_sstableexpiredblockers(self, output_file=None, keyspace=None, column_family=None):
         cdir = self.get_install_dir()
         sstableexpiredblockers = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstableexpiredblockers')
         env = self.get_env()
         cmd = [sstableexpiredblockers, keyspace, column_family]
+        results = []
+        if output_file is None:
+            p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=env)
+            (out, err) = p.communicate()
+            rc = p.returncode
+            results.append((out, err, rc))
+        else:
+            subprocess.call(cmd, env=env, stdout=output_file)
+        if output_file is None:
+            return results
+
+    def run_sstableupgrade(self, output_file=None, keyspace=None, column_family=None):
+        cdir = self.get_install_dir()
+        sstableupgrade = self.get_tool('sstableupgrade')
+        env = self.get_env()
+        cmd = [sstableupgrade, keyspace, column_family]
         results = []
         if output_file is None:
             p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=env)
