@@ -5,6 +5,7 @@ import os
 import random
 import shutil
 import subprocess
+import sys
 import threading
 import time
 from collections import OrderedDict, defaultdict
@@ -313,6 +314,15 @@ class Cluster(object):
             jvm_args = []
 
         common.assert_jdk_valid_for_cassandra_version(self.cassandra_version())
+
+        # check whether all loopback aliases are available before starting any nodes
+        for node in self.nodes.values():
+            for itf in node.network_interfaces.values():
+                if itf is not None:
+                    if not common.check_socket_available(itf, return_on_error=True):
+                        addr, port = itf
+                        print_("Inet address %s:%s is not available; a cluster may already be running or you may need to add the loopback alias" % (addr, port))
+                        sys.exit(1)
 
         started = []
         for node in list(self.nodes.values()):
