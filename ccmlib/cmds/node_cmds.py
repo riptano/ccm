@@ -174,8 +174,10 @@ class NodeStartCmd(Cmd):
                           help="Print standard output of cassandra process", default=False)
         parser.add_option('--no-wait', action="store_true", dest="no_wait",
                           help="Do not wait for cassandra node to be ready", default=False)
-        parser.add_option('--wait-other-notice', action="store_true", dest="wait_other_notice",
-                          help="Wait until all other live node of the cluster have marked this node UP", default=False)
+        parser.add_option('--wait-other-notice', action="store_true", dest="deprecate",
+                          help="DEPRECATED/IGNORED: Use '--skip-wait-other-notice' instead. This is now on by default.", default=False)
+        parser.add_option('--skip-wait-other-notice', action="store_false", dest="wait_other_notice",
+                          help="Skip waiting until all live nodes of the cluster have marked the other nodes UP", default=True)
         parser.add_option('--wait-for-binary-proto', action="store_true", dest="wait_for_binary_proto",
                           help="Wait for the binary protocol to start", default=False)
         parser.add_option('-j', '--dont-join-ring', action="store_true", dest="no_join_ring",
