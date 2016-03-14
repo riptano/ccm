@@ -469,7 +469,7 @@ class Node(object):
               no_wait=False,
               verbose=False,
               update_pid=True,
-              wait_other_notice=False,
+              wait_other_notice=True,
               replace_token=None,
               replace_address=None,
               jvm_args=None,
