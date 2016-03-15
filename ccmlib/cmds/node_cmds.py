@@ -583,13 +583,15 @@ class NodeUpdateconfCmd(Cmd):
                           dest="cl_batch", default=False, help="Set commit log to batch mode")
         parser.add_option('--rt', '--rpc-timeout', action="store", type='int',
                           dest="rpc_timeout", help="Set rpc timeout")
+        parser.add_option('-y', '--yaml', action="store_true", dest="literal_yaml",
+                          default=False, help="Pass in literal yaml string. Option syntax looks like ccm node_name updateconf -y 'a: [b: [c,d]]'")
         return parser
 
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
         args = args[1:]
         try:
-            self.setting = common.parse_settings(args)
+            self.setting = common.parse_settings(args, literal_yaml=self.options.literal_yaml)
         except common.ArgumentError as e:
             print_(str(e), file=sys.stderr)
             exit(1)
@@ -607,6 +609,28 @@ class NodeUpdateconfCmd(Cmd):
                 self.setting['request_timeout_in_ms'] = self.options.rpc_timeout
         self.node.set_configuration_options(values=self.setting, batch_commitlog=self.options.cl_batch)
 
+class NodeUpdatedseconfCmd(Cmd):
+
+    def description(self):
+        return "Update the dse config files for this node"
+
+    def get_parser(self):
+        usage = "usage: ccm node_name updatedseconf [options] [ new_setting | ...  ], where new setting should be a string of the form 'max_solr_concurrency_per_core: 2'; nested options can be separated with a period like 'cql_slow_log_options.enabled: true'"
+        parser = self._get_default_parser(usage, self.description())
+        parser.add_option('-y', '--yaml', action="store_true", dest="literal_yaml", default=False, help="Pass in literal yaml string. Option syntax looks like ccm node_name updatedseconf -y 'a: [b: [c,d]]'")
+        return parser
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
+        args = args[1:]
+        try:
+            self.setting = common.parse_settings(args, literal_yaml=self.options.literal_yaml)
+        except common.ArgumentError as e:
+            print_(str(e), file=sys.stderr)
+            exit(1)
+
+    def run(self):
+        self.node.set_dse_configuration_options(values=self.setting)
 
 #
 # Class implementens the functionality of updating log4j-server.properties
