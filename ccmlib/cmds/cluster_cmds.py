@@ -732,7 +732,7 @@ class ClusterUpdatedseconfCmd(Cmd):
     def get_parser(self):
         usage = "usage: ccm updatedseconf [options] [ new_setting | ...  ], where new_setting should be a string of the form 'max_solr_concurrency_per_core: 2'; nested options can be separated with a period like 'cql_slow_log_options.enabled: true'"
         parser = self._get_default_parser(usage, self.description())
-        parser.add_option('-y', '--yaml', action="store_true", dest="literal_yaml", default=False, help="Pass in literal yaml string. Option syntax looks like ccm updateconf -y 'a: [b: [c,d]]'")
+        parser.add_option('-y', '--yaml', action="store_true", dest="literal_yaml", default=False, help="Pass in literal yaml string. Option syntax looks like ccm updatedseconf -y 'a: [b: [c,d]]'")
         return parser
 
     def validate(self, parser, options, args):
