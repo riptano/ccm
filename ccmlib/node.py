@@ -1563,7 +1563,7 @@ class Node(object):
             proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
 
             for line in proc.stdout:
-                if re.match("Image", line):
+                if re.match("Image", str(line)):
                     found = True
         return found
 
@@ -1656,9 +1656,9 @@ class Node(object):
                 time.sleep(0.1)
 
         try:
-            with open(pidfile, 'r') as f:
+            with open(pidfile, 'rb') as f:
                 if common.is_win() and self.get_base_cassandra_version() >= 2.1:
-                    self.pid = int(f.readline().strip().decode('utf-16'))
+                    self.pid = int(f.readline().strip().decode('utf-16').strip())
                 else:
                     self.pid = int(f.readline().strip())
         except IOError as e:
