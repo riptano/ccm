@@ -267,7 +267,7 @@ def is_ps_unrestricted():
         # pylint: disable=E0602
         except WindowsError:
             print_("ERROR: Could not find powershell. Is it in your path?")
-        if "Unrestricted" in p.communicate()[0]:
+        if "Unrestricted" in str(p.communicate()[0]):
             return True
         else:
             return False
