@@ -687,7 +687,7 @@ class Node(object):
         args = [nodetool, '-h', 'localhost', '-p', str(self.jmx_port)]
         args += cmd.split()
         if capture_output:
-            p = subprocess.Popen(args, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            p = subprocess.Popen(args, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
             stdout, stderr = p.communicate()
         else:
             p = subprocess.Popen(args, env=env)
