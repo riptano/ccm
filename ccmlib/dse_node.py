@@ -409,17 +409,14 @@ class DseNode(Node):
 
         data['system_key_directory'] = os.path.join(self.get_path(), 'keys')
 
-        full_options = dict(list(self.cluster._dse_config_options.items()) + list(self._dse_config_options.items()))
-        for name in full_options:
-            value = full_options[name]
-            if isinstance(value, str) and (value is None or len(value) == 0):
-                try:
-                    del data[name]
-                except KeyError:
-                    # it is fine to remove a key not there
-                    pass
-            else:
-                data[name] = full_options[name]
+        # Get a map of combined cluster and node configuration with the node
+        # configuration taking precedence.
+        full_options = common.merge_configuration(
+            self.cluster._dse_config_options,
+            self._dse_config_options, delete_empty=False)
+
+        # Merge options with original yaml data.
+        data = common.merge_configuration(data, full_options)
 
         with open(conf_file, 'w') as f:
             yaml.safe_dump(data, f, default_flow_style=False)

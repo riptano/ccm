@@ -2,6 +2,7 @@
 # Cassandra Cluster Management lib
 #
 
+import copy
 import fnmatch
 import os
 import platform
@@ -481,12 +482,22 @@ def parse_settings(args, literal_yaml=False):
                 except ValueError:
                     pass
             splitted = key.split('.')
-            if len(splitted) == 2:
-                try:
-                    settings[splitted[0]][splitted[1]] = val
-                except KeyError:
-                    settings[splitted[0]] = {}
-                    settings[splitted[0]][splitted[1]] = val
+            split_length = len(splitted)
+            if split_length >= 2:
+                # Where we are currently at in the dict.
+                tree_pos = settings
+                # Iterate over each split and build structure as needed.
+                for pos in xrange(split_length):
+                    split = splitted[pos]
+                    if pos == split_length - 1:
+                        # If at the last split, set value.
+                        tree_pos[split] = val
+                    else:
+                        # If not at last split, create a new dict at the current
+                        # position for this split.
+                        if split not in tree_pos:
+                            tree_pos[split] = {}
+                        tree_pos = tree_pos[split]
             else:
                 settings[key] = val
     return settings
@@ -591,3 +602,26 @@ def assert_jdk_valid_for_cassandra_version(cassandra_version):
     if cassandra_version >= '3.0' and get_jdk_version() < '1.8':
         print_('ERROR: Cassandra 3.0+ requires Java >= 1.8, found Java {}'.format(get_jdk_version()))
         exit(1)
+
+
+def merge_configuration(original, changes, delete_empty=True):
+    if not isinstance(original, dict):
+        # if original is not a dictionary, assume changes override it.
+        new = changes
+    else:
+        # Copy original so we do not mutate it.
+        new = copy.deepcopy(original)
+        for k, v in changes.iteritems():
+            # If the new value is None or an empty string, delete it
+            # if its in the original data.
+            if delete_empty and k in new and \
+                    (v is None or (isinstance(v, str) and len(v) == 0)):
+                del new[k]
+            else:
+                new_value = v
+                # If key is in both dicts, update it with new values.
+                if k in new:
+                    if isinstance(v, dict):
+                        new_value = merge_configuration(new[k], v, delete_empty)
+                new[k] = new_value
+    return new
