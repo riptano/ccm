@@ -75,6 +75,8 @@ class DseNode(Node):
                                                 'private_port': '5599',
                                                 'data_directories': [os.path.join(self.get_path(), 'dsefs')]}}
             self.set_dse_configuration_options(dsefs_options)
+        if 'spark' in self.workloads:
+            self._update_spark_env()
 
     def set_dse_configuration_options(self, values=None):
         if values is not None:
@@ -539,3 +541,19 @@ class DseNode(Node):
             f.write('log4j.appender.R.layout.ConversionPattern=%5p [%t] %d{ISO8601} %m%n\n')
             f.write('log4j.appender.R.File=./log/agent.log\n')
             f.close()
+
+    def _update_spark_env(self):
+        conf_file = os.path.join(self.get_path(), 'resources', 'spark', 'conf',
+                                 'spark-env.sh')
+        env = self.get_env()
+        content = []
+        with open(conf_file, 'r') as f:
+            for line in f.readlines():
+                for spark_var in env.keys():
+                    if line.startswith('export %s=' % spark_var):
+                        line = 'export %s=%s' % (spark_var, env[spark_var])
+                        break
+                content.append(line)
+
+        with open(conf_file, 'w') as f:
+            f.writelines(content)
