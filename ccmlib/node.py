@@ -141,6 +141,8 @@ class Node(object):
                 node.__install_dir = data['install_dir']
             if 'config_options' in data:
                 node.__config_options = data['config_options']
+            if 'dse_config_options' in data:
+                node._dse_config_options = data['dse_config_options']
             if 'data_center' in data:
                 node.data_center = data['data_center']
             if 'workloads' in data:
@@ -1302,6 +1304,7 @@ class Node(object):
             'interfaces': self.network_interfaces,
             'jmx_port': self.jmx_port,
             'config_options': self.__config_options,
+            'dse_config_options': self._dse_config_options
         }
         if self.pid:
             values['pid'] = self.pid
