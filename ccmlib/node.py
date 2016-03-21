@@ -141,6 +141,8 @@ class Node(object):
                 node.__install_dir = data['install_dir']
             if 'config_options' in data:
                 node.__config_options = data['config_options']
+            if 'dse_config_options' in data:
+                node._dse_config_options = data['dse_config_options']
             if 'data_center' in data:
                 node.data_center = data['data_center']
             if 'workloads' in data:
@@ -1302,6 +1304,7 @@ class Node(object):
             'interfaces': self.network_interfaces,
             'jmx_port': self.jmx_port,
             'config_options': self.__config_options,
+            'dse_config_options': self._dse_config_options
         }
         if self.pid:
             values['pid'] = self.pid
@@ -1354,24 +1357,14 @@ class Node(object):
         if self.cluster.partitioner:
             data['partitioner'] = self.cluster.partitioner
 
-        full_options = dict(list(self.cluster._config_options.items()) + list(self.__config_options.items()))  # last win and we want node options to win
-        for name in full_options:
-            value = full_options[name]
-            if isinstance(value, str) and (value is None or len(value) == 0):
-                try:
-                    del data[name]
-                except KeyError:
-                    # it is fine to remove a key not there
-                    pass
-            else:
-                try:
-                    if isinstance(data[name], dict) and isinstance(full_options[name], dict):
-                        for option in full_options[name]:
-                            data[name][option] = full_options[name][option]
-                    else:
-                        data[name] = full_options[name]
-                except KeyError:
-                    data[name] = full_options[name]
+        # Get a map of combined cluster and node configuration with the node
+        # configuration taking precedence.
+        full_options = common.merge_configuration(
+            self.cluster._config_options,
+            self.__config_options, delete_empty=False)
+
+        # Merge options with original yaml data.
+        data = common.merge_configuration(data, full_options)
 
         with open(conf_file, 'w') as f:
             yaml.safe_dump(data, f, default_flow_style=False)
