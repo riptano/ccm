@@ -487,14 +487,15 @@ def parse_settings(args, literal_yaml=False):
                 # Where we are currently at in the dict.
                 tree_pos = settings
                 # Iterate over each split and build structure as needed.
-                for pos in xrange(split_length):
+                for pos in range(split_length):
                     split = splitted[pos]
                     if pos == split_length - 1:
                         # If at the last split, set value.
                         tree_pos[split] = val
                     else:
                         # If not at last split, create a new dict at the current
-                        # position for this split.
+                        # position for this split if it doesn't already exist
+                        # and update the current position.
                         if split not in tree_pos:
                             tree_pos[split] = {}
                         tree_pos = tree_pos[split]
@@ -613,7 +614,7 @@ def merge_configuration(original, changes, delete_empty=True):
         new = copy.deepcopy(original)
         for k, v in changes.iteritems():
             # If the new value is None or an empty string, delete it
-            # if its in the original data.
+            # if it's in the original data.
             if delete_empty and k in new and \
                     (v is None or (isinstance(v, str) and len(v) == 0)):
                 del new[k]
