@@ -1437,11 +1437,13 @@ class Node(object):
         # The cassandra-env.ps1 file has been introduced in 2.1
         if common.is_win() and self.get_base_cassandra_version() >= 2.1:
             conf_file = os.path.join(self.get_conf_dir(), common.CASSANDRA_WIN_ENV)
+            jvm_file = os.path.join(self.get_conf_dir(), common.JVM_OPTS)
             jmx_port_pattern = '^\s+\$JMX_PORT='
             jmx_port_setting = '    $JMX_PORT="' + self.jmx_port + '"'
             remote_debug_options = '    $env:JVM_OPTS="$env:JVM_OPTS -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=' + str(self.remote_debug_port) + '"'
         else:
             conf_file = os.path.join(self.get_conf_dir(), common.CASSANDRA_ENV)
+            jvm_file = os.path.join(self.get_conf_dir(), common.JVM_OPTS)
             jmx_port_pattern = 'JMX_PORT='
             jmx_port_setting = 'JMX_PORT="' + self.jmx_port + '"'
             remote_debug_options = 'JVM_OPTS="$JVM_OPTS -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=' + str(self.remote_debug_port) + '"'
@@ -1493,15 +1495,22 @@ class Node(object):
 
         for itf in list(self.network_interfaces.values()):
             if itf is not None and common.interface_is_ipv6(itf):
-                if common.is_win():
-                    common.replace_in_file(conf_file,
-                                           '-Djava.net.preferIPv4Stack=true',
-                                           '\t$env:JVM_OPTS="$env:JVM_OPTS -Djava.net.preferIPv4Stack=false -Djava.net.preferIPv6Addresses=true"')
+                if self.get_cassandra_version() < '3.2':
+                    if common.is_win():
+                        common.replace_in_file(conf_file,
+                                               '-Djava.net.preferIPv4Stack=true',
+                                               '\t$env:JVM_OPTS="$env:JVM_OPTS -Djava.net.preferIPv4Stack=false -Djava.net.preferIPv6Addresses=true"')
+                    else:
+                        common.replace_in_file(conf_file,
+                                               '-Djava.net.preferIPv4Stack=true',
+                                               'JVM_OPTS="$JVM_OPTS -Djava.net.preferIPv4Stack=false -Djava.net.preferIPv6Addresses=true"')
+                    break
                 else:
-                    common.replace_in_file(conf_file,
-                                           '-Djava.net.preferIPv4Stack=true',
-                                           'JVM_OPTS="$JVM_OPTS -Djava.net.preferIPv4Stack=false -Djava.net.preferIPv6Addresses=true"')
-                break
+                    common.replace_in_file(jvm_file,'-Djava.net.preferIPv4Stack=true','')
+                    break
+
+
+
 
     def __update_status(self):
         if self.pid is None:
