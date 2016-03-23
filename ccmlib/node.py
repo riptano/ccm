@@ -512,6 +512,8 @@ class Node(object):
                 common.check_socket_available(itf)
 
         if wait_other_notice:
+            if not join_ring:
+                raise NodeError("Other nodes will never see this node %s as UP when join_ring=False" % self.name)
             marks = [(node, node.mark_log()) for node in list(self.cluster.nodes.values()) if node.is_live()]
 
         self.mark = self.mark_log()
