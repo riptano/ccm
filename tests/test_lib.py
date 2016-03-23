@@ -177,30 +177,55 @@ class TestRunCqlsh(ccmtest.Tester):
 class TestNodeLoad(ccmtest.Tester):
 
     def test_rejects_multiple_load_lines(self):
+        info = 'Load : 699 KiB\nLoad : 35 GiB'
+        with self.assertRaises(RuntimeError):
+            ccmlib.node._get_load_from_info_output(info)
+
         info = 'Load : 699 KB\nLoad : 35 GB'
         with self.assertRaises(RuntimeError):
             ccmlib.node._get_load_from_info_output(info)
 
     def test_rejects_unexpected_units(self):
-        infos = ['Load : 200 PB', 'Load : 12 Parsecs']
+        infos = ['Load : 200 PiB', 'Load : 200 PB', 'Load : 12 Parsecs']
 
         for info in infos:
             with self.assertRaises(RuntimeError):
                 ccmlib.node._get_load_from_info_output(info)
 
     def test_gets_correct_value(self):
-        info_value = [('Load : 328.45 KB', decimal.Decimal('328.45')),
-                      ('Load : 295.72 MB', decimal.Decimal('295.72') * 1024),
-                      ('Load : 183.79 GB',
-                       decimal.Decimal('183.79') * 1024 * 1024),
-                      ('Load : 82.333 TB',
-                       decimal.Decimal('82.333') * 1024 * 1024 * 1024)]
+        info_value = [('Load : 328.45 KiB', 328.45),
+                      ('Load : 328.45 KB', 328.45),
+                      ('Load : 295.72 MiB', 295.72 * 1024),
+                      ('Load : 295.72 MB', 295.72 * 1024),
+                      ('Load : 183.79 GiB', 183.79 * 1024 * 1024),
+                      ('Load : 183.79 GB', 183.79 * 1024 * 1024),
+                      ('Load : 82.333 TiB', 82.333 * 1024 * 1024 * 1024),
+                      ('Load : 82.333 TB', 82.333 * 1024 * 1024 * 1024)]
 
         for info, value in info_value:
             self.assertEqual(ccmlib.node._get_load_from_info_output(info),
                              value)
 
     def test_with_full_info_output(self):
+        data = ('ID                     : 82800bf3-8c1a-4355-9b72-e19aa61d9fba\n'
+                'Gossip active          : true\n'
+                'Thrift active          : true\n'
+                'Native Transport active: true\n'
+                'Load                   : 247.59 MiB\n'
+                'Generation No          : 1426190195\n'
+                'Uptime (seconds)       : 526\n'
+                'Heap Memory (MB)       : 222.83 / 495.00\n'
+                'Off Heap Memory (MB)   : 1.16\n'
+                'Data Center            : dc1\n'
+                'Rack                   : r1\n'
+                'Exceptions             : 0\n'
+                'Key Cache              : entries 41, size 3.16 KB, capacity 24 MB, 19 hits, 59 requests, 0.322 recent hit rate, 14400 save period in seconds\n'
+                'Row Cache              : entries 0, size 0 bytes, capacity 0 bytes, 0 hits, 0 requests, NaN recent hit rate, 0 save period in seconds\n'
+                'Counter Cache          : entries 0, size 0 bytes, capacity 12 MB, 0 hits, 0 requests, NaN recent hit rate, 7200 save period in seconds\n'
+                'Token                  : -9223372036854775808\n')
+        self.assertEqual(ccmlib.node._get_load_from_info_output(data),
+                         247.59 * 1024)
+
         data = ('ID                     : 82800bf3-8c1a-4355-9b72-e19aa61d9fba\n'
                 'Gossip active          : true\n'
                 'Thrift active          : true\n'
@@ -218,7 +243,7 @@ class TestNodeLoad(ccmtest.Tester):
                 'Counter Cache          : entries 0, size 0 bytes, capacity 12 MB, 0 hits, 0 requests, NaN recent hit rate, 7200 save period in seconds\n'
                 'Token                  : -9223372036854775808\n')
         self.assertEqual(ccmlib.node._get_load_from_info_output(data),
-                         decimal.Decimal('247.59') * 1024)
+                         247.59 * 1024)
 
 
 class TestErrorLogGrepping(ccmtest.Tester):

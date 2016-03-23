@@ -1787,9 +1787,15 @@ def _get_load_from_info_output(info):
         raise RuntimeError(msg)
     load_line = load_lines[0].split()
 
-    unit_multipliers = {'KB': 1,
+    # Don't have access to C* version here, so we need to support both prefix styles
+    # See CASSANDRA-9692 on Apache JIRA
+    unit_multipliers = {'KiB': 1,
+                        'KB': 1,
+                        'MiB': 1024,
                         'MB': 1024,
+                        'GiB': 1024 * 1024,
                         'GB': 1024 * 1024,
+                        'TiB': 1024 * 1024 * 1024,
                         'TB': 1024 * 1024 * 1024}
     load_num, load_units = load_line[2], load_line[3]
 
