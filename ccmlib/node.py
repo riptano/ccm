@@ -306,6 +306,12 @@ class Node(object):
     def debuglogfilename(self):
         return os.path.join(self.get_path(), 'logs', 'debug.log')
 
+    def envfilename(self):
+        return os.path.join(
+            self.get_conf_dir(),
+            common.CASSANDRA_WIN_ENV if common.is_win() else common.CASSANDRA_ENV
+        )
+
     def grep_log(self, expr, filename='system.log'):
         """
         Returns a list of lines matching the regular expression in parameter
