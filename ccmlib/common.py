@@ -627,3 +627,12 @@ def merge_configuration(original, changes, delete_empty=True):
                         new_value = merge_configuration(new[k], v, delete_empty)
                 new[k] = new_value
     return new
+
+
+def is_intlike(obj):
+    try:
+        int(obj)
+        return True
+    except TypeError:
+        return False
+    raise RuntimeError('Reached end of {}; should not be possible'.format(is_intlike.__name__))
