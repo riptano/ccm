@@ -609,7 +609,11 @@ class Node(object):
             for node, mark in marks:
                 node.watch_log_for_alive(self, from_mark=mark)
 
-        if wait_for_binary_proto:
+        # If wait_for_binary_proto is a bool, we don't want to treat it as a
+        # timeout. Other intlike types, though, we want to use.
+        if common.is_intlike(wait_for_binary_proto) and not isinstance(wait_for_binary_proto, bool):
+            self.wait_for_binary_interface(from_mark=self.mark, timeout=wait_for_binary_proto)
+        elif wait_for_binary_proto:
             self.wait_for_binary_interface(from_mark=self.mark)
 
         return process
