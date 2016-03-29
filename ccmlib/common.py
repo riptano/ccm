@@ -238,7 +238,7 @@ def make_dse_env(install_dir, node_path, node_ip):
     env['SPARK_MASTER_LOG_DIR'] = os.path.join(node_path, 'logs', 'spark', 'master')
     env['DSE_LOG_ROOT'] = os.path.join(node_path, 'logs', 'dse')
     env['CASSANDRA_LOG_DIR'] = os.path.join(node_path, 'logs')
-    env['SPARK_LOCAL_IP'] = ''+node_ip
+    env['SPARK_LOCAL_IP'] = '' + node_ip
     return env
 
 
