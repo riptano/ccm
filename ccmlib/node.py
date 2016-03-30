@@ -492,8 +492,8 @@ class Node(object):
           - join_ring: if false, start the node with -Dcassandra.join_ring=False
           - no_wait: by default, this method returns when the node is started and listening to clients.
             If no_wait=True, the method returns sooner.
-          - wait_other_notice: if True, this method returns only when all other live node of the cluster
-            have marked this node UP.
+          - wait_other_notice: if truthy, this method returns only when all other live node of the cluster
+            have marked this node UP. if an integer, sets the timeout for how long to wait
           - replace_token: start the node with the -Dcassandra.replace_token option.
           - replace_address: start the node with the -Dcassandra.replace_address option.
         """
@@ -600,11 +600,20 @@ class Node(object):
             if not self.is_running():
                 raise NodeError("Error starting node %s" % self.name, process)
 
-        if wait_other_notice:
+        # If wait_other_notice is a bool, we don't want to treat it as a
+        # timeout. Other intlike types, though, we want to use.
+        if common.is_intlike(wait_other_notice) and not isinstance(wait_other_notice, bool):
+            for node, mark in marks:
+                node.watch_log_for_alive(self, from_mark=mark, timeout=wait_other_notice)
+        elif wait_other_notice:
             for node, mark in marks:
                 node.watch_log_for_alive(self, from_mark=mark)
 
-        if wait_for_binary_proto:
+        # If wait_for_binary_proto is a bool, we don't want to treat it as a
+        # timeout. Other intlike types, though, we want to use.
+        if common.is_intlike(wait_for_binary_proto) and not isinstance(wait_for_binary_proto, bool):
+            self.wait_for_binary_interface(from_mark=self.mark, timeout=wait_for_binary_proto)
+        elif wait_for_binary_proto:
             self.wait_for_binary_interface(from_mark=self.mark)
 
         return process
