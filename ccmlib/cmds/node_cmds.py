@@ -451,7 +451,7 @@ class NodeVerifyCmd(Cmd):
 class NodeJsonCmd(Cmd):
 
     def description(self):
-        return "Call sstable2json on the sstables of this node"
+        return "Call sstable2json/sstabledump on the sstables of this node"
 
     def get_parser(self):
         usage = "usage: ccm node_name json [options] [file]"
@@ -481,10 +481,16 @@ class NodeJsonCmd(Cmd):
     def run(self):
         try:
             with open(self.outfile, 'w') as f:
-                self.node.run_sstable2json(keyspace=self.keyspace,
-                                           out_file=f,
-                                           column_families=self.column_families,
-                                           enumerate_keys=self.options.enumerate_keys)
+                if self.node.has_cmd('sstable2json'):
+                    self.node.run_sstable2json(keyspace=self.keyspace,
+                                               out_file=f,
+                                               column_families=self.column_families,
+                                               enumerate_keys=self.options.enumerate_keys)
+                elif self.node.has_cmd('sstabledump'):
+                    self.node.run_sstabledump(keyspace=self.keyspace,
+                                               output_file=f,
+                                               column_families=self.column_families,
+                                               enumerate_keys=self.options.enumerate_keys)
         except common.ArgumentError as e:
             print_(e, file=sys.stderr)
 
