@@ -1091,11 +1091,18 @@ class Node(object):
         else:
             fcmd = common.join_bin(cdir, 'bin', cmd)
         try:
-            os.chmod(fcmd, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
+            if os.path.exists(fcmd):
+                os.chmod(fcmd, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
         except:
             print_("WARN: Couldn't change permissions to use {0}.".format(cmd))
             print_("WARN: If it didn't work, you will have to do so manually.")
         return fcmd
+
+    def has_cmd(self, cmd):
+        """
+        Indicates if specified command can be found under cassandra root
+        """
+        return os.path.exists(self._find_cmd(cmd))
 
     def list_keyspaces(self):
         keyspaces = os.listdir(os.path.join(self.get_path(), 'data0'))
