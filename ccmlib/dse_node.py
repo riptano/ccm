@@ -13,7 +13,7 @@ import yaml
 from six import print_,iteritems
 
 from ccmlib import common
-from ccmlib.node import Node, NodeError
+from ccmlib.node import Node, NodeError, NodetoolError
 
 
 class DseNode(Node):
