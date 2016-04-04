@@ -613,7 +613,7 @@ def merge_configuration(original, changes, delete_empty=True):
     else:
         # Copy original so we do not mutate it.
         new = copy.deepcopy(original)
-        for k, v in changes.iteritems():
+        for k, v in changes.items():
             # If the new value is None or an empty string, delete it
             # if it's in the original data.
             if delete_empty and k in new and \
