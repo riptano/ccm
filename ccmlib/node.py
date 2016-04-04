@@ -1456,19 +1456,23 @@ class Node(object):
             common.replace_or_add_into_file_tail(conf_file, full_logger_pattern, logger_pattern + class_name + '" level="' + self.__classes_log_level[class_name] + '"/>')
 
     def __update_envfile(self):
+        agentlib_setting = '-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address={}'.format(str(self.remote_debug_port))
+        remote_debug_options = agentlib_setting
         # The cassandra-env.ps1 file has been introduced in 2.1
         if common.is_win() and self.get_base_cassandra_version() >= 2.1:
             conf_file = os.path.join(self.get_conf_dir(), common.CASSANDRA_WIN_ENV)
             jvm_file = os.path.join(self.get_conf_dir(), common.JVM_OPTS)
             jmx_port_pattern = '^\s+\$JMX_PORT='
             jmx_port_setting = '    $JMX_PORT="' + self.jmx_port + '"'
-            remote_debug_options = '    $env:JVM_OPTS="$env:JVM_OPTS -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=' + str(self.remote_debug_port) + '"'
+            if self.get_cassandra_version() < '3.2':
+                remote_debug_options = '    $env:JVM_OPTS="$env:JVM_OPTS {}"'.format(agentlib_setting)
         else:
             conf_file = os.path.join(self.get_conf_dir(), common.CASSANDRA_ENV)
             jvm_file = os.path.join(self.get_conf_dir(), common.JVM_OPTS)
             jmx_port_pattern = 'JMX_PORT='
             jmx_port_setting = 'JMX_PORT="' + self.jmx_port + '"'
-            remote_debug_options = 'JVM_OPTS="$JVM_OPTS -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=' + str(self.remote_debug_port) + '"'
+            if self.get_cassandra_version() < '3.2':
+                remote_debug_options = 'JVM_OPTS="$JVM_OPTS {}"'.format(agentlib_setting)
 
         common.replace_in_file(conf_file, jmx_port_pattern, jmx_port_setting)
 
@@ -1484,7 +1488,10 @@ class Node(object):
 
         if self.remote_debug_port != '0':
             remote_debug_port_pattern = '((-Xrunjdwp:)|(-agentlib:jdwp=))transport=dt_socket,server=y,suspend=n,address='
-            common.replace_in_file(conf_file, remote_debug_port_pattern, remote_debug_options)
+            if self.get_cassandra_version() < '3.2':
+                common.replace_in_file(conf_file, remote_debug_port_pattern, remote_debug_options)
+            else:
+                common.replace_in_file(jvm_file, remote_debug_port_pattern, remote_debug_options)
 
         if self.byteman_port != '0':
             byteman_jar = glob.glob(os.path.join(self.get_install_dir(), 'build', 'lib', 'jars', 'byteman-[0-9]*.jar'))[0]
