@@ -886,7 +886,7 @@ class Node(object):
             if not os.path.exists(dir):
                 os.mkdir(dir)
 
-    def run_sstable2json(self, out_file=None, keyspace=None, datafiles=None, column_families=None, enumerate_keys=False):
+    def run_sstable2json(self, out_file=None, keyspace=None, datafiles=None, column_families=None, keys=None, enumerate_keys=False):
         print_("running")
         if out_file is None:
             out_file = sys.stdout
@@ -899,6 +899,9 @@ class Node(object):
             args = [sstable2json, sstablefile]
             if enumerate_keys:
                 args = args + ["-e"]
+            if keys is not None:
+                for key in keys:
+                    args = args + ["-k", key]
             subprocess.call(args, env=env, stdout=out_file)
             print_("")
 
@@ -960,18 +963,22 @@ class Node(object):
         if output_file is None:
             return results
 
-    def run_sstabledump(self, output_file=None, datafiles=None, keyspace=None, column_families=None, enumerate_keys=False):
+    def run_sstabledump(self, output_file=None, datafiles=None, keyspace=None, column_families=None, keys=None, enumerate_keys=False):
         cdir = self.get_install_dir()
         sstabledump = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstabledump')
         env = self.get_env()
         sstablefiles = self.__gather_sstables(datafiles=datafiles, keyspace=keyspace, columnfamilies=column_families)
         results = []
 
+        print_(sstablefiles)
         for sstable in sstablefiles:
+            print_("-- {0} -----".format(os.path.basename(sstable)))
+            cmd = [sstabledump, sstable]
             if enumerate_keys:
-                cmd = [sstabledump, '-e', sstable]
-            else:
-                cmd = [sstabledump, sstable]
+                cmd.append('-e')
+            if keys is not None:
+                for key in keys:
+                    cmd = cmd + ["-k", key]
             if output_file is None:
                 p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=env)
                 (out, err) = p.communicate()
