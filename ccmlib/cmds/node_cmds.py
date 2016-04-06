@@ -460,6 +460,8 @@ class NodeJsonCmd(Cmd):
                           help="The keyspace to use [use all keyspaces by default]")
         parser.add_option('-c', '--column-families', type="string", dest="cfs", default=None,
                           help="Comma separated list of column families to use (requires -k to be set)")
+        parser.add_option('--key', type="string", action="append", dest="keys", default=None,
+                          help="The key to include (you may specify multiple --key)")
         parser.add_option('-e', '--enumerate-keys', action="store_true", dest="enumerate_keys",
                           help="Only enumerate keys (i.e, call sstable2keys)", default=False)
         return parser
@@ -467,30 +469,30 @@ class NodeJsonCmd(Cmd):
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
         self.keyspace = options.keyspace
-        if len(args) < 2:
-            print_("You must specify an output file.")
-            parser.print_help()
-            exit(1)
         if self.keyspace is None:
             print_("You must specify a keyspace.")
             parser.print_help()
             exit(1)
-        self.outfile = args[-1]
+        self.outfile = args[-1] if len(args) >= 2 else None
         self.column_families = options.cfs.split(',') if options.cfs else None
 
     def run(self):
         try:
-            with open(self.outfile, 'w') as f:
-                if self.node.has_cmd('sstable2json'):
-                    self.node.run_sstable2json(keyspace=self.keyspace,
-                                               out_file=f,
-                                               column_families=self.column_families,
-                                               enumerate_keys=self.options.enumerate_keys)
-                elif self.node.has_cmd('sstabledump'):
-                    self.node.run_sstabledump(keyspace=self.keyspace,
-                                               output_file=f,
-                                               column_families=self.column_families,
-                                               enumerate_keys=self.options.enumerate_keys)
+            f = sys.stdout
+            if self.outfile is not None:
+                f = open(self.outfile, 'w')
+            if self.node.has_cmd('sstable2json'):
+                self.node.run_sstable2json(keyspace=self.keyspace,
+                                           out_file=f,
+                                           column_families=self.column_families,
+                                           keys=self.options.keys,
+                                           enumerate_keys=self.options.enumerate_keys)
+            elif self.node.has_cmd('sstabledump'):
+                self.node.run_sstabledump(keyspace=self.keyspace,
+                                           output_file=f,
+                                           column_families=self.column_families,
+                                           keys=self.options.keys,
+                                           enumerate_keys=self.options.enumerate_keys)
         except common.ArgumentError as e:
             print_(e, file=sys.stderr)
 
