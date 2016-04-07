@@ -48,6 +48,18 @@ if len(sys.argv) <= 1:
 
 arg1 = sys.argv[1].lower()
 
+# show-*-cmds are undocumented commands that emit a list of
+# the appropriate type of subcommand. This is used by the bash completion script.
+if arg1 == 'show-cluster-cmds':
+    for cmd_name in cluster_cmds.cluster_cmds():
+        print_(cmd_name)
+    exit(1)
+
+if arg1 == 'show-node-cmds':
+    for cmd_name in node_cmds.node_cmds():
+        print_(cmd_name)
+    exit(1)
+
 if arg1 in cluster_cmds.cluster_cmds():
     kind = 'cluster'
     cmd = arg1
