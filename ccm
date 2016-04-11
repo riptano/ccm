@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import sys
-
+import pkg_resources
 from six import print_
 
 from ccmlib import common
@@ -31,6 +31,7 @@ def print_global_usage():
             print_("Internal error, unknown command {0}".format(cmd_name))
             exit(1)
         print_("  {0:14} {1}".format(cmd_name, cmd.description()))
+    print_("")
     print_("or <node_name> is the name of a node of the current cluster and <node_cmd> is one of")
     for cmd_name in node_cmds.node_cmds():
         cmd = get_command("node", cmd_name)
@@ -39,6 +40,9 @@ def print_global_usage():
             exit(1)
         print_("  {0:14} {1}".format(cmd_name, cmd.description()))
     exit(1)
+
+for entry_point in pkg_resources.iter_entry_points(group='ccm_extension'):
+    entry_point.load()()
 
 common.check_win_requirements()
 
