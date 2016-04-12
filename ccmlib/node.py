@@ -680,16 +680,20 @@ class Node(object):
         else:
             return False
 
-    def wait_for_compactions(self):
+    def wait_for_compactions(self, timeout=120):
         """
         Wait for all compactions to finish on this node.
         """
         pattern = re.compile("pending tasks: 0")
-        while True:
+        elapsed = 0
+        while elapsed < timeout:
             output, err = self.nodetool("compactionstats", capture_output=True)
             if pattern.search(output):
-                break
-            time.sleep(10)
+                return
+            elapsed += 1
+            time.sleep(1)
+        raise TimeoutError("{} [{}] Compactions did not finish in {} seconds".format(time.strftime("%d %b %Y %H:%M:%S", time.gmtime()), self.name, timeout))
+
 
     def nodetool(self, cmd, capture_output=True, wait=True):
         """

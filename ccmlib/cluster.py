@@ -401,13 +401,13 @@ class Cluster(object):
             for class_name in class_names:
                 node.set_log_level(new_level, class_name)
 
-    def wait_for_compactions(self):
+    def wait_for_compactions(self, timeout=600):
         """
         Wait for all compactions to finish on all nodes.
         """
         for node in list(self.nodes.values()):
             if node.is_running():
-                node.wait_for_compactions()
+                node.wait_for_compactions(timeout)
         return self
 
     def nodetool(self, nodetool_cmd):
