@@ -1146,7 +1146,7 @@ class Node(object):
     def get_sstables(self, keyspace, column_family):
         return [f for sublist in self.get_sstables_per_data_directory(keyspace, column_family) for f in sublist]
 
-    def stress(self, stress_options=None, capture_output=False, **kwargs):
+    def stress(self, stress_options=None, capture_output=False, whitelist=False,**kwargs):
         if stress_options is None:
             stress_options = []
         else:
@@ -1158,6 +1158,8 @@ class Node(object):
             stress_options.append(self.address())
         else:
             stress_options.append('-node')
+            if whitelist:
+                stress_options.append("whitelist")
             stress_options.append(self.address())
             # specify used jmx port if not already set
             if not [opt for opt in stress_options if opt.startswith('jmx=')]:
