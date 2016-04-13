@@ -70,10 +70,8 @@ class DseNode(Node):
             self.__update_gremlin_config_yaml()
         if 'dsefs' in self.workloads:
             dsefs_options = {'dsefs_options' : {'enabled': 'true',
-                                                'keyspace_name': 'dsefs',
-                                                'public_port': '5598',
-                                                'private_port': '5599',
-                                                'data_directories': [os.path.join(self.get_path(), 'dsefs')]}}
+                                                'work_dir': os.path.join(self.get_path(), 'dsefs'),
+                                                'data_directories': [{'dir': os.path.join(self.get_path(), 'dsefs', 'data')}]}}
             self.set_dse_configuration_options(dsefs_options)
         if 'spark' in self.workloads:
             self._update_spark_env()
