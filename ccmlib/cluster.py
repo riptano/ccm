@@ -291,7 +291,7 @@ class Cluster(object):
         return os.path.join(self.__path, self.name)
 
     def get_seeds(self):
-        return [s.network_interfaces['storage'][0] for s in self.seeds]
+        return [s.network_interfaces['storage'][0] if isinstance(s, Node) else s for s in self.seeds]
 
     def show(self, verbose):
         msg = "Cluster: '%s'" % self.name
@@ -519,7 +519,7 @@ class Cluster(object):
 
     def _update_config(self):
         node_list = [node.name for node in list(self.nodes.values())]
-        seed_list = [node.name for node in self.seeds]
+        seed_list = self.get_seeds()
         filename = os.path.join(self.__path, self.name, 'cluster.conf')
         with open(filename, 'w') as f:
             yaml.safe_dump({
