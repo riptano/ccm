@@ -462,7 +462,7 @@ class DseNode(Node):
     def __update_gremlin_config_yaml(self):
         (node_ip, _) = self.network_interfaces['binary']
 
-        conf_file = os.path.join(self.get_path(), 'resources', 'graph', 'gremlin-console', 'conf', 'remote-objects.yaml')
+        conf_file = os.path.join(self.get_path(), 'resources', 'graph', 'gremlin-console', 'conf', 'remote.yaml')
         with open(conf_file, 'r') as f:
             data = yaml.load(f)
 
