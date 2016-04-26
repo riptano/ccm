@@ -48,7 +48,7 @@ class ClusterFactory():
 
         for node_name in node_list:
             cluster.nodes[node_name] = Node.load(cluster_path, node_name, cluster)
-        for seed_name in seed_list:
-            cluster.seeds.append(cluster.nodes[seed_name])
+        for seed in seed_list:
+            cluster.seeds.append(seed)
 
         return cluster
