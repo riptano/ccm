@@ -92,8 +92,8 @@ tell ccm how to find the sources:
 
           ccm create test -v 2.0.5
 
-     ccm will download the source (from http://archive.apache.org/dist/cassandra),
-     compile it, and set the new cluster to use it. This means
+     ccm will download the binary (from http://archive.apache.org/dist/cassandra),
+     and set the new cluster to use it. This means
      that this command can take a few minutes the first time you
      create a cluster for a given version. ccm saves the compiled
      source in `~/.ccm/repository/`, so creating a cluster for that
@@ -155,13 +155,17 @@ The list of other provided commands is available through
 Each command is then documented through the `-h` (or `--help`) flag. For
 instance `ccm add -h` describes the options for `ccm add`.
 
-### Binary Distribution
+### Source Distribution
 
-If you'd like to use a binary distribution instead of compiling from sources each time (for example, for Continuous Integration), you can prefix cassandra version with `binary:`, for example:
+If you'd like to use a source distribution instead of the default binary each time (for example, for Continuous Integration), you can prefix cassandra version with `source:`, for example:
 
 ```
-ccm create test -v binary:2.0.5 -n 3 -s
+ccm create test -v source:2.0.5 -n 3 -s
 ```
+
+### Automatic Version Fallback
+
+If 'binary:' or 'source:' are not explicitly specified in your version string, then ccm will fallback to building the requested version from git if it cannot access the apache mirrors.
 
 ### Git and GitHub
 
@@ -176,6 +180,34 @@ and to download a branch from a GitHub fork of Cassandra, you can prefix the rep
 ```
 ccm create patched -v github:jbellis/trunk -n 1
 ```
+
+### Bash command-line completion
+ccm has many sub-commands for both cluster commands as well as node commands, and sometimes you don't quite remember the name of the sub-command you want to invoke. Also, command lines may be long due to long cluster or node names.
+
+Leverage bash's *programmable completion* feature to make ccm use more pleasant. Copy `misc/ccm-completion.bash` to somewhere in your home directory (or /etc if you want to make it accessible to all users of your system) and source it in your `.bash_profile`:
+```
+. ~/scripts/ccm-completion.bash
+```
+
+Once set up, `ccm sw<tab>` expands to `ccm switch `, for example. The `switch` sub-command has extra completion logic to help complete the cluster name. So `ccm switch cl<tab>` would expand to `ccm switch cluster-58` if cluster-58 is the only cluster whose name starts with "cl". If there is ambiguity, hitting `<tab>` a second time shows the choices that match:
+```
+$ ccm switch cl<tab>
+    ... becomes ...
+$ ccm switch cluster-
+    ... then hit tab twice ...
+cluster-56  cluster-85  cluster-96
+$ ccm switch cluster-8<tab>
+    ... becomes ...
+$ ccm switch cluster-85
+```
+
+It dynamically determines available sub-commands based on the ccm being invoked. Thus, users running multiple ccm's (or a ccm that they are continuously updating with new commands) will automagically work.
+
+The completion script relies on ccm having two hidden subcommands:
+* show-cluster-cmds - emits the names of cluster sub-commands.
+* show-node-cmds - emits the names of node sub-commands.
+
+Thus, it will not work with sufficiently old versions of ccm.
 
 Remote debugging
 -----------------------
@@ -208,7 +240,7 @@ CCM Lib
 -------
 
 The ccm facilities are available programmatically through ccmlib. This could
-be used to implement automated tests again Cassandra. A simple example of
+be used to implement automated tests against Cassandra. A simple example of
 how to use ccmlib follows:
 
     import ccmlib

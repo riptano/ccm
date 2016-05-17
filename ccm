@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 
-import os, sys
+import sys
 
 from six import print_
 
 from ccmlib import common
 from ccmlib.cmds import command, cluster_cmds, node_cmds
+
 
 def get_command(kind, cmd):
     cmd_name = kind.lower().capitalize() + cmd.lower().capitalize() + "Cmd"
@@ -16,6 +17,7 @@ def get_command(kind, cmd):
     if not issubclass(klass, command.Cmd):
         return None
     return klass()
+
 
 def print_global_usage():
     print_("Usage:")
@@ -45,6 +47,18 @@ if len(sys.argv) <= 1:
     print_global_usage()
 
 arg1 = sys.argv[1].lower()
+
+# show-*-cmds are undocumented commands that emit a list of
+# the appropriate type of subcommand. This is used by the bash completion script.
+if arg1 == 'show-cluster-cmds':
+    for cmd_name in cluster_cmds.cluster_cmds():
+        print_(cmd_name)
+    exit(1)
+
+if arg1 == 'show-node-cmds':
+    for cmd_name in node_cmds.node_cmds():
+        print_(cmd_name)
+    exit(1)
 
 if arg1 in cluster_cmds.cluster_cmds():
     kind = 'cluster'

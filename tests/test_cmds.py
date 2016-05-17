@@ -1,9 +1,12 @@
+import os
+import subprocess
+
+import yaml
+from six import print_
+
+from ccmlib import common
 from . import TEST_DIR
 from . import ccmtest
-from ccmlib.cluster import Cluster
-from ccmlib import common
-import subprocess, os, yaml
-from six import print_
 
 CLUSTER_PATH = TEST_DIR
 
@@ -12,6 +15,7 @@ class TestCCMCmd(ccmtest.Tester):
 
     def __init__(self, *args, **kwargs):
         ccmtest.Tester.__init__(self, *args, **kwargs)
+
 
 class TestCCMCreate(TestCCMCmd):
 
@@ -49,7 +53,7 @@ class TestCCMCreate(TestCCMCmd):
         self.validate_output(self.create_cmd(args, version=None))
 
     def cluster_create_populate_test(self):
-        args = ['-n','3']
+        args = ['-n', '3']
         self.validate_output(self.create_cmd(args))
 
     def cluster_create_no_switch_test(self):

@@ -15,7 +15,9 @@ from distutils.version import LooseVersion
 
 from six import print_
 
-from ccmlib.common import (ArgumentError, CCMError, get_default_path,
+from ccmlib.common import (ArgumentError, CCMError,
+                           assert_jdk_valid_for_cassandra_version,
+                           get_default_path, get_version_from_build,
                            platform_binary, rmdirs, validate_install_dir)
 from six.moves import urllib
 
@@ -24,26 +26,58 @@ OPSC_ARCHIVE = "http://downloads.datastax.com/community/opscenter-%s.tar.gz"
 ARCHIVE = "http://archive.apache.org/dist/cassandra"
 GIT_REPO = "http://git-wip-us.apache.org/repos/asf/cassandra.git"
 GITHUB_TAGS = "https://api.github.com/repos/apache/cassandra/git/refs/tags"
+LOCAL_GIT_REPO = os.environ.get('LOCAL_GIT_REPO', None)  # absolute path to local cassandra git repo, e.g. /home/user/cassandra/
 
 
 def setup(version, verbose=False):
-    binary = False
+    binary = True
+    fallback = True
+
     if version.startswith('git:'):
         clone_development(GIT_REPO, version, verbose=verbose)
         return (version_directory(version), None)
+
+    elif version.startswith('local:'):
+        if LOCAL_GIT_REPO is None:
+            raise CCMError("LOCAL_GIT_REPO is not defined!")
+        clone_development(LOCAL_GIT_REPO, version, verbose=verbose)
+        return (version_directory(version), None)
+
     elif version.startswith('binary:'):
         version = version.replace('binary:', '')
-        binary = True
+        fallback = False
+
     elif version.startswith('github:'):
         user_name, _ = github_username_and_branch_name(version)
         clone_development(github_repo_for_user(user_name), version, verbose=verbose)
         return (directory_name(version), None)
+
+    elif version.startswith('source:'):
+        version = version.replace('source:', '')
+        binary = False
+        fallback = False
+
     if version in ('stable', 'oldstable', 'testing'):
         version = get_tagged_version_numbers(version)[0]
+
     cdir = version_directory(version)
     if cdir is None:
-        download_version(version, verbose=verbose, binary=binary)
-        cdir = version_directory(version)
+        try:
+            download_version(version, verbose=verbose, binary=binary)
+            cdir = version_directory(version)
+        except Exception as e:
+            # If we failed to download from ARCHIVE,
+            # then we build from source from the git repo,
+            # as it is more reliable.
+            # We don't do this if binary: or source: were
+            # explicitly specified.
+            if fallback:
+                print_("WARN:Downloading {} failed, due to {}. Trying to build from git instead.".format(version, e))
+                version = 'git:cassandra-{}'.format(version)
+                clone_development(GIT_REPO, version, verbose=verbose)
+                return (version_directory(version), None)
+            else:
+                raise e
     return (cdir, version)
 
 
@@ -76,6 +110,9 @@ def clone_development(git_repo, version, verbose=False):
     assert target_dir
     if 'github' in version:
         git_repo_name, git_branch = github_username_and_branch_name(version)
+    elif 'local:' in version:
+        git_repo_name = 'local'
+        git_branch = version.split(':', 1)[1]
     else:
         git_repo_name = 'apache'
         git_branch = version.split(':', 1)[1]
@@ -113,10 +150,28 @@ def clone_development(git_repo, version, verbose=False):
                 else:
                     subprocess.call(['git', 'clone', local_git_cache, target_dir], cwd=__get_dir(), stdout=lf, stderr=lf)
 
+                # determine if the request is for a branch
+                is_branch = False
+                try:
+                    branch_listing = subprocess.check_output(['git', 'branch', '--all'], cwd=target_dir).decode('utf-8')
+                    branches = [b.strip() for b in branch_listing.replace('remotes/origin/', '').split()]
+                    is_branch = git_branch in branches
+                except subprocess.CalledProcessError as cpe:
+                    print_("Error Running Branch Filter: {}\nAssumming request is not for a branch".format(cpe.output))
+
                 # now check out the right version
                 if verbose:
-                    print_("Checking out requested branch (%s)" % git_branch)
-                out = subprocess.call(['git', 'checkout', git_branch], cwd=target_dir, stdout=lf, stderr=lf)
+                    branch_or_sha_tag = 'branch' if is_branch else 'SHA/tag'
+                    print_("Checking out requested {} ({})".format(branch_or_sha_tag, git_branch))
+                if is_branch:
+                    # we use checkout -B with --track so we can specify that we want to track a specific branch
+                    # otherwise, you get errors on branch names that are also valid SHAs or SHA shortcuts, like 10360
+                    # we use -B instead of -b so we reset branches that already exist and create a new one otherwise
+                    out = subprocess.call(['git', 'checkout', '-B', git_branch,
+                                           '--track', 'origin/{git_branch}'.format(git_branch=git_branch)],
+                                          cwd=target_dir, stdout=lf, stderr=lf)
+                else:
+                    out = subprocess.call(['git', 'checkout', git_branch], cwd=target_dir, stdout=lf, stderr=lf)
                 if int(out) != 0:
                     raise CCMError('Could not check out git branch {branch}. '
                                    'Is this a valid branch name? (see {lastlog} or run '
@@ -153,6 +208,10 @@ def download_dse_version(version, username, password, verbose=False):
     url = DSE_ARCHIVE % version
     _, target = tempfile.mkstemp(suffix=".tar.gz", prefix="ccm-")
     try:
+        if username is None:
+            print_("Warning: No dse username detected, specify one using --dse-username or passing in a credentials file using --dse-credentials.", file=sys.stderr)
+        if password is None:
+            print_("Warning: No dse password detected, specify one using --dse-password or passing in a credentials file using --dse-credentials.", file=sys.stderr)
         __download(url, target, username=username, password=password, show_progress=verbose)
         if verbose:
             print_("Extracting %s as version %s ..." % (target, version))
@@ -200,6 +259,8 @@ def download_version(version, url=None, verbose=False, binary=False):
 
     if binary == True, download precompiled tarball, otherwise build from source tarball.
     """
+    assert_jdk_valid_for_cassandra_version(version)
+
     if binary:
         u = "%s/%s/apache-cassandra-%s-bin.tar.gz" % (ARCHIVE, version.split('-')[0], version) if url is None else url
     else:
@@ -244,6 +305,8 @@ def download_version(version, url=None, verbose=False, binary=False):
 
 
 def compile_version(version, target_dir, verbose=False):
+    assert_jdk_valid_for_cassandra_version(get_version_from_build(target_dir))
+
     # compiling cassandra and the stress tool
     logfile = lastlogfilename()
     if verbose:
@@ -311,7 +374,7 @@ def version_directory(version):
         try:
             validate_install_dir(dir)
             return dir
-        except ArgumentError as e:
+        except ArgumentError:
             rmdirs(dir)
             return None
     else:
@@ -334,8 +397,8 @@ def get_tagged_version_numbers(series='stable'):
         # Stable and oldstable releases are just a number:
         tag_regex = re.compile('^refs/tags/cassandra-([0-9]+\.[0-9]+\.[0-9]+$)')
 
-    r = urllib.request.urlopen(GITHUB_TAGS)
-    for ref in (i.get('ref', '') for i in json.loads(r.read())):
+    tag_url = urllib.request.urlopen(GITHUB_TAGS)
+    for ref in (i.get('ref', '') for i in json.loads(tag_url.read())):
         m = tag_regex.match(ref)
         if m:
             releases.append(LooseVersion(m.groups()[0]))

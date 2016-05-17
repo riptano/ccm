@@ -1,6 +1,7 @@
 import os
-import sys
 import subprocess
+import sys
+import yaml
 
 from six import print_
 
@@ -42,7 +43,8 @@ def cluster_cmds():
         "invalidatecache",
         "checklogerror",
         "showlastlog",
-        "jconsole"
+        "jconsole",
+        "setworkload"
     ]
 
 
@@ -78,6 +80,8 @@ class ClusterCreateCmd(Cmd):
                           help="The username to use to download DSE with", default=None)
         parser.add_option("--dse-password", type="string", dest="dse_password",
                           help="The password to use to download DSE with", default=None)
+        parser.add_option("--dse-credentials", type="string", dest="dse_credentials_file",
+                          help="An ini-style config file containing the dse_username and dse_password under a dse_credentials section. [default to {}/.dse.ini if it exists]".format(common.get_default_path_display_name()), default=None)
         parser.add_option("--install-dir", type="string", dest="install_dir",
                           help="Path to the cassandra or dse directory to use [default %default]", default="./")
         parser.add_option('-n', '--nodes', type="string", dest="nodes",
@@ -110,6 +114,13 @@ class ClusterCreateCmd(Cmd):
                           help="Enable client authentication (only vaid with --ssl)", default=False)
         parser.add_option('--node-ssl', type="string", dest="node_ssl_path",
                           help="Path to keystore.jks and truststore.jks for internode encryption", default=None)
+        parser.add_option('--pwd-auth', action="store_true", dest="node_pwd_auth",
+                          help="Change authenticator to PasswordAuthenticator (default credentials)", default=False)
+        parser.add_option('--byteman', action="store_true", dest="install_byteman", help="Start nodes with byteman agent running", default=False)
+        parser.add_option('--root', action="store_true", dest="allow_root",
+                          help="Allow CCM to start cassandra as root", default=False)
+        parser.add_option('--datadirs', type="int", dest="datadirs",
+                          help="Number of data directories to use", default=1)
         return parser
 
     def validate(self, parser, options, args):
@@ -129,14 +140,23 @@ class ClusterCreateCmd(Cmd):
                 parser.print_help()
                 parser.error("%s is not a valid cassandra directory. You must define a cassandra dir or version." % options.install_dir)
 
+            if common.get_dse_version(options.install_dir) is not None:
+                common.assert_jdk_valid_for_cassandra_version(common.get_dse_cassandra_version(options.install_dir))
+            else:
+                common.assert_jdk_valid_for_cassandra_version(common.get_version_from_build(options.install_dir))
+
+        if common.is_win() and os.path.exists('c:\windows\system32\java.exe'):
+            print_("""WARN: c:\windows\system32\java.exe exists.
+                This may cause registry issues, and jre7 to be used, despite jdk8 being installed.
+                """)
+
     def run(self):
         try:
             if self.options.dse or (not self.options.version and common.isDse(self.options.install_dir)):
-                cluster = DseCluster(self.path, self.name, install_dir=self.options.install_dir, version=self.options.version, dse_username=self.options.dse_username, dse_password=self.options.dse_password, opscenter=self.options.opscenter, verbose=True)
+                cluster = DseCluster(self.path, self.name, install_dir=self.options.install_dir, version=self.options.version, dse_username=self.options.dse_username, dse_password=self.options.dse_password, dse_credentials_file=self.options.dse_credentials_file, opscenter=self.options.opscenter, verbose=True)
             else:
                 cluster = Cluster(self.path, self.name, install_dir=self.options.install_dir, version=self.options.version, verbose=True)
         except OSError as e:
-            cluster_dir = os.path.join(self.path, self.name)
             import traceback
             print_('Cannot create cluster: %s\n%s' % (str(e), traceback.format_exc()), file=sys.stderr)
             exit(1)
@@ -165,20 +185,26 @@ class ClusterCreateCmd(Cmd):
         if self.options.node_ssl_path:
             cluster.enable_internode_ssl(self.options.node_ssl_path)
 
+        if self.options.node_pwd_auth:
+            cluster.enable_pwd_auth()
+
+        if self.options.datadirs:
+            cluster.set_datadir_count(self.options.datadirs)
+
         if self.nodes is not None:
             try:
                 if self.options.debug_log:
                     cluster.set_log_level("DEBUG")
                 if self.options.trace_log:
                     cluster.set_log_level("TRACE")
-                cluster.populate(self.nodes, self.options.debug, use_vnodes=self.options.vnodes, ipprefix=self.options.ipprefix, ipformat=self.options.ipformat)
+                cluster.populate(self.nodes, self.options.debug, use_vnodes=self.options.vnodes, ipprefix=self.options.ipprefix, ipformat=self.options.ipformat, install_byteman=self.options.install_byteman)
                 if self.options.start_nodes:
                     profile_options = None
                     if self.options.profile:
                         profile_options = {}
                         if self.options.profile_options:
                             profile_options['options'] = self.options.profile_options
-                    if cluster.start(verbose=self.options.debug_log, wait_for_binary_proto=self.options.binary_protocol, jvm_args=self.options.jvm_args, profile_options=profile_options) is None:
+                    if cluster.start(verbose=self.options.debug_log, wait_for_binary_proto=self.options.binary_protocol, jvm_args=self.options.jvm_args, profile_options=profile_options, allow_root=self.options.allow_root) is None:
                         details = ""
                         if not self.options.debug_log:
                             details = " (you can use --debug-log for more information)"
@@ -283,6 +309,7 @@ class ClusterPopulateCmd(Cmd):
                           help="Ipprefix to use to create the ip of a node")
         parser.add_option('-I', '--ip-format', type="string", dest="ipformat",
                           help="Format to use when creating the ip of a node (supports enumerating ipv6-type addresses like fe80::%d%lo0)")
+
         return parser
 
     def validate(self, parser, options, args):
@@ -326,7 +353,7 @@ class ClusterListCmd(Cmd):
     def run(self):
         try:
             current = common.current_cluster_name(self.path)
-        except Exception as e:
+        except Exception:
             current = ''
 
         for dir in os.listdir(self.path):
@@ -432,7 +459,7 @@ class ClusterClearCmd(Cmd):
 class ClusterLivesetCmd(Cmd):
 
     def description(self):
-        return "Print a comma-separated list of addresses of running nodes (handful in scripts)"
+        return "Print a comma-separated list of addresses of running nodes (helpful in scripts)"
 
     def get_parser(self):
         usage = "usage: ccm liveset [options]"
@@ -508,9 +535,12 @@ class ClusterStartCmd(Cmd):
         parser.add_option('-v', '--verbose', action="store_true", dest="verbose",
                           help="Print standard output of cassandra process", default=False)
         parser.add_option('--no-wait', action="store_true", dest="no_wait",
-                          help="Do not wait for cassandra node to be ready", default=False)
-        parser.add_option('--wait-other-notice', action="store_true", dest="wait_other_notice",
-                          help="Wait until all other live nodes of the cluster have marked this node UP", default=False)
+                          help="Do not wait for cassandra node to be ready. Overrides all other wait options.", default=False)
+        # This option (wait-other-notice) is now deprecated, as it was never respected
+        parser.add_option('--wait-other-notice', action="store_true", dest="deprecate",
+                          help="DEPRECATED/IGNORED: Use '--skip-wait-other-notice' instead. This is now on by default.", default=False)
+        parser.add_option('--skip-wait-other-notice', action="store_false", dest="wait_other_notice",
+                          help="Skip waiting until all live nodes of the cluster have marked the other nodes UP", default=True)
         parser.add_option('--wait-for-binary-proto', action="store_true", dest="wait_for_binary_proto",
                           help="Wait for the binary protocol to start", default=False)
         parser.add_option('--jvm_arg', action="append", dest="jvm_args",
@@ -519,10 +549,17 @@ class ClusterStartCmd(Cmd):
                           help="Start the nodes with yourkit agent (only valid with -s)", default=False)
         parser.add_option('--profile-opts', type="string", action="store", dest="profile_options",
                           help="Yourkit options when profiling", default=None)
+        parser.add_option('--quiet-windows', action="store_true", dest="quiet_start", help="Pass -q on Windows 2.2.4+ and 3.0+ startup. Ignored on linux.", default=False)
+        parser.add_option('--root', action="store_true", dest="allow_root", help="Allow CCM to start cassandra as root", default=False)
         return parser
 
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, load_cluster=True)
+        if self.options.deprecate:
+            print_("WARN: --wait-other-notice is deprecated. Please see the help text.")
+        if self.options.no_wait and (self.options.wait_for_binary_proto or self.options.deprecate):
+            print_("ERROR: --no-wait was specified alongside one or more wait options. This is invalid.")
+            exit(1)
 
     def run(self):
         try:
@@ -541,7 +578,9 @@ class ClusterStartCmd(Cmd):
                                   wait_for_binary_proto=self.options.wait_for_binary_proto,
                                   verbose=self.options.verbose,
                                   jvm_args=self.options.jvm_args,
-                                  profile_options=profile_options) is None:
+                                  profile_options=profile_options,
+                                  quiet_start=self.options.quiet_start,
+                                  allow_root=self.options.allow_root) is None:
                 details = ""
                 if not self.options.verbose:
                     details = " (you can use --verbose for more information)"
@@ -658,12 +697,13 @@ class ClusterUpdateconfCmd(Cmd):
                           dest="cl_batch", default=False, help="Set commit log to batch mode")
         parser.add_option('--rt', '--rpc-timeout', action="store", type='int',
                           dest="rpc_timeout", help="Set rpc timeout")
+        parser.add_option('-y', '--yaml', action="store_true", dest="literal_yaml", default=False, help="If enabled, treat argument as yaml, not kv pairs. Option syntax looks like ccm updateconf -y 'a: [b: [c,d]]'")
         return parser
 
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, load_cluster=True)
         try:
-            self.setting = common.parse_settings(args)
+            self.setting = common.parse_settings(args, literal_yaml=self.options.literal_yaml)
         except common.ArgumentError as e:
             print_(str(e), file=sys.stderr)
             exit(1)
@@ -692,12 +732,13 @@ class ClusterUpdatedseconfCmd(Cmd):
     def get_parser(self):
         usage = "usage: ccm updatedseconf [options] [ new_setting | ...  ], where new_setting should be a string of the form 'max_solr_concurrency_per_core: 2'; nested options can be separated with a period like 'cql_slow_log_options.enabled: true'"
         parser = self._get_default_parser(usage, self.description())
+        parser.add_option('-y', '--yaml', action="store_true", dest="literal_yaml", default=False, help="Pass in literal yaml string. Option syntax looks like ccm updatedseconf -y 'a: [b: [c,d]]'")
         return parser
 
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, load_cluster=True)
         try:
-            self.setting = common.parse_settings(args)
+            self.setting = common.parse_settings(args, literal_yaml=self.options.literal_yaml)
         except common.ArgumentError as e:
             print_(str(e), file=sys.stderr)
             exit(1)
@@ -926,6 +967,36 @@ class ClusterJconsoleCmd(Cmd):
         cmds = ["jconsole"] + ["localhost:%s" % node.jmx_port for node in self.cluster.nodes.values()]
         try:
             subprocess.call(cmds, stderr=sys.stderr)
-        except OSError as e:
+        except OSError:
             print_("Could not start jconsole. Please make sure jconsole can be found in your $PATH.")
+            exit(1)
+
+class ClusterSetworkloadCmd(Cmd):
+
+    def description(self):
+        return "Sets the workloads for a DSE cluster"
+
+    def get_parser(self):
+        usage = "usage: ccm setworkload [cassandra|solr|hadoop|spark|dsefs|cfs|graph],..."
+        parser = self._get_default_parser(usage, self.description())
+        return parser
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, load_cluster=True)
+        self.workloads = args[0].split(',')
+        valid_workloads = ['cassandra', 'solr', 'hadoop', 'spark', 'dsefs', 'cfs', 'graph']
+        for workload in self.workloads:
+            if workload not in valid_workloads:
+                print_(workload, ' is not a valid workload')
+                exit(1)
+
+    def run(self):
+        try:
+            if len(self.cluster.nodes) == 0:
+                print_("No node in this cluster yet. Use the populate command before starting.")
+                exit(1)
+            for node in list(self.cluster.nodes.values()):
+                node.set_workloads(workloads=self.workloads)
+        except common.ArgumentError as e:
+            print_(str(e), file=sys.stderr)
             exit(1)

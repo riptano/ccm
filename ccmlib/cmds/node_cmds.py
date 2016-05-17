@@ -1,6 +1,6 @@
 import os
-import sys
 import subprocess
+import sys
 
 from six import print_
 
@@ -53,7 +53,8 @@ def node_cmds():
         "pause",
         "resume",
         "jconsole",
-        "versionfrombuild"
+        "versionfrombuild",
+        "byteman"
     ]
 
 
@@ -173,8 +174,10 @@ class NodeStartCmd(Cmd):
                           help="Print standard output of cassandra process", default=False)
         parser.add_option('--no-wait', action="store_true", dest="no_wait",
                           help="Do not wait for cassandra node to be ready", default=False)
-        parser.add_option('--wait-other-notice', action="store_true", dest="wait_other_notice",
-                          help="Wait until all other live node of the cluster have marked this node UP", default=False)
+        parser.add_option('--wait-other-notice', action="store_true", dest="deprecate",
+                          help="DEPRECATED/IGNORED: Use '--skip-wait-other-notice' instead. This is now on by default.", default=False)
+        parser.add_option('--skip-wait-other-notice', action="store_false", dest="wait_other_notice",
+                          help="Skip waiting until all live nodes of the cluster have marked the other nodes UP", default=True)
         parser.add_option('--wait-for-binary-proto', action="store_true", dest="wait_for_binary_proto",
                           help="Wait for the binary protocol to start", default=False)
         parser.add_option('-j', '--dont-join-ring', action="store_true", dest="no_join_ring",
@@ -183,6 +186,8 @@ class NodeStartCmd(Cmd):
                           help="Replace a node in the ring through the cassandra.replace_address option")
         parser.add_option('--jvm_arg', action="append", dest="jvm_args",
                           help="Specify a JVM argument", default=[])
+        parser.add_option('--quiet-windows', action="store_true", dest="quiet_start", help="Pass -q on Windows 2.2.4+ and 3.0+ startup. Ignored on linux.", default=False)
+        parser.add_option('--root', action="store_true", dest="allow_root", help="Allow CCM to start cassandra as root", default=False)
         return parser
 
     def validate(self, parser, options, args):
@@ -196,7 +201,9 @@ class NodeStartCmd(Cmd):
                             wait_for_binary_proto=self.options.wait_for_binary_proto,
                             verbose=self.options.verbose,
                             replace_address=self.options.replace_address,
-                            jvm_args=self.options.jvm_args)
+                            jvm_args=self.options.jvm_args,
+                            quiet_start=self.options.quiet_start,
+                            allow_root=self.options.allow_root)
         except NodeError as e:
             print_(str(e), file=sys.stderr)
             print_("Standard error output is:", file=sys.stderr)
@@ -444,7 +451,7 @@ class NodeVerifyCmd(Cmd):
 class NodeJsonCmd(Cmd):
 
     def description(self):
-        return "Call sstable2json on the sstables of this node"
+        return "Call sstable2json/sstabledump on the sstables of this node"
 
     def get_parser(self):
         usage = "usage: ccm node_name json [options] [file]"
@@ -453,6 +460,8 @@ class NodeJsonCmd(Cmd):
                           help="The keyspace to use [use all keyspaces by default]")
         parser.add_option('-c', '--column-families', type="string", dest="cfs", default=None,
                           help="Comma separated list of column families to use (requires -k to be set)")
+        parser.add_option('--key', type="string", action="append", dest="keys", default=None,
+                          help="The key to include (you may specify multiple --key)")
         parser.add_option('-e', '--enumerate-keys', action="store_true", dest="enumerate_keys",
                           help="Only enumerate keys (i.e, call sstable2keys)", default=False)
         return parser
@@ -460,23 +469,29 @@ class NodeJsonCmd(Cmd):
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
         self.keyspace = options.keyspace
-        if len(args) < 2:
-            print_("You must specify an output file.")
-            parser.print_help()
-            exit(1)
         if self.keyspace is None:
             print_("You must specify a keyspace.")
             parser.print_help()
             exit(1)
-        self.outfile = args[-1]
+        self.outfile = args[-1] if len(args) >= 2 else None
         self.column_families = options.cfs.split(',') if options.cfs else None
 
     def run(self):
         try:
-            with open(self.outfile, 'w') as f:
+            f = sys.stdout
+            if self.outfile is not None:
+                f = open(self.outfile, 'w')
+            if self.node.has_cmd('sstable2json'):
                 self.node.run_sstable2json(keyspace=self.keyspace,
                                            out_file=f,
                                            column_families=self.column_families,
+                                           keys=self.options.keys,
+                                           enumerate_keys=self.options.enumerate_keys)
+            elif self.node.has_cmd('sstabledump'):
+                self.node.run_sstabledump(keyspace=self.keyspace,
+                                           output_file=f,
+                                           column_families=self.column_families,
+                                           keys=self.options.keys,
                                            enumerate_keys=self.options.enumerate_keys)
         except common.ArgumentError as e:
             print_(e, file=sys.stderr)
@@ -576,13 +591,15 @@ class NodeUpdateconfCmd(Cmd):
                           dest="cl_batch", default=False, help="Set commit log to batch mode")
         parser.add_option('--rt', '--rpc-timeout', action="store", type='int',
                           dest="rpc_timeout", help="Set rpc timeout")
+        parser.add_option('-y', '--yaml', action="store_true", dest="literal_yaml",
+                          default=False, help="Pass in literal yaml string. Option syntax looks like ccm node_name updateconf -y 'a: [b: [c,d]]'")
         return parser
 
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
         args = args[1:]
         try:
-            self.setting = common.parse_settings(args)
+            self.setting = common.parse_settings(args, literal_yaml=self.options.literal_yaml)
         except common.ArgumentError as e:
             print_(str(e), file=sys.stderr)
             exit(1)
@@ -600,6 +617,28 @@ class NodeUpdateconfCmd(Cmd):
                 self.setting['request_timeout_in_ms'] = self.options.rpc_timeout
         self.node.set_configuration_options(values=self.setting, batch_commitlog=self.options.cl_batch)
 
+class NodeUpdatedseconfCmd(Cmd):
+
+    def description(self):
+        return "Update the dse config files for this node"
+
+    def get_parser(self):
+        usage = "usage: ccm node_name updatedseconf [options] [ new_setting | ...  ], where new setting should be a string of the form 'max_solr_concurrency_per_core: 2'; nested options can be separated with a period like 'cql_slow_log_options.enabled: true'"
+        parser = self._get_default_parser(usage, self.description())
+        parser.add_option('-y', '--yaml', action="store_true", dest="literal_yaml", default=False, help="Pass in literal yaml string. Option syntax looks like ccm node_name updatedseconf -y 'a: [b: [c,d]]'")
+        return parser
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
+        args = args[1:]
+        try:
+            self.setting = common.parse_settings(args, literal_yaml=self.options.literal_yaml)
+        except common.ArgumentError as e:
+            print_(str(e), file=sys.stderr)
+            exit(1)
+
+    def run(self):
+        self.node.set_dse_configuration_options(values=self.setting)
 
 #
 # Class implementens the functionality of updating log4j-server.properties
@@ -707,24 +746,25 @@ class NodeSetdirCmd(Cmd):
 class NodeSetworkloadCmd(Cmd):
 
     def description(self):
-        return "Sets the workload for a DSE node"
+        return "Sets the workloads for a DSE node"
 
     def get_parser(self):
-        usage = "usage: ccm node_name setworkload [cassandra|solr|hadoop|spark|cfs]"
+        usage = "usage: ccm node_name setworkload [cassandra|solr|hadoop|spark|dsefs|cfs|graph],..."
         parser = self._get_default_parser(usage, self.description())
         return parser
 
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
-        self.workload = args[1]
-        workloads = ['cassandra', 'solr', 'hadoop', 'spark', 'cfs']
-        if not self.workload in workloads:
-            print_(self.workload, ' is not a valid workload')
-            exit(1)
+        self.workloads = args[1].split(',')
+        valid_workloads = ['cassandra', 'solr', 'hadoop', 'spark', 'dsefs', 'cfs', 'graph']
+        for workload in self.workloads:
+            if workload not in valid_workloads:
+                print_(workload, ' is not a valid workload')
+                exit(1)
 
     def run(self):
         try:
-            self.node.set_workload(workload=self.workload)
+            self.node.set_workloads(workloads=self.workloads)
         except common.ArgumentError as e:
             print_(str(e), file=sys.stderr)
             exit(1)
@@ -888,7 +928,7 @@ class NodeJconsoleCmd(Cmd):
         cmds = ["jconsole", "localhost:%s" % self.node.jmx_port]
         try:
             subprocess.call(cmds)
-        except OSError as e:
+        except OSError:
             print_("Could not start jconsole. Please make sure jconsole can be found in your $PATH.")
             exit(1)
 
@@ -917,3 +957,21 @@ class NodeVersionfrombuildCmd(Cmd):
                    file=sys.stderr)
 
         print_(version_from_build)
+
+
+class NodeBytemanCmd(Cmd):
+
+    def description(self):
+        return "Invoke byteman-submit "
+
+    def get_parser(self):
+        usage = "usage: ccm node_name byteman-submit"
+        parser = self._get_default_parser(usage, self.description(), ignore_unknown_options=True)
+        return parser
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
+        self.byteman_options = args[1:] + parser.get_ignored()
+
+    def run(self):
+        self.node.byteman_submit(self.byteman_options)

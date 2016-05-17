@@ -2,6 +2,7 @@
 # Cassandra Cluster Management lib
 #
 
+import copy
 import fnmatch
 import os
 import platform
@@ -13,9 +14,8 @@ import subprocess
 import sys
 import time
 
-from six import print_
-
 import yaml
+from six import print_
 
 BIN_DIR = "bin"
 CASSANDRA_CONF_DIR = "conf"
@@ -23,6 +23,7 @@ DSE_CASSANDRA_CONF_DIR = "resources/cassandra/conf"
 OPSCENTER_CONF_DIR = "conf"
 
 CASSANDRA_CONF = "cassandra.yaml"
+JVM_OPTS = "jvm.options"
 LOG4J_CONF = "log4j-server.properties"
 LOG4J_TOOL_CONF = "log4j-tools.properties"
 LOGBACK_CONF = "logback.xml"
@@ -142,7 +143,7 @@ def replace_or_add_into_file_tail(file, regexp, replace):
     replaces_or_add_into_file_tail(file, [(regexp, replace)])
 
 
-def replaces_or_add_into_file_tail(file, replacement_list):
+def replaces_or_add_into_file_tail(file, replacement_list, add_config_close=True):
     rs = [(re.compile(regexp), repl) for (regexp, repl) in replacement_list]
     is_line_found = False
     file_tmp = file + ".tmp"
@@ -157,12 +158,13 @@ def replaces_or_add_into_file_tail(file, replacement_list):
                 if "</configuration>" not in line:
                     f_tmp.write(line)
             # In case, entry is not found, and need to be added
-            if is_line_found == False:
+            if not is_line_found:
                 f_tmp.write('\n' + replace + "\n")
             # We are moving the closing tag to the end of the file.
             # Previously, we were having an issue where new lines we wrote
             # were appearing after the closing tag, and thus being ignored.
-            f_tmp.write("</configuration>\n")
+            if add_config_close:
+                f_tmp.write("</configuration>\n")
 
     shutil.move(file_tmp, file)
 
@@ -175,7 +177,7 @@ def rmdirs(path):
         shutil.rmtree(path)
 
 
-def make_cassandra_env(install_dir, node_path):
+def make_cassandra_env(install_dir, node_path, update_conf=True):
     if is_win() and get_version_from_build(node_path=node_path) >= '2.1':
         sh_file = os.path.join(CASSANDRA_CONF_DIR, CASSANDRA_WIN_ENV)
     else:
@@ -184,19 +186,13 @@ def make_cassandra_env(install_dir, node_path):
     dst = os.path.join(node_path, sh_file)
     if not os.path.exists(dst):
         shutil.copy(orig, dst)
-    replacements = ""
-    if is_win() and get_version_from_build(node_path=node_path) >= '2.1':
-        replacements = [
-            ('env:CASSANDRA_HOME =', '        $env:CASSANDRA_HOME="%s"' % install_dir),
-            ('env:CASSANDRA_CONF =', '    $env:CCM_DIR="' + node_path + '\\conf"\n    $env:CASSANDRA_CONF="$env:CCM_DIR"'),
-            ('cp = ".*?env:CASSANDRA_HOME.conf', '    $cp = """$env:CASSANDRA_CONF"""')
-        ]
-    else:
+
+    if update_conf and not (is_win() and get_version_from_build(node_path=node_path) >= '2.1'):
         replacements = [
             ('CASSANDRA_HOME=', '\tCASSANDRA_HOME=%s' % install_dir),
             ('CASSANDRA_CONF=', '\tCASSANDRA_CONF=%s' % os.path.join(node_path, 'conf'))
         ]
-    replaces_in_file(dst, replacements)
+        replaces_in_file(dst, replacements)
 
     # If a cluster-wide cassandra.in.sh file exists in the parent
     # directory, append it to the node specific one:
@@ -218,7 +214,7 @@ def make_cassandra_env(install_dir, node_path):
     return env
 
 
-def make_dse_env(install_dir, node_path):
+def make_dse_env(install_dir, node_path, node_ip):
     env = os.environ.copy()
     env['MAX_HEAP_SIZE'] = os.environ.get('CCM_MAX_HEAP_SIZE', '500M')
     env['HEAP_NEWSIZE'] = os.environ.get('CCM_HEAP_NEWSIZE', '50M')
@@ -235,6 +231,14 @@ def make_dse_env(install_dir, node_path):
     env['MAHOUT_CONF_DIR'] = os.path.join(node_path, 'resources', 'mahout', 'conf')
     env['SPARK_CONF_DIR'] = os.path.join(node_path, 'resources', 'spark', 'conf')
     env['SHARK_CONF_DIR'] = os.path.join(node_path, 'resources', 'shark', 'conf')
+    env['GREMLIN_CONSOLE_CONF_DIR'] = os.path.join(node_path, 'resources', 'graph', 'gremlin-console', 'conf')
+    env['SPARK_WORKER_DIR'] = os.path.join(node_path, 'spark', 'worker')
+    env['SPARK_LOCAL_DIRS'] = os.path.join(node_path, 'spark', 'rdd')
+    env['SPARK_WORKER_LOG_DIR'] = os.path.join(node_path, 'logs', 'spark', 'worker')
+    env['SPARK_MASTER_LOG_DIR'] = os.path.join(node_path, 'logs', 'spark', 'master')
+    env['DSE_LOG_ROOT'] = os.path.join(node_path, 'logs', 'dse')
+    env['CASSANDRA_LOG_DIR'] = os.path.join(node_path, 'logs')
+    env['SPARK_LOCAL_IP'] = '' + node_ip
     return env
 
 
@@ -242,13 +246,13 @@ def check_win_requirements():
     if is_win():
         # Make sure ant.bat is in the path and executable before continuing
         try:
-            process = subprocess.Popen('ant.bat', stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        except Exception as e:
+            subprocess.Popen('ant.bat', stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        except Exception:
             sys.exit("ERROR!  Could not find or execute ant.bat.  Please fix this before attempting to run ccm on Windows.")
 
         # Confirm matching architectures
         # 32-bit python distributions will launch 32-bit cmd environments, losing PowerShell execution privileges on a 64-bit system
-        if sys.maxsize <= 2**32 and platform.machine().endswith('64'):
+        if sys.maxsize <= 2 ** 32 and platform.machine().endswith('64'):
             sys.exit("ERROR!  64-bit os and 32-bit python distribution found.  ccm requires matching architectures.")
 
 
@@ -262,9 +266,10 @@ def is_ps_unrestricted():
     else:
         try:
             p = subprocess.Popen(['powershell', 'Get-ExecutionPolicy'], stdout=subprocess.PIPE)
+        # pylint: disable=E0602
         except WindowsError:
             print_("ERROR: Could not find powershell. Is it in your path?")
-        if "Unrestricted" in p.communicate()[0]:
+        if "Unrestricted" in str(p.communicate()[0]):
             return True
         else:
             return False
@@ -392,7 +397,7 @@ def validate_install_dir(install_dir):
         raise ArgumentError('%s does not appear to be a cassandra or dse installation directory' % install_dir)
 
 
-def check_socket_available(itf):
+def check_socket_available(itf, return_on_error=False):
     info = socket.getaddrinfo(itf[0], itf[1], socket.AF_UNSPEC, socket.SOCK_STREAM)
     if not info:
         raise UnavailableSocketError("Failed to get address info for [%s]:%s" % itf)
@@ -404,8 +409,11 @@ def check_socket_available(itf):
     try:
         s.bind(sockaddr)
         s.close()
+        return True
     except socket.error as msg:
         s.close()
+        if return_on_error:
+            return False
         addr, port = itf
         raise UnavailableSocketError("Inet address %s:%s is not available: %s" % (addr, port, msg))
 
@@ -448,37 +456,52 @@ def normalize_interface(itf):
     return (ip, itf[1])
 
 
-def parse_settings(args):
+def parse_settings(args, literal_yaml=False):
     settings = {}
-    for s in args:
-        if is_win():
-            # Allow for absolute path on Windows for value in key/value pair
-            splitted = s.split(':', 1)
-        else:
-            splitted = s.split(':')
-        if len(splitted) != 2:
-            raise ArgumentError("A new setting should be of the form 'key: value', got " + s)
-        key = splitted[0].strip()
-        val = splitted[1].strip()
-        # ok, that's not super beautiful
-        if val.lower() == "true":
-            val = True
-        elif val.lower() == "false":
-            val = False
-        else:
-            try:
-                val = int(val)
-            except ValueError:
-                pass
-        splitted = key.split('.')
-        if len(splitted) == 2:
-            try:
-                settings[splitted[0]][splitted[1]] = val
-            except KeyError:
-                settings[splitted[0]] = {}
-                settings[splitted[0]][splitted[1]] = val
-        else:
-            settings[key] = val
+    if literal_yaml:
+        for s in args:
+            settings = dict(settings, **yaml.load(s))
+    else:
+        for s in args:
+            if is_win():
+                # Allow for absolute path on Windows for value in key/value pair
+                splitted = s.split(':', 1)
+            else:
+                splitted = s.split(':')
+            if len(splitted) != 2:
+                raise ArgumentError("A new setting should be of the form 'key: value', got " + s)
+            key = splitted[0].strip()
+            val = splitted[1].strip()
+            # ok, that's not super beautiful
+            if val.lower() == "true":
+                val = True
+            elif val.lower() == "false":
+                val = False
+            else:
+                try:
+                    val = int(val)
+                except ValueError:
+                    pass
+            splitted = key.split('.')
+            split_length = len(splitted)
+            if split_length >= 2:
+                # Where we are currently at in the dict.
+                tree_pos = settings
+                # Iterate over each split and build structure as needed.
+                for pos in range(split_length):
+                    split = splitted[pos]
+                    if pos == split_length - 1:
+                        # If at the last split, set value.
+                        tree_pos[split] = val
+                    else:
+                        # If not at last split, create a new dict at the current
+                        # position for this split if it doesn't already exist
+                        # and update the current position.
+                        if split not in tree_pos:
+                            tree_pos[split] = {}
+                        tree_pos = tree_pos[split]
+            else:
+                settings[key] = val
     return settings
 
 #
@@ -527,7 +550,7 @@ def get_version_from_build(install_dir=None, node_path=None):
 def get_dse_version(install_dir):
     for root, dirs, files in os.walk(install_dir):
         for file in files:
-            match = re.search('^dse(?:-core)-([0-9.]+)(?:-SNAPSHOT)?\.jar', file)
+            match = re.search('^dse(?:-core)?-([0-9.]+)(?:-SNAPSHOT)?\.jar', file)
             if match:
                 return match.group(1)
     return None
@@ -569,3 +592,47 @@ def is_dse_cluster(path):
 
 def invalidate_cache():
     rmdirs(os.path.join(get_default_path(), 'repository'))
+
+
+def get_jdk_version():
+    version = subprocess.check_output(['java', '-version'], stderr=subprocess.STDOUT)
+    ver_pattern = '\"(\d+\.\d+).*\"'
+    return re.search(ver_pattern, str(version)).groups()[0]
+
+
+def assert_jdk_valid_for_cassandra_version(cassandra_version):
+    if cassandra_version >= '3.0' and get_jdk_version() < '1.8':
+        print_('ERROR: Cassandra 3.0+ requires Java >= 1.8, found Java {}'.format(get_jdk_version()))
+        exit(1)
+
+
+def merge_configuration(original, changes, delete_empty=True):
+    if not isinstance(original, dict):
+        # if original is not a dictionary, assume changes override it.
+        new = changes
+    else:
+        # Copy original so we do not mutate it.
+        new = copy.deepcopy(original)
+        for k, v in changes.items():
+            # If the new value is None or an empty string, delete it
+            # if it's in the original data.
+            if delete_empty and k in new and \
+                    (v is None or (isinstance(v, str) and len(v) == 0)):
+                del new[k]
+            else:
+                new_value = v
+                # If key is in both dicts, update it with new values.
+                if k in new:
+                    if isinstance(v, dict):
+                        new_value = merge_configuration(new[k], v, delete_empty)
+                new[k] = new_value
+    return new
+
+
+def is_intlike(obj):
+    try:
+        int(obj)
+        return True
+    except TypeError:
+        return False
+    raise RuntimeError('Reached end of {}; should not be possible'.format(is_intlike.__name__))

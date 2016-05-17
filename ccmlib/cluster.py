@@ -1,14 +1,18 @@
 # ccm clusters
 
+import itertools
 import os
 import random
 import shutil
 import subprocess
+import sys
+import threading
 import time
-
-from six import iteritems, print_
+from collections import OrderedDict, defaultdict
 
 import yaml
+from six import iteritems, print_
+
 from ccmlib import common, repository
 from ccmlib.node import Node, NodeError
 from six.moves import xrange
@@ -30,6 +34,7 @@ class Cluster(object):
         # Classes that are to follow the respective logging level
         self._debug = []
         self._trace = []
+        self.data_dir_count = 1
 
         if self.name.lower() == "current":
             raise RuntimeError("Cannot name a cluster 'current'.")
@@ -75,6 +80,10 @@ class Cluster(object):
         self._update_config()
         return self
 
+    def set_datadir_count(self, n):
+        self.data_dir_count = int(n)
+        return self
+
     def set_install_dir(self, install_dir=None, version=None, verbose=False):
         if version is None:
             self.__install_dir = install_dir
@@ -93,6 +102,39 @@ class Cluster(object):
             self.__update_topology_files()
 
         return self
+
+    def actively_watch_logs_for_error(self, on_error_call, interval=1):
+        """
+        Begins a timed daemon thread that scans logs for errors every interval seconds.
+
+        If an error is seen and the callback is executed, it will be called with an
+        OrderedDictionary mapping node name to a list of error lines.
+        """
+        log_positions = defaultdict(int)
+
+        def grep_and_mark_all_logs():
+            errordata = OrderedDict()
+
+            try:
+                for node in self.nodelist():
+                    errors = node.grep_log_for_errors_from(seek_start=log_positions[node.name])
+                    log_positions[node.name] = node.mark_log()
+                    if errors:
+                        errordata[node.name] = errors
+            except IOError as e:
+                if 'No such file or directory' in e.strerror:
+                    pass  # most likely log file isn't yet written
+                else:
+                    raise
+
+            if errordata:
+                on_error_call(errordata)
+
+            timer = threading.Timer(interval, grep_and_mark_all_logs)
+            timer.daemon = True  # so it will exit when the main process exits
+            timer.start()
+
+        grep_and_mark_all_logs()
 
     def get_install_dir(self):
         common.validate_install_dir(self.__install_dir)
@@ -130,9 +172,10 @@ class Cluster(object):
         node._save()
         return self
 
-    def populate(self, nodes, debug=False, tokens=None, use_vnodes=False, ipprefix='127.0.0.', ipformat=None):
+    def populate(self, nodes, debug=False, tokens=None, use_vnodes=False, ipprefix='127.0.0.', ipformat=None, install_byteman=False):
         node_count = nodes
         dcs = []
+
         self.use_vnodes = use_vnodes
         if isinstance(nodes, list):
             self.set_configuration_options(values={'endpoint_snitch': 'org.apache.cassandra.locator.PropertyFileSnitch'})
@@ -175,17 +218,18 @@ class Cluster(object):
                                     storage_interface=(ipformat % i, 7000),
                                     jmx_port=str(7000 + i * 100),
                                     remote_debug_port=str(2000 + i * 100) if debug else str(0),
+                                    byteman_port=str(4000 + i * 100) if install_byteman else str(0),
                                     initial_token=tk,
                                     binary_interface=binary)
             self.add(node, True, dc)
             self._update_config()
         return self
 
-    def create_node(self, name, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save=True, binary_interface=None):
-        return Node(name, self, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save, binary_interface)
+    def create_node(self, name, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save=True, binary_interface=None, byteman_port='0'):
+        return Node(name, self, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save, binary_interface, byteman_port)
 
     def balanced_tokens(self, node_count):
-        if self.cassandra_version() >= '1.2' and not self.partitioner:
+        if self.cassandra_version() >= '1.2' and (not self.partitioner or 'Murmur3' in self.partitioner):
             ptokens = [(i * (2**64 // node_count)) for i in xrange(0, node_count)]
             return [int(t - 2**63) for t in ptokens]
         return [int(i * (2**127 // node_count)) for i in range(0, node_count)]
@@ -247,7 +291,7 @@ class Cluster(object):
         return os.path.join(self.__path, self.name)
 
     def get_seeds(self):
-        return [s.network_interfaces['storage'][0] for s in self.seeds]
+        return [s.network_interfaces['storage'][0] if isinstance(s, Node) else s for s in self.seeds]
 
     def show(self, verbose):
         msg = "Cluster: '%s'" % self.name
@@ -263,9 +307,23 @@ class Cluster(object):
             else:
                 node.show(only_status=True)
 
-    def start(self, no_wait=False, verbose=False, wait_for_binary_proto=False, wait_other_notice=False, jvm_args=[], profile_options=None):
-        if wait_other_notice:
-            marks = [(node, node.mark_log()) for node in list(self.nodes.values())]
+    def start(self, no_wait=False, verbose=False, wait_for_binary_proto=False,
+              wait_other_notice=True, jvm_args=None, profile_options=None,
+              quiet_start=False, allow_root=False):
+        if jvm_args is None:
+            jvm_args = []
+
+        common.assert_jdk_valid_for_cassandra_version(self.cassandra_version())
+
+        # check whether all loopback aliases are available before starting any nodes
+        for node in list(self.nodes.values()):
+            if not node.is_running():
+                for itf in node.network_interfaces.values():
+                    if itf is not None:
+                        if not common.check_socket_available(itf, return_on_error=True):
+                            addr, port = itf
+                            print_("Inet address %s:%s is not available; a cluster may already be running or you may need to add the loopback alias" % (addr, port))
+                            sys.exit(1)
 
         started = []
         for node in list(self.nodes.values()):
@@ -274,10 +332,18 @@ class Cluster(object):
                 if os.path.exists(node.logfilename()):
                     mark = node.mark_log()
 
-                p = node.start(update_pid=False, jvm_args=jvm_args, profile_options=profile_options)
+                p = node.start(update_pid=False, jvm_args=jvm_args, profile_options=profile_options, verbose=verbose, quiet_start=quiet_start, allow_root=allow_root)
+
+                # Prior to JDK8, starting every node at once could lead to a
+                # nanotime collision where the RNG that generates a node's tokens
+                # gives identical tokens to several nodes. Thus, we stagger
+                # the node starts
+                if common.get_jdk_version() < '1.8':
+                    time.sleep(1)
+
                 started.append((node, p, mark))
 
-        if no_wait and not verbose:
+        if no_wait:
             time.sleep(2)  # waiting 2 seconds to check for early errors and for the pid to be set
         else:
             for node, p, mark in started:
@@ -293,23 +359,14 @@ class Cluster(object):
             if not node.is_running():
                 raise NodeError("Error starting {0}.".format(node.name), p)
 
-        if not no_wait and self.cassandra_version() >= "0.8":
-            # 0.7 gossip messages seems less predictible that from 0.8 onwards and
-            # I don't care enough
-            for node, _, mark in started:
-                for other_node, _, _ in started:
-                    if other_node is not node:
-                        node.watch_log_for_alive(other_node, from_mark=mark)
+        if not no_wait:
+            if wait_other_notice:
+                for (node, _, mark), (other_node, _, _) in itertools.permutations(started, 2):
+                    node.watch_log_for_alive(other_node, from_mark=mark)
 
-        if wait_other_notice:
-            for old_node, mark in marks:
-                for node, _, _ in started:
-                    if old_node is not node:
-                        old_node.watch_log_for_alive(node, from_mark=mark)
-
-        if wait_for_binary_proto:
-            for node, p, mark in started:
-                node.wait_for_binary_interface(process=p, verbose=verbose, from_mark=mark)
+            if wait_for_binary_proto:
+                for node, p, mark in started:
+                    node.wait_for_binary_interface(process=p, verbose=verbose, from_mark=mark)
 
         return started
 
@@ -344,13 +401,13 @@ class Cluster(object):
             for class_name in class_names:
                 node.set_log_level(new_level, class_name)
 
-    def wait_for_compactions(self):
+    def wait_for_compactions(self, timeout=600):
         """
         Wait for all compactions to finish on all nodes.
         """
         for node in list(self.nodes.values()):
             if node.is_running():
-                node.wait_for_compactions()
+                node.wait_for_compactions(timeout)
         return self
 
     def nodetool(self, nodetool_cmd):
@@ -379,7 +436,9 @@ class Cluster(object):
             pass
         return self
 
-    def run_cli(self, cmds=None, show_output=False, cli_options=[]):
+    def run_cli(self, cmds=None, show_output=False, cli_options=None):
+        if cli_options is None:
+            cli_options = []
         livenodes = [node for node in list(self.nodes.values()) if node.is_live()]
         if len(livenodes) == 0:
             raise common.ArgumentError("No live node")
@@ -460,7 +519,7 @@ class Cluster(object):
 
     def _update_config(self):
         node_list = [node.name for node in list(self.nodes.values())]
-        seed_list = [node.name for node in self.seeds]
+        seed_list = self.get_seeds()
         filename = os.path.join(self.__path, self.name, 'cluster.conf')
         with open(filename, 'w') as f:
             yaml.safe_dump({
@@ -472,7 +531,8 @@ class Cluster(object):
                 'config_options': self._config_options,
                 'dse_config_options': self._dse_config_options,
                 'log_level': self.__log_level,
-                'use_vnodes': self.use_vnodes
+                'use_vnodes': self.use_vnodes,
+                'datadirs': self.data_dir_count
             }, f)
 
     def __update_pids(self, started):
@@ -527,4 +587,8 @@ class Cluster(object):
         }
 
         self._config_options['server_encryption_options'] = node_ssl_options
+        self._update_config()
+
+    def enable_pwd_auth(self):
+        self._config_options['authenticator'] = 'PasswordAuthenticator'
         self._update_config()
