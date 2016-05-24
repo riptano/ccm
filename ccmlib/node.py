@@ -742,7 +742,8 @@ class Node(object):
     def bulkload(self, options):
         loader_bin = common.join_bin(self.get_path(), 'bin', 'sstableloader')
         env = self.get_env()
-        host, port = self.network_interfaces['thrift']
+        # CASSANDRA-8358 switched from thrift to binary port
+        host, port = self.network_interfaces['thrift'] if self.get_cassandra_version() < '2.2' else self.network_interfaces['binary']
         args = ['-d', host, '-p', str(port)]
         os.execve(loader_bin, [common.platform_binary('sstableloader')] + args + options, env)
 
