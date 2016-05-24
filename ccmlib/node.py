@@ -742,7 +742,7 @@ class Node(object):
     def bulkload(self, options):
         loader_bin = common.join_bin(self.get_path(), 'bin', 'sstableloader')
         env = self.get_env()
-        host, port = self.network_interfaces['thrift']
+        host, port = self.network_interfaces['binary']
         args = ['-d', host, '-p', str(port)]
         os.execve(loader_bin, [common.platform_binary('sstableloader')] + args + options, env)
 
