@@ -694,9 +694,7 @@ class ClusterUpdateconfCmd(Cmd):
         parser.add_option('--no-hh', '--no-hinted-handoff', action="store_false",
                           dest="hinted_handoff", default=True, help="Disable hinted handoff")
         parser.add_option('--batch-cl', '--batch-commit-log', action="store_true",
-                          dest="cl_batch", default=None, help="Set commit log to batch mode")
-        parser.add_option('--periodic-cl', '--periodic-commit-log', action="store_true",
-                          dest="cl_periodic", default=None, help="Set commit log to periodic mode")
+                          dest="cl_batch", default=False, help="Set commit log to batch mode")
         parser.add_option('--rt', '--rpc-timeout', action="store", type='int',
                           dest="rpc_timeout", help="Set rpc timeout")
         parser.add_option('-y', '--yaml', action="store_true", dest="literal_yaml", default=False, help="If enabled, treat argument as yaml, not kv pairs. Option syntax looks like ccm updateconf -y 'a: [b: [c,d]]'")
@@ -706,10 +704,6 @@ class ClusterUpdateconfCmd(Cmd):
         Cmd.validate(self, parser, options, args, load_cluster=True)
         try:
             self.setting = common.parse_settings(args, literal_yaml=self.options.literal_yaml)
-            if self.options.cl_batch and self.options.cl_periodic:
-                print_("Can't set commitlog to be both batch and periodic.{}".format(os.linesep))
-                parser.print_help()
-                exit(1)
         except common.ArgumentError as e:
             print_(str(e), file=sys.stderr)
             exit(1)
@@ -727,11 +721,7 @@ class ClusterUpdateconfCmd(Cmd):
                 self.setting['truncate_request_timeout_in_ms'] = self.options.rpc_timeout
                 self.setting['request_timeout_in_ms'] = self.options.rpc_timeout
 
-        self.cluster.set_configuration_options(values=self.setting)
-        if self.options.cl_batch:
-            self.cluster.set_batch_commitlog(True)
-        if self.options.cl_periodic:
-            self.cluster.set_batch_commitlog(False)
+        self.cluster.set_configuration_options(values=self.setting, batch_commitlog=self.options.cl_batch)
 
 
 class ClusterUpdatedseconfCmd(Cmd):
