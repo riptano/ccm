@@ -232,7 +232,7 @@ class Node(object):
         version = self.get_cassandra_version()
         return float(version[:version.index('.') + 2])
 
-    def set_configuration_options(self, values=None, batch_commitlog=None):
+    def set_configuration_options(self, values=None):
         """
         Set Cassandra configuration options.
         ex:
@@ -240,23 +240,31 @@ class Node(object):
                 'hinted_handoff_enabled' : True,
                 'concurrent_writes' : 64,
             })
-        The batch_commitlog option gives an easier way to switch to batch
-        commitlog (since it requires setting 2 options and unsetting one).
         """
         if values is not None:
             for k, v in iteritems(values):
                 self.__config_options[k] = v
-        if batch_commitlog is not None:
-            if batch_commitlog:
-                self.__config_options["commitlog_sync"] = "batch"
-                self.__config_options["commitlog_sync_batch_window_in_ms"] = 5
-                self.__config_options["commitlog_sync_period_in_ms"] = None
-            else:
-                self.__config_options["commitlog_sync"] = "periodic"
-                self.__config_options["commitlog_sync_period_in_ms"] = 10000
-                self.__config_options["commitlog_sync_batch_window_in_ms"] = None
 
         self.import_config_files()
+
+    def set_batch_commitlog(self, enabled=False):
+        """
+        The batch_commitlog option gives an easier way to switch to batch
+        commitlog (since it requires setting 2 options and unsetting one).
+        """
+        if enabled:
+            values = {
+                "commitlog_sync" : "batch",
+                "commitlog_sync_batch_window_in_ms" : 5,
+                "commitlog_sync_period_in_ms" : None
+            }
+        else:
+            values = {
+                "commitlog_sync" : "periodic",
+                "commitlog_sync_batch_window_in_ms" : 10000,
+                "commitlog_sync_period_in_ms" : None
+            }
+        self.set_configuration_options(values)
 
     def set_dse_configuration_options(self, values=None):
         pass
