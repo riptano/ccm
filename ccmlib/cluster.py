@@ -444,25 +444,20 @@ class Cluster(object):
             raise common.ArgumentError("No live node")
         livenodes[0].run_cli(cmds, show_output, cli_options)
 
-    def set_configuration_options(self, values=None, batch_commitlog=None):
+    def set_configuration_options(self, values=None):
         if values is not None:
             for k, v in iteritems(values):
                 self._config_options[k] = v
-        if batch_commitlog is not None:
-            if batch_commitlog:
-                self._config_options["commitlog_sync"] = "batch"
-                self._config_options["commitlog_sync_batch_window_in_ms"] = 5
-                self._config_options["commitlog_sync_period_in_ms"] = None
-            else:
-                self._config_options["commitlog_sync"] = "periodic"
-                self._config_options["commitlog_sync_period_in_ms"] = 10000
-                self._config_options["commitlog_sync_batch_window_in_ms"] = None
 
         self._update_config()
         for node in list(self.nodes.values()):
             node.import_config_files()
         self.__update_topology_files()
         return self
+
+    def set_batch_commitlog(self, enabled):
+        for node in list(self.nodes.values()):
+            node.set_batch_commitlog(enabled=enabled)
 
     def set_dse_configuration_options(self, values=None):
         raise common.ArgumentError('Cannot set DSE configuration options on a Cassandra cluster')
