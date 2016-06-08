@@ -964,17 +964,16 @@ class Node(object):
         sstablefiles = self.__gather_sstables(datafiles=datafiles, keyspace=keyspace, columnfamilies=column_families)
         results = []
 
-        for sstable in sstablefiles:
-            cmd = [sstablemetadata, sstable]
-            if output_file is None:
-                p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=env)
-                (out, err) = p.communicate()
-                rc = p.returncode
-                results.append((out, err, rc))
-            else:
-                subprocess.call(cmd, env=env, stdout=output_file)
+        cmd = [sstablemetadata]
+        cmd.extend(sstablefiles)
+        
         if output_file is None:
-            return results
+            p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=env)
+            (out, err) = p.communicate()
+            rc = p.returncode
+            return (out, err, rc)
+        else:
+            return subprocess.call(cmd, env=env, stdout=output_file)
 
     def run_sstabledump(self, output_file=None, datafiles=None, keyspace=None, column_families=None, keys=None, enumerate_keys=False):
         cdir = self.get_install_dir()
