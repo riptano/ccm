@@ -715,19 +715,33 @@ class Node(object):
         nodetool = self.get_tool('nodetool')
         args = [nodetool, '-h', 'localhost', '-p', str(self.jmx_port)]
         args += cmd.split()
+
+        p, stdout, stderr = self._shell_out(args, capture_output=capture_output, wait=wait)
+
+        return stdout, stderr
+
+    def _shell_out(self, cmd, args=None, capture_output=True, wait=True):
+        if cmd is None:
+            raise common.ArgumentError("cmd must be specified!")
+        if capture_output and not wait:
+            raise common.ArgumentError("Cannot set capture_output while wait is False.")
+
+        if args is not None:
+            cmd = [cmd] + args
+
         if capture_output:
-            p = subprocess.Popen(args, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+            p = subprocess.Popen(cmd, env=self.get_env(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
             stdout, stderr = p.communicate()
         else:
-            p = subprocess.Popen(args, env=env)
+            p = subprocess.Popen(cmd, env=self.get_env())
             stdout, stderr = None, None
 
         if wait:
             exit_status = p.wait()
             if exit_status != 0:
-                raise NodetoolError(" ".join(args), exit_status, stdout, stderr)
+                raise subprocess.CalledProcessError(exit_status, cmd)
 
-        return stdout, stderr
+        return p, stdout, stderr
 
     def dsetool(self, cmd):
         raise common.ArgumentError('Cassandra nodes do not support dsetool')
@@ -1826,6 +1840,7 @@ class Node(object):
 
     def data_directories(self):
         return [os.path.join(self.get_path(), 'data{0}'.format(x)) for x in xrange(0, self.cluster.data_dir_count)]
+
 
 def _get_load_from_info_output(info):
     load_lines = [s for s in info.split('\n')
