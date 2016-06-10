@@ -254,15 +254,15 @@ class Node(object):
         """
         if enabled:
             values = {
-                "commitlog_sync" : "batch",
-                "commitlog_sync_batch_window_in_ms" : 5,
-                "commitlog_sync_period_in_ms" : None
+                "commitlog_sync": "batch",
+                "commitlog_sync_batch_window_in_ms": 5,
+                "commitlog_sync_period_in_ms": None
             }
         else:
             values = {
-                "commitlog_sync" : "periodic",
-                "commitlog_sync_batch_window_in_ms" : 10000,
-                "commitlog_sync_period_in_ms" : None
+                "commitlog_sync": "periodic",
+                "commitlog_sync_batch_window_in_ms": 10000,
+                "commitlog_sync_period_in_ms": None
             }
         self.set_configuration_options(values)
 
@@ -701,7 +701,6 @@ class Node(object):
             elapsed += 1
             time.sleep(1)
         raise TimeoutError("{} [{}] Compactions did not finish in {} seconds".format(time.strftime("%d %b %Y %H:%M:%S", time.gmtime()), self.name, timeout))
-
 
     def nodetool(self, cmd, capture_output=True, wait=True):
         """
@@ -1158,7 +1157,7 @@ class Node(object):
     def get_sstables(self, keyspace, column_family):
         return [f for sublist in self.get_sstables_per_data_directory(keyspace, column_family) for f in sublist]
 
-    def stress(self, stress_options=None, capture_output=False, whitelist=False,**kwargs):
+    def stress(self, stress_options=None, capture_output=False, whitelist=False, **kwargs):
         if stress_options is None:
             stress_options = []
         else:
@@ -1497,7 +1496,6 @@ class Node(object):
 
         common.replace_in_file(conf_file, jmx_port_pattern, jmx_port_setting)
 
-
         if common.is_win() and common.get_version_from_build(node_path=self.get_path()) >= '2.1':
             dst = os.path.join(self.get_conf_dir(), common.CASSANDRA_WIN_ENV)
             replacements = [
@@ -1556,11 +1554,8 @@ class Node(object):
                                                'JVM_OPTS="$JVM_OPTS -Djava.net.preferIPv4Stack=false -Djava.net.preferIPv6Addresses=true"')
                     break
                 else:
-                    common.replace_in_file(jvm_file,'-Djava.net.preferIPv4Stack=true','')
+                    common.replace_in_file(jvm_file, '-Djava.net.preferIPv4Stack=true', '')
                     break
-
-
-
 
     def __update_status(self):
         if self.pid is None:
@@ -1825,6 +1820,7 @@ class Node(object):
 
     def data_directories(self):
         return [os.path.join(self.get_path(), 'data{0}'.format(x)) for x in xrange(0, self.cluster.data_dir_count)]
+
 
 def _get_load_from_info_output(info):
     load_lines = [s for s in info.split('\n')
