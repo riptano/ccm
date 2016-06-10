@@ -966,7 +966,7 @@ class Node(object):
 
         cmd = [sstablemetadata]
         cmd.extend(sstablefiles)
-        
+
         if output_file is None:
             p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=env)
             (out, err) = p.communicate()
