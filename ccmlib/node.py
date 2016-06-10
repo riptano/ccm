@@ -1337,7 +1337,7 @@ class Node(object):
         if not os.path.exists(dir_name):
             os.mkdir(dir_name)
             for dir in self._get_directories():
-                os.mkdir(os.path.join(dir_name, dir))
+                os.mkdir(dir)
 
         filename = os.path.join(dir_name, 'node.conf')
         values = {
