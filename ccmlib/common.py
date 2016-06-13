@@ -44,14 +44,19 @@ logging.basicConfig(format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(messa
 
 LOG = logging.getLogger('ccm')
 
+def error(msg):
+    LOG.error(msg)
+
 def warning(msg):
     LOG.warning(msg)
+
+def info(msg):
+    LOG.info(msg)
 
 def debug(msg):
     LOG.debug(msg)
 
-def error(msg):
-    LOG.error(msg)
+
 
 
 class CCMError(Exception):
