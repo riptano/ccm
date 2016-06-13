@@ -36,7 +36,6 @@ CASSANDRA_SH = "cassandra.in.sh"
 CONFIG_FILE = "config"
 CCM_CONFIG_DIR = "CCM_CONFIG_DIR"
 
-#might need stream as an arg
 logging.basicConfig(format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
                     datefmt='%H:%M:%S',
                     level=logging.DEBUG
@@ -44,19 +43,21 @@ logging.basicConfig(format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(messa
 
 LOG = logging.getLogger('ccm')
 
+
 def error(msg):
     LOG.error(msg)
+
 
 def warning(msg):
     LOG.warning(msg)
 
+
 def info(msg):
     LOG.info(msg)
 
+
 def debug(msg):
     LOG.debug(msg)
-
-
 
 
 class CCMError(Exception):

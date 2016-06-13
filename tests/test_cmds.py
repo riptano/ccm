@@ -36,10 +36,10 @@ class TestCCMCreate(TestCCMCmd):
     def validate_output(self, process):
         stdout, stderr = process.communicate()
         try:
-            print_("[OUT] %s" % stdout)
+            print_("[OUT] {}".format(stdout))
             self.assertEqual(len(stderr), 0)
         except AssertionError:
-            print_("[ERROR] %s" % stderr.strip())
+            print_("[ERROR] {}".format(stderr.strip()))
             raise
 
     def cluster_create_version_test(self):
@@ -83,7 +83,7 @@ class TestCCMCreate(TestCCMCmd):
         p = self.create_cmd(args)
         stdout, stderr = p.communicate()
 
-        print_("[OUT] %s" % stdout)
+        print_("[OUT] {}".format(stdout))
         self.assertGreater(len(stdout), 18000)
         self.assertEqual(len(stderr), 0)
 
