@@ -53,7 +53,7 @@ class DseCluster(Cluster):
                 if parser.has_option('dse_credentials', 'dse_password'):
                     self.dse_password = parser.get('dse_credentials', 'dse_password')
             else:
-                common.warning("Warning: {} does not contain a 'dse_credentials' section.".format(dse_credentials_file), file=sys.stderr)
+                common.warning("{} does not contain a 'dse_credentials' section.".format(dse_credentials_file))
 
     def hasOpscenter(self):
         return os.path.exists(os.path.join(self.get_path(), 'opscenter'))
