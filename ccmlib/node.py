@@ -522,7 +522,7 @@ class Node(object):
             raise NodeError("PS Execution Policy must be unrestricted when running C* 2.1+")
 
         if not common.is_win() and quiet_start:
-            common.warning("WARN: Tried to set Windows quiet start behavior, but we're not running on Windows.")
+            common.warning("Tried to set Windows quiet start behavior, but we're not running on Windows.")
 
         if self.is_running():
             raise NodeError("{} is already running".format(self.name))
@@ -660,12 +660,12 @@ class Node(object):
                     try:
                         self.flush()
                     except:
-                        common.warning("WARN: Failed to flush node: {0} on shutdown.".format(self.name))
+                        common.warning("Failed to flush node: {0} on shutdown.".format(self.name))
                         pass
 
                 os.system("taskkill /F /PID " + str(self.pid))
                 if self._find_pid_on_windows():
-                    common.warning("WARN: Failed to terminate node: {0} with pid: {1}".format(self.name, self.pid))
+                    common.warning("Failed to terminate node: {0} with pid: {1}".format(self.name, self.pid))
             else:
                 if gently:
                     os.kill(self.pid, signal.SIGTERM)
@@ -1118,8 +1118,8 @@ class Node(object):
             if os.path.exists(fcmd):
                 os.chmod(fcmd, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
         except:
-            common.warning("WARN: Couldn't change permissions to use {0}.".format(cmd))
-            common.warning("WARN: If it didn't work, you will have to do so manually.")
+            common.warning("Couldn't change permissions to use {0}.".format(cmd))
+            common.warning("If it didn't work, you will have to do so manually.")
         return fcmd
 
     def has_cmd(self, cmd):
@@ -1614,7 +1614,7 @@ class Node(object):
             import psutil
             found = psutil.pid_exists(self.pid)
         except ImportError:
-            common.warning("WARN: psutil not installed. Pid tracking functionality will suffer. See README for details.")
+            common.warning("psutil not installed. Pid tracking functionality will suffer. See README for details.")
             cmd = 'tasklist /fi "PID eq ' + str(self.pid) + '"'
             proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
 
@@ -1633,7 +1633,7 @@ class Node(object):
 
     def __get_status_string(self):
         if self.status == Status.UNINITIALIZED:
-            return "%s (%s)" % (Status.DOWN, "Not initialized")
+            return "{} ({})".format(Status.DOWN, "Not initialized")
         else:
             return self.status
 
@@ -1692,7 +1692,7 @@ class Node(object):
                                         self.get_path() +
                                         '/dirty_pid.tmp. Manually kill it and check logs - ccm will be out of sync.')
             except Exception as e:
-                common.error("ERROR: Problem starting " + self.name + " (" + str(e) + ")")
+                common.error("Problem starting " + self.name + " (" + str(e) + ")")
                 raise Exception('Error while parsing <node>/dirty_pid.tmp in path: ' + self.get_path())
 
     def _delete_old_pid(self):
@@ -1790,7 +1790,7 @@ class Node(object):
             p.suspend()
         except ImportError:
             if common.is_win():
-                common.warning("WARN: psutil not installed. Pause functionality will not work properly on Windows.")
+                common.warning("psutil not installed. Pause functionality will not work properly on Windows.")
             else:
                 os.kill(self.pid, signal.SIGSTOP)
 
@@ -1801,7 +1801,7 @@ class Node(object):
             p.resume()
         except ImportError:
             if common.is_win():
-                common.warning("WARN: psutil not installed. Resume functionality will not work properly on Windows.")
+                common.warning("psutil not installed. Resume functionality will not work properly on Windows.")
             else:
                 os.kill(self.pid, signal.SIGCONT)
 
