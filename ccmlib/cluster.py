@@ -294,7 +294,7 @@ class Cluster(object):
         return [s.network_interfaces['storage'][0] if isinstance(s, Node) else s for s in self.seeds]
 
     def show(self, verbose):
-        msg = "Cluster: '%s'" % self.name
+        msg = "Cluster: '{}'".format(self.name)
         print_(msg)
         print_('-' * len(msg))
         if len(list(self.nodes.values())) == 0:
@@ -322,7 +322,7 @@ class Cluster(object):
                     if itf is not None:
                         if not common.check_socket_available(itf, return_on_error=True):
                             addr, port = itf
-                            print_("Inet address %s:%s is not available; a cluster may already be running or you may need to add the loopback alias" % (addr, port))
+                            common.error("Inet address {}:{} is not available; a cluster may already be running or you may need to add the loopback alias".format(addr, port))
                             sys.exit(1)
 
         started = []

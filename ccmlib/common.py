@@ -13,6 +13,7 @@ import stat
 import subprocess
 import sys
 import time
+import logging
 
 import yaml
 from six import print_
@@ -34,6 +35,23 @@ CASSANDRA_SH = "cassandra.in.sh"
 
 CONFIG_FILE = "config"
 CCM_CONFIG_DIR = "CCM_CONFIG_DIR"
+
+#might need stream as an arg
+logging.basicConfig(format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
+                    datefmt='%H:%M:%S',
+                    level=logging.DEBUG
+                    )
+
+LOG = logging.getLogger('ccm')
+
+def warning(msg):
+    LOG.warning(msg)
+
+def debug(msg):
+    LOG.debug(msg)
+
+def error(msg):
+    LOG.error(msg)
 
 
 class CCMError(Exception):
