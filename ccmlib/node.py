@@ -314,6 +314,12 @@ class Node(object):
     def debuglogfilename(self):
         return os.path.join(self.get_path(), 'logs', 'debug.log')
 
+    def gclogfilename(self):
+        return os.path.join(self.get_path(), 'logs', 'gc.log.0.current')
+
+    def compactionlogfilename(self):
+        return os.path.join(self.get_path(), 'logs', 'compaction.log')
+
     def envfilename(self):
         return os.path.join(
             self.get_conf_dir(),
