@@ -172,7 +172,7 @@ class Cluster(object):
                 # signals to the main run() loop that a stop is requested
                 self.req_stop_event.set()
                 # now wait for the main loop to get through a final log scan, and signal that it's done
-                self.done_event.wait()
+                self.done_event.wait(timeout=interval*2)  # need to wait at least interval seconds before expecting thread to finish. 2x for safety.
                 super(LogWatchingThread, self).join(timeout)
 
         log_watcher = LogWatchingThread(self)
