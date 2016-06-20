@@ -246,7 +246,7 @@ how to use ccmlib follows:
     import ccmlib.cluster
 
     CLUSTER_PATH="."
-    cluster = ccmlib.cluster.Cluster(CLUSTER_PATH, 'test', cassandra_version='2.0.5')
+    cluster = ccmlib.Cluster(CLUSTER_PATH, 'test', cassandra_version='2.1.14')
     cluster.populate(3).start()
     [node1, node2, node3] = cluster.nodelist()
 
