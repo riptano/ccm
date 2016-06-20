@@ -158,7 +158,7 @@ def clone_development(git_repo, version, verbose=False):
 
                 # now check out the right version
                 branch_or_sha_tag = 'branch' if is_branch else 'SHA/tag'
-                    common.info("Checking out requested {} ({})".format(branch_or_sha_tag, git_branch))
+                common.info("Checking out requested {} ({})".format(branch_or_sha_tag, git_branch))
                 if is_branch:
                     # we use checkout -B with --track so we can specify that we want to track a specific branch
                     # otherwise, you get errors on branch names that are also valid SHAs or SHA shortcuts, like 10360
