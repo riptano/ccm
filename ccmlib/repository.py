@@ -14,6 +14,7 @@ import time
 from distutils.version import LooseVersion
 
 from six import print_
+from ccmlib import common
 
 from ccmlib.common import (ArgumentError, CCMError,
                            assert_jdk_valid_for_cassandra_version,
