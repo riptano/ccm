@@ -1,13 +1,15 @@
 import sys
+
+from six import StringIO
+
+import ccmlib
+from ccmlib.cluster import Cluster
+
+from . import TEST_DIR, ccmtest
+
 sys.path = [".."] + sys.path
 
-import decimal
 
-from . import TEST_DIR
-from . import ccmtest
-from ccmlib.cluster import Cluster
-import ccmlib
-from six import StringIO
 
 CLUSTER_PATH = TEST_DIR
 
@@ -290,6 +292,20 @@ class TestErrorLogGrepping(ccmtest.Tester):
                               [['ERROR: You have made a terrible mistake',
                                 '  And here are more details on what you did'],
                                ['ERROR: not again!']])
+
+    def test_consecutive_errors(self):
+        err = ('ERROR: You have made a terrible mistake\n'
+               '  And here are more details on what you did\n'
+               'INFO: Node joined ring\n'
+               'ERROR: not again!\n'
+               '  And, yup, here is some more details\n'
+               'ERROR: ugh, and a third one!')
+        self.assertGreppedLog(err,
+                              [['ERROR: You have made a terrible mistake',
+                                '  And here are more details on what you did'],
+                               ['ERROR: not again!',
+                                '  And, yup, here is some more details'],
+                               ['ERROR: ugh, and a third one!']])
 
     def test_does_not_coalesce_info_lines(self):
         err = ('ERROR: You have made a terrible mistake\n'

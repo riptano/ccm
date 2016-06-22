@@ -3,7 +3,6 @@ from __future__ import with_statement
 
 import errno
 import glob
-import itertools
 import os
 import re
 import shutil
@@ -1867,17 +1866,24 @@ def _get_load_from_info_output(info):
 
 
 def _grep_log_for_errors(log):
-    matchings = []
-    it = iter(log.splitlines())
-    for line in it:
-        is_error_line = ('ERROR' in line
-                         and 'DEBUG' not in line.split('ERROR')[0])
-        if is_error_line:
-            matchings.append([line])
-            try:
-                it, peeker = itertools.tee(it)
-                while 'INFO' not in next(peeker):
-                    matchings[-1].append(next(it))
-            except StopIteration:
-                break
-    return matchings
+    def log_line_category(line):
+        match = re.search(r'(INFO|DEBUG|WARN|ERROR)', line)
+        return match.group(0) if match else None
+
+    matches = []
+
+    loglines = log.splitlines()
+
+    for line_num, line in enumerate(loglines):
+        if log_line_category(line) == 'ERROR':
+            matches.append([line])
+
+            for next_line_num in range(line_num+1, len(loglines)):
+                next_line = loglines[next_line_num]
+                # if a log line can't be identified, assume continuation of an ERROR message
+                if log_line_category(next_line) is None:
+                    matches[-1].append(next_line)
+                else:
+                    break
+
+    return matches
