@@ -27,6 +27,7 @@ class Cluster(object):
         self.partitioner = partitioner
         self._config_options = {}
         self._dse_config_options = {}
+        self._environment_variables = {}
         self.__log_level = "INFO"
         self.__path = path
         self.__version = None
@@ -220,19 +221,20 @@ class Cluster(object):
                                     remote_debug_port=str(2000 + i * 100) if debug else str(0),
                                     byteman_port=str(4000 + i * 100) if install_byteman else str(0),
                                     initial_token=tk,
-                                    binary_interface=binary)
+                                    binary_interface=binary,
+                                    environment_variables=self._environment_variables)
             self.add(node, True, dc)
             self._update_config()
         return self
 
-    def create_node(self, name, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save=True, binary_interface=None, byteman_port='0'):
-        return Node(name, self, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save, binary_interface, byteman_port)
+    def create_node(self, name, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save=True, binary_interface=None, byteman_port='0', environment_variables=None):
+        return Node(name, self, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save, binary_interface, byteman_port, environment_variables)
 
     def balanced_tokens(self, node_count):
         if self.cassandra_version() >= '1.2' and (not self.partitioner or 'Murmur3' in self.partitioner):
-            ptokens = [(i * (2**64 // node_count)) for i in xrange(0, node_count)]
-            return [int(t - 2**63) for t in ptokens]
-        return [int(i * (2**127 // node_count)) for i in range(0, node_count)]
+            ptokens = [(i * (2 ** 64 // node_count)) for i in xrange(0, node_count)]
+            return [int(t - 2 ** 63) for t in ptokens]
+        return [int(i * (2 ** 127 // node_count)) for i in range(0, node_count)]
 
     def balanced_tokens_across_dcs(self, dcs):
         tokens = []
@@ -449,9 +451,7 @@ class Cluster(object):
             for k, v in iteritems(values):
                 self._config_options[k] = v
 
-        self._update_config()
-        for node in list(self.nodes.values()):
-            node.import_config_files()
+        self._persist_config()
         self.__update_topology_files()
         return self
 
@@ -461,6 +461,17 @@ class Cluster(object):
 
     def set_dse_configuration_options(self, values=None):
         raise common.ArgumentError('Cannot set DSE configuration options on a Cassandra cluster')
+
+    def set_environment_variable(self, key, value):
+        self._environment_variables[key] = value
+        for node in list(self.nodes.values()):
+            node.set_environment_variable(key, value)
+        self._persist_config()
+
+    def _persist_config(self):
+        self._update_config()
+        for node in list(self.nodes.values()):
+            node.import_config_files()
 
     def flush(self):
         self.nodetool("flush")
@@ -527,7 +538,8 @@ class Cluster(object):
                 'dse_config_options': self._dse_config_options,
                 'log_level': self.__log_level,
                 'use_vnodes': self.use_vnodes,
-                'datadirs': self.data_dir_count
+                'datadirs': self.data_dir_count,
+                'environment_variables': self._environment_variables
             }, f)
 
     def __update_pids(self, started):

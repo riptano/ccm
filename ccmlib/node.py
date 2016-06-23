@@ -72,7 +72,7 @@ class Node(object):
     Provides interactions to a Cassandra node.
     """
 
-    def __init__(self, name, cluster, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save=True, binary_interface=None, byteman_port='0'):
+    def __init__(self, name, cluster, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save=True, binary_interface=None, byteman_port='0', environment_variables=None):
         """
         Create a new Node.
           - name: the name for that node
@@ -105,6 +105,7 @@ class Node(object):
         self.__install_dir = None
         self.__global_log_level = None
         self.__classes_log_level = {}
+        self.__environment_variables = environment_variables or {}
         self.__conf_updated = False
         if save:
             self.import_config_files()
@@ -143,6 +144,8 @@ class Node(object):
                 node.__config_options = data['config_options']
             if 'dse_config_options' in data:
                 node._dse_config_options = data['dse_config_options']
+            if 'environment_variables' in data:
+                node.__environment_variables = data['environment_variables']
             if 'data_center' in data:
                 node.data_center = data['data_center']
             if 'workloads' in data:
@@ -173,7 +176,10 @@ class Node(object):
         update_conf = not self.__conf_updated
         if update_conf:
             self.__conf_updated = True
-        return common.make_cassandra_env(self.get_install_dir(), self.get_path(), update_conf)
+        env = common.make_cassandra_env(self.get_install_dir(), self.get_path(), update_conf)
+        for (key, value) in self.__environment_variables.items():
+            env[key] = value
+        return env
 
     def get_install_cassandra_root(self):
         return self.get_install_dir()
@@ -245,6 +251,10 @@ class Node(object):
             for k, v in iteritems(values):
                 self.__config_options[k] = v
 
+        self.import_config_files()
+
+    def set_environment_variable(self, key, value):
+        self.__environment_variables[key] = value
         self.import_config_files()
 
     def set_batch_commitlog(self, enabled=False):
@@ -967,7 +977,6 @@ class Node(object):
         sstablemetadata = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstablemetadata')
         env = self.get_env()
         sstablefiles = self.__gather_sstables(datafiles=datafiles, keyspace=keyspace, columnfamilies=column_families)
-        results = []
 
         cmd = [sstablemetadata]
         cmd.extend(sstablefiles)
@@ -1023,7 +1032,6 @@ class Node(object):
             return results
 
     def run_sstableupgrade(self, output_file=None, keyspace=None, column_family=None):
-        cdir = self.get_install_dir()
         sstableupgrade = self.get_tool('sstableupgrade')
         env = self.get_env()
         cmd = [sstableupgrade, keyspace, column_family]
@@ -1352,7 +1360,8 @@ class Node(object):
             'interfaces': self.network_interfaces,
             'jmx_port': self.jmx_port,
             'config_options': self.__config_options,
-            'dse_config_options': self._dse_config_options
+            'dse_config_options': self._dse_config_options,
+            'environment_variables': self.__environment_variables
         }
         if self.pid:
             values['pid'] = self.pid
