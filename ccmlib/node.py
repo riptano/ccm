@@ -275,21 +275,21 @@ class Node(object):
         """
         self.__update_status()
         indent = ''.join([" " for i in xrange(0, len(self.name) + 2)])
-        print_("%s: %s" % (self.name, self.__get_status_string()))
+        print_("{}: {}".format(self.name, self.__get_status_string()))
         if not only_status:
             if show_cluster:
-                print_("%s%s=%s" % (indent, 'cluster', self.cluster.name))
-            print_("%s%s=%s" % (indent, 'auto_bootstrap', self.auto_bootstrap))
-            print_("%s%s=%s" % (indent, 'thrift', self.network_interfaces['thrift']))
+                print_("{}{}={}".format(indent, 'cluster', self.cluster.name))
+            print_("{}{}={}".format(indent, 'auto_bootstrap', self.auto_bootstrap))
+            print_("{}{}={}".format(indent, 'thrift', self.network_interfaces['thrift']))
             if self.network_interfaces['binary'] is not None:
-                print_("%s%s=%s" % (indent, 'binary', self.network_interfaces['binary']))
-            print_("%s%s=%s" % (indent, 'storage', self.network_interfaces['storage']))
-            print_("%s%s=%s" % (indent, 'jmx_port', self.jmx_port))
-            print_("%s%s=%s" % (indent, 'remote_debug_port', self.remote_debug_port))
-            print_("%s%s=%s" % (indent, 'byteman_port', self.byteman_port))
-            print_("%s%s=%s" % (indent, 'initial_token', self.initial_token))
+                print_("{}{}={}".format(indent, 'binary', self.network_interfaces['binary']))
+            print_("{}{}={}".format(indent, 'storage', self.network_interfaces['storage']))
+            print_("{}{}={}".format(indent, 'jmx_port', self.jmx_port))
+            print_("{}{}={}".format(indent, 'remote_debug_port', self.remote_debug_port))
+            print_("{}{}={}".format(indent, 'byteman_port', self.byteman_port))
+            print_("{}{}={}".format(indent, 'initial_token', self.initial_token))
             if self.pid:
-                print_("%s%s=%s" % (indent, 'pid', self.pid))
+                print_("{}{}={}".format(indent, 'pid', self.pid))
 
     def is_running(self):
         """
@@ -378,7 +378,7 @@ class Node(object):
         except ValueError:
             stderr = ''
         if len(stderr) > 1:
-            print_("[%s ERROR] %s" % (name, stderr.strip()))
+            print_("[{} ERROR] {}".format(name, stderr.strip()))
 
     # This will return when exprs are found or it timeouts
     def watch_log_for(self, exprs, from_mark=None, timeout=600, process=None, verbose=False, filename='system.log'):
@@ -522,10 +522,10 @@ class Node(object):
             raise NodeError("PS Execution Policy must be unrestricted when running C* 2.1+")
 
         if not common.is_win() and quiet_start:
-            print_("WARN: Tried to set Windows quiet start behavior, but we're not running on Windows.")
+            common.warning("Tried to set Windows quiet start behavior, but we're not running on Windows.")
 
         if self.is_running():
-            raise NodeError("%s is already running" % self.name)
+            raise NodeError("{} is already running".format(self.name))
 
         for itf in list(self.network_interfaces.values()):
             if itf is not None and replace_address is None:
@@ -550,7 +550,7 @@ class Node(object):
             config = common.get_config()
             if 'yourkit_agent' not in config:
                 raise NodeError("Cannot enable profile. You need to set 'yourkit_agent' to the path of your agent in a ~/.ccm/config")
-            cmd = '-agentpath:%s' % config['yourkit_agent']
+            cmd = '-agentpath:{}'.format(config['yourkit_agent'])
             if 'options' in profile_options:
                 cmd = cmd + '=' + profile_options['options']
             print_(cmd)
@@ -660,12 +660,12 @@ class Node(object):
                     try:
                         self.flush()
                     except:
-                        print_("WARN: Failed to flush node: {0} on shutdown.".format(self.name))
+                        common.warning("Failed to flush node: {0} on shutdown.".format(self.name))
                         pass
 
                 os.system("taskkill /F /PID " + str(self.pid))
                 if self._find_pid_on_windows():
-                    print_("WARN: Failed to terminate node: {0} with pid: {1}".format(self.name, self.pid))
+                    common.warning("Failed to terminate node: {0} with pid: {1}".format(self.name, self.pid))
             else:
                 if gently:
                     os.kill(self.pid, signal.SIGTERM)
@@ -1118,8 +1118,8 @@ class Node(object):
             if os.path.exists(fcmd):
                 os.chmod(fcmd, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
         except:
-            print_("WARN: Couldn't change permissions to use {0}.".format(cmd))
-            print_("WARN: If it didn't work, you will have to do so manually.")
+            common.warning("Couldn't change permissions to use {0}.".format(cmd))
+            common.warning("If it didn't work, you will have to do so manually.")
         return fcmd
 
     def has_cmd(self, cmd):
@@ -1614,7 +1614,7 @@ class Node(object):
             import psutil
             found = psutil.pid_exists(self.pid)
         except ImportError:
-            print_("WARN: psutil not installed. Pid tracking functionality will suffer. See README for details.")
+            common.warning("psutil not installed. Pid tracking functionality will suffer. See README for details.")
             cmd = 'tasklist /fi "PID eq ' + str(self.pid) + '"'
             proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
 
@@ -1633,7 +1633,7 @@ class Node(object):
 
     def __get_status_string(self):
         if self.status == Status.UNINITIALIZED:
-            return "%s (%s)" % (Status.DOWN, "Not initialized")
+            return "{} ({})".format(Status.DOWN, "Not initialized")
         else:
             return self.status
 
@@ -1692,7 +1692,7 @@ class Node(object):
                                         self.get_path() +
                                         '/dirty_pid.tmp. Manually kill it and check logs - ccm will be out of sync.')
             except Exception as e:
-                print_("ERROR: Problem starting " + self.name + " (" + str(e) + ")")
+                common.error("Problem starting " + self.name + " (" + str(e) + ")")
                 raise Exception('Error while parsing <node>/dirty_pid.tmp in path: ' + self.get_path())
 
     def _delete_old_pid(self):
@@ -1706,7 +1706,7 @@ class Node(object):
         start = time.time()
         while not (os.path.isfile(pidfile) and os.stat(pidfile).st_size > 0):
             if (time.time() - start > 30.0):
-                print_("Timed out waiting for pidfile to be filled (current time is %s)" % (datetime.now()))
+                common.error("Timed out waiting for pidfile to be filled (current time is {})".format(datetime.now()))
                 break
             else:
                 time.sleep(0.1)
@@ -1790,7 +1790,7 @@ class Node(object):
             p.suspend()
         except ImportError:
             if common.is_win():
-                print_("WARN: psutil not installed. Pause functionality will not work properly on Windows.")
+                common.warning("psutil not installed. Pause functionality will not work properly on Windows.")
             else:
                 os.kill(self.pid, signal.SIGSTOP)
 
@@ -1801,7 +1801,7 @@ class Node(object):
             p.resume()
         except ImportError:
             if common.is_win():
-                print_("WARN: psutil not installed. Resume functionality will not work properly on Windows.")
+                common.warning("psutil not installed. Resume functionality will not work properly on Windows.")
             else:
                 os.kill(self.pid, signal.SIGCONT)
 
