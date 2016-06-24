@@ -204,7 +204,7 @@ class ClusterCreateCmd(Cmd):
                         profile_options = {}
                         if self.options.profile_options:
                             profile_options['options'] = self.options.profile_options
-                    if cluster.start(verbose=self.options.debug_log, wait_for_binary_proto=self.options.binary_protocol, jvm_args=self.options.jvm_args, profile_options=profile_options, allow_root=self.options.allow_root) is None:
+                    if cluster.start(verbose=self.options.debug, wait_for_binary_proto=self.options.binary_protocol, jvm_args=self.options.jvm_args, profile_options=profile_options, allow_root=self.options.allow_root) is None:
                         details = ""
                         if not self.options.debug_log:
                             details = " (you can use --debug-log for more information)"
