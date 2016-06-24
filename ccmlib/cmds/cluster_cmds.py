@@ -207,7 +207,7 @@ class ClusterCreateCmd(Cmd):
                     if cluster.start(verbose=self.options.debug, wait_for_binary_proto=self.options.binary_protocol, jvm_args=self.options.jvm_args, profile_options=profile_options, allow_root=self.options.allow_root) is None:
                         details = ""
                         if not self.options.debug_log:
-                            details = " (you can use --debug-log for more information)"
+                            details = " (you can use --debug for more information)"
                         print_("Error starting nodes, see above for details%s" % details, file=sys.stderr)
             except common.ArgumentError as e:
                 print_(str(e), file=sys.stderr)
