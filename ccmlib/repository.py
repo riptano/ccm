@@ -205,9 +205,9 @@ def download_dse_version(version, username, password, verbose=False):
     _, target = tempfile.mkstemp(suffix=".tar.gz", prefix="ccm-")
     try:
         if username is None:
-            common.warning("No dse username detected, specify one using --dse-username or passing in a credentials file using --dse-credentials.", file=sys.stderr)
+            common.warning("No dse username detected, specify one using --dse-username or passing in a credentials file using --dse-credentials.")
         if password is None:
-            common.warning("No dse password detected, specify one using --dse-password or passing in a credentials file using --dse-credentials.", file=sys.stderr)
+            common.warning("No dse password detected, specify one using --dse-password or passing in a credentials file using --dse-credentials.")
         __download(url, target, username=username, password=password, show_progress=verbose)
         common.debug("Extracting {} as version {} ...".format(target, version))
         tar = tarfile.open(target)
