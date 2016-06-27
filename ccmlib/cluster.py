@@ -132,8 +132,14 @@ class Cluster(object):
 
                 try:
                     for node in self.cluster.nodelist():
-                        errors = node.grep_log_for_errors_from(seek_start=self.log_positions[node.name])
-                        self.log_positions[node.name] = node.mark_log()
+                        scan_from_mark = self.log_positions[node.name]
+                        next_time_scan_from_mark = node.mark_log()
+                        if (next_time_scan_from_mark == scan_from_mark):
+                            # log hasn't advanced, nothing to do for this node
+                            continue
+                        else:
+                            errors = node.grep_log_for_errors_from(seek_start=scan_from_mark)
+                        self.log_positions[node.name] = next_time_scan_from_mark
                         if errors:
                             errordata[node.name] = errors
                 except IOError as e:
