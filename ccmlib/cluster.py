@@ -152,23 +152,23 @@ class Cluster(object):
 
                 return errordata
 
+            def scan_and_report(self):
+                errordata = self.scan()
+
+                if errordata:
+                    on_error_call(errordata)
+
             def run(self):
                 print_("Log-watching thread starting.")
 
                 # run until stop gets requested by .join()
                 while not self.req_stop_event.is_set():
-                    errordata = self.scan()
-
-                    if errordata:
-                        on_error_call(errordata)
-
+                    self.scan_and_report()
                     time.sleep(interval)
 
                 try:
                     # do a final scan to make sure we got to the very end of the files
-                    errordata = self.scan()
-                    if errordata:
-                        on_error_call(errordata)
+                    self.scan_and_report()
                 finally:
                     print_("Log-watching thread exiting.")
                     # done_event signals that the scan completed a final pass
