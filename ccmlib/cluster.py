@@ -106,7 +106,7 @@ class Cluster(object):
 
     def actively_watch_logs_for_error(self, on_error_call, interval=1):
         """
-        Begins a thread that scans logs for errors every interval seconds.
+        Begins a thread that scans system.log for errors every interval seconds.
 
         If an error is seen, the callback is executed with an OrderedDictionary
         mapping node name to a list of error lines.
