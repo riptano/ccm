@@ -1,6 +1,7 @@
 # ccm node
 from __future__ import with_statement
 
+from distutils.version import LooseVersion
 import errno
 import glob
 import os
@@ -1410,7 +1411,7 @@ class Node(object):
         if self.get_cassandra_version() > '3.0' and 'hints_directory' in yaml_text:
             data['hints_directory'] = os.path.join(self.get_path(), 'hints')
 
-        if self.get_cassandra_version() >= '3.8':
+        if LooseVersion(self.get_cassandra_version()) >= '3.8':
             data['cdc_raw_directory'] = os.path.join(self.get_path(), 'cdc_raw')
 
         if self.cluster.partitioner:
