@@ -108,14 +108,14 @@ class DseCluster(Cluster):
         cluster_conf = os.path.join(self.get_path(), 'opscenter', 'conf', 'clusters')
         if not os.path.exists(cluster_conf):
             os.makedirs(cluster_conf)
-            if len(self.seeds) > 0:
-                seed = self.seeds[0]
-                (seed_ip, seed_port) = seed.network_interfaces['thrift']
-                seed_jmx = seed.jmx_port
+            if len(self.nodes) > 0:
+                node = list(self.nodes.values())[0]
+                (node_ip, node_port) = node.network_interfaces['thrift']
+                node_jmx = node.jmx_port
                 with open(os.path.join(cluster_conf, self.name + '.conf'), 'w+') as f:
                     f.write('[jmx]\n')
-                    f.write('port = %s\n' % seed_jmx)
+                    f.write('port = %s\n' % node_jmx)
                     f.write('[cassandra]\n')
-                    f.write('seed_hosts = %s\n' % seed_ip)
-                    f.write('api_port = %s\n' % seed_port)
+                    f.write('seed_hosts = %s\n' % node_ip)
+                    f.write('api_port = %s\n' % node_port)
                     f.close()
