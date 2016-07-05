@@ -501,16 +501,16 @@ class DseNode(Node):
         agent_dir = os.path.join(self.get_path(), 'datastax-agent')
         if os.path.exists(agent_dir):
             pidfile = os.path.join(agent_dir, 'datastax-agent.pid')
-        if os.path.exists(pidfile):
-            with open(pidfile, 'r') as f:
-                pid = int(f.readline().strip())
-                f.close()
-            if pid is not None:
-                try:
-                    os.kill(pid, signal.SIGKILL)
-                except OSError:
-                    pass
-            os.remove(pidfile)
+            if os.path.exists(pidfile):
+                with open(pidfile, 'r') as f:
+                    pid = int(f.readline().strip())
+                    f.close()
+                if pid is not None:
+                    try:
+                        os.kill(pid, signal.SIGKILL)
+                    except OSError:
+                        pass
+                os.remove(pidfile)
 
     def _write_agent_address_yaml(self, agent_dir):
         address_yaml = os.path.join(agent_dir, 'conf', 'address.yaml')
