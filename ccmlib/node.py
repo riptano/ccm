@@ -714,6 +714,7 @@ class Node(object):
             output, err = self.nodetool("compactionstats", capture_output=True)
             if pattern.search(output):
                 return
+            time.sleep(1)
         raise TimeoutError("{} [{}] Compactions did not finish in {} seconds".format(time.strftime("%d %b %Y %H:%M:%S", time.gmtime()), self.name, timeout))
 
     def nodetool(self, cmd, capture_output=True, wait=True):
