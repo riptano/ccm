@@ -254,6 +254,11 @@ class ClusterAddCmd(Cmd):
             parser.print_help()
             exit(1)
 
+        if self.name in self.cluster.nodes:
+            print_("This name is already in use. Choose another.", file=sys.stderr)
+            parser.print_help()
+            exit(1)
+
         used_jmx_ports = [node.jmx_port for node in self.cluster.nodelist()]
         if options.jmx_port in used_jmx_ports:
             print_("This JMX port is already in use. Choose another.", file=sys.stderr)
