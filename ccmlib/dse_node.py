@@ -12,7 +12,7 @@ import time
 import yaml
 from six import print_,iteritems
 
-from ccmlib import common
+from ccmlib import common, extension
 from ccmlib.node import Node, NodeError, NodetoolError
 
 
@@ -91,77 +91,15 @@ class DseNode(Node):
         """
         super(DseNode, self).watch_log_for_alive(nodes, from_mark=from_mark, timeout=timeout, filename=filename)
 
-    def start(self,
-              join_ring=True,
-              no_wait=False,
-              verbose=False,
-              update_pid=True,
-              wait_other_notice=False,
-              replace_token=None,
-              replace_address=None,
-              jvm_args=None,
-              wait_for_binary_proto=False,
-              profile_options=None,
-              use_jna=False,
-              quiet_start=False,
-              allow_root=False):
-        """
-        Start the node. Options includes:
-          - join_ring: if false, start the node with -Dcassandra.join_ring=False
-          - no_wait: by default, this method returns when the node is started and listening to clients.
-            If no_wait=True, the method returns sooner.
-          - wait_other_notice: if True, this method returns only when all other live node of the cluster
-            have marked this node UP.
-          - replace_token: start the node with the -Dcassandra.replace_token option.
-          - replace_address: start the node with the -Dcassandra.replace_address option.
-        """
-        if jvm_args is None:
-            jvm_args = []
-
-        if self.is_running():
-            raise NodeError("%s is already running" % self.name)
-
-        for itf in list(self.network_interfaces.values()):
-            if itf is not None and replace_address is None:
-                common.check_socket_available(itf)
-
-        if wait_other_notice:
-            marks = [(node, node.mark_log()) for node in list(self.cluster.nodes.values()) if node.is_running()]
-
-        self.mark = self.mark_log()
-
+    def get_launch_bin(self):
         cdir = self.get_install_dir()
         launch_bin = common.join_bin(cdir, 'bin', 'dse')
         # Copy back the dse scripts since profiling may have modified it the previous time
         shutil.copy(launch_bin, self.get_bin_dir())
-        launch_bin = common.join_bin(self.get_path(), 'bin', 'dse')
+        return common.join_bin(self.get_path(), 'bin', 'dse')
 
-        # If Windows, change entries in .bat file to split conf from binaries
-        if common.is_win():
-            self.__clean_bat()
-
-        if profile_options is not None:
-            config = common.get_config()
-            if 'yourkit_agent' not in config:
-                raise NodeError("Cannot enable profile. You need to set 'yourkit_agent' to the path of your agent in a {0}/config".format(common.get_default_path_display_name()))
-            cmd = '-agentpath:%s' % config['yourkit_agent']
-            if 'options' in profile_options:
-                cmd = cmd + '=' + profile_options['options']
-            print_(cmd)
-            # Yes, it's fragile as shit
-            pattern = r'cassandra_parms="-Dlog4j.configuration=log4j-server.properties -Dlog4j.defaultInitOverride=true'
-            common.replace_in_file(launch_bin, pattern, '    ' + pattern + ' ' + cmd + '"')
-
-        os.chmod(launch_bin, os.stat(launch_bin).st_mode | stat.S_IEXEC)
-
-        env = self.get_env()
-
-        if common.is_win():
-            self._clean_win_jmx()
-
-        pidfile = os.path.join(self.get_path(), 'cassandra.pid')
-        args = [launch_bin, 'cassandra']
-
+    def add_custom_launch_arguments(self, args):
+        args.append('cassandra')
         for workload in self.workloads:
             if 'hadoop' in workload:
                 args.append('-t')
@@ -174,66 +112,58 @@ class DseNode(Node):
             if 'graph' in workload:
                 args.append('-g')
 
-        args += ['-p', pidfile, '-Dcassandra.join_ring=%s' % str(join_ring)]
-        args += ['-Dcassandra.logdir=%s' % os.path.join(self.get_path(), 'logs')]
-        if replace_token is not None:
-            args.append('-Dcassandra.replace_token=%s' % str(replace_token))
-        if replace_address is not None:
-            args.append('-Dcassandra.replace_address=%s' % str(replace_address))
-        if use_jna is False:
-            args.append('-Dcassandra.boot_without_jna=true')
-        if allow_root:
-            args.append('-R')
-        args = args + jvm_args
-
-        self._delete_old_pid()
-
-        process = None
-
-        FNULL = open(os.devnull, 'w')
-        stdout_sink = subprocess.PIPE if verbose else FNULL
-
-        if common.is_win():
-            # clean up any old dirty_pid files from prior runs
-            if (os.path.isfile(self.get_path() + "/dirty_pid.tmp")):
-                os.remove(self.get_path() + "/dirty_pid.tmp")
-            process = subprocess.Popen(args, cwd=self.get_bin_dir(), env=env, stdout=FNULL, stderr=subprocess.PIPE)
-        else:
-            process = subprocess.Popen(args, env=env, stdout=stdout_sink, stderr=subprocess.PIPE)
-
-        if verbose:
-            stdout, stderr = process.communicate()
-            print_(stdout)
-            print_(stderr)
-
-        # Our modified batch file writes a dirty output with more than just the pid - clean it to get in parity
-        # with *nix operation here.
-        if common.is_win():
-            self.__clean_win_pid()
-            self._update_pid(process)
-        elif update_pid:
-            self._update_pid(process)
-
-            if not self.is_running():
-                raise NodeError("Error starting node %s" % self.name, process)
-
-        if wait_other_notice:
-            for node, mark in marks:
-                node.watch_log_for_alive(self, from_mark=mark)
-
-        if wait_for_binary_proto:
-            self.wait_for_binary_interface(from_mark=self.mark)
-
+    def start(self,
+              join_ring=True,
+              no_wait=False,
+              verbose=False,
+              update_pid=True,
+              wait_other_notice=True,
+              replace_token=None,
+              replace_address=None,
+              jvm_args=None,
+              wait_for_binary_proto=False,
+              profile_options=None,
+              use_jna=False,
+              quiet_start=False,
+              allow_root=False,
+              set_migration_task=True):
+        process = super(DseNode, self).start(join_ring, no_wait, verbose, update_pid, wait_other_notice, replace_token,
+                                             replace_address, jvm_args, wait_for_binary_proto, profile_options, use_jna,
+                                             quiet_start, allow_root, set_migration_task)
         if self.cluster.hasOpscenter():
             self._start_agent()
 
-        return process
+
+    def _start_agent(self):
+        agent_dir = os.path.join(self.get_path(), 'datastax-agent')
+        if os.path.exists(agent_dir):
+            self._write_agent_address_yaml(agent_dir)
+            self._write_agent_log4j_properties(agent_dir)
+            args = [os.path.join(agent_dir, 'bin', common.platform_binary('datastax-agent'))]
+            subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
 
     def stop(self, wait=True, wait_other_notice=False, gently=True):
-        stopped = super(DseNode, self).stop(wait, wait_other_notice, gently)
         if self.cluster.hasOpscenter():
             self._stop_agent()
-        return stopped
+        return super(DseNode, self).stop(wait, wait_other_notice, gently)
+
+
+    def _stop_agent(self):
+        agent_dir = os.path.join(self.get_path(), 'datastax-agent')
+        if os.path.exists(agent_dir):
+            pidfile = os.path.join(agent_dir, 'datastax-agent.pid')
+        if os.path.exists(pidfile):
+            with open(pidfile, 'r') as f:
+                pid = int(f.readline().strip())
+                f.close()
+            if pid is not None:
+                try:
+                    os.kill(pid, signal.SIGKILL)
+                except OSError:
+                    pass
+            os.remove(pidfile)
+
 
     def nodetool(self, cmd, username=None, password=None, capture_output=True, wait=True):
         """
@@ -267,6 +197,7 @@ class DseNode(Node):
 
     def dsetool(self, cmd):
         env = self.get_env()
+        extension.append_to_client_env(self, env)
         dsetool = common.join_bin(self.get_install_dir(), 'bin', 'dsetool')
         args = [dsetool, '-h', 'localhost', '-j', str(self.jmx_port)]
         args += cmd.split()
@@ -277,6 +208,7 @@ class DseNode(Node):
         if dse_options is None:
             dse_options = []
         env = self.get_env()
+        extension.append_to_client_env(self, env)
         env['JMX_PORT'] = self.jmx_port
         dse = common.join_bin(self.get_install_dir(), 'bin', 'dse')
         args = [dse]
@@ -488,29 +420,6 @@ class DseNode(Node):
         agent_target = os.path.join(self.get_path(), 'datastax-agent')
         if os.path.exists(agent_source) and not os.path.exists(agent_target):
             shutil.copytree(agent_source, agent_target)
-
-    def _start_agent(self):
-        agent_dir = os.path.join(self.get_path(), 'datastax-agent')
-        if os.path.exists(agent_dir):
-            self._write_agent_address_yaml(agent_dir)
-            self._write_agent_log4j_properties(agent_dir)
-            args = [os.path.join(agent_dir, 'bin', common.platform_binary('datastax-agent'))]
-            subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-    def _stop_agent(self):
-        agent_dir = os.path.join(self.get_path(), 'datastax-agent')
-        if os.path.exists(agent_dir):
-            pidfile = os.path.join(agent_dir, 'datastax-agent.pid')
-            if os.path.exists(pidfile):
-                with open(pidfile, 'r') as f:
-                    pid = int(f.readline().strip())
-                    f.close()
-                if pid is not None:
-                    try:
-                        os.kill(pid, signal.SIGKILL)
-                    except OSError:
-                        pass
-                os.remove(pidfile)
 
     def _write_agent_address_yaml(self, agent_dir):
         address_yaml = os.path.join(agent_dir, 'conf', 'address.yaml')

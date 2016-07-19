@@ -13,7 +13,7 @@ from collections import OrderedDict, defaultdict
 import yaml
 from six import iteritems, print_
 
-from ccmlib import common, repository
+from ccmlib import common, repository, extension
 from ccmlib.node import Node, NodeError
 from six.moves import xrange
 
@@ -365,6 +365,8 @@ class Cluster(object):
         if jvm_args is None:
             jvm_args = []
 
+        extension.pre_cluster_start(self)
+
         common.assert_jdk_valid_for_cassandra_version(self.cassandra_version())
 
         # check whether all loopback aliases are available before starting any nodes
@@ -420,13 +422,17 @@ class Cluster(object):
                 for node, p, mark in started:
                     node.wait_for_binary_interface(process=p, verbose=verbose, from_mark=mark)
 
+        extension.post_cluster_start(self)
+
         return started
 
     def stop(self, wait=True, gently=True):
         not_running = []
+        extension.pre_cluster_stop(self);
         for node in list(self.nodes.values()):
             if not node.stop(wait, gently=gently):
                 not_running.append(node)
+        extension.post_cluster_stop(self)
         return not_running
 
     def set_log_level(self, new_level, class_names=None):
@@ -577,20 +583,22 @@ class Cluster(object):
         node_list = [node.name for node in list(self.nodes.values())]
         seed_list = self.get_seeds()
         filename = os.path.join(self.__path, self.name, 'cluster.conf')
+        config_map = {
+            'name': self.name,
+            'nodes': node_list,
+            'seeds': seed_list,
+            'partitioner': self.partitioner,
+            'install_dir': self.__install_dir,
+            'config_options': self._config_options,
+            'dse_config_options': self._dse_config_options,
+            'log_level': self.__log_level,
+            'use_vnodes': self.use_vnodes,
+            'datadirs': self.data_dir_count,
+            'environment_variables': self._environment_variables
+        }
+        extension.append_to_cluster_config(self, config_map)
         with open(filename, 'w') as f:
-            yaml.safe_dump({
-                'name': self.name,
-                'nodes': node_list,
-                'seeds': seed_list,
-                'partitioner': self.partitioner,
-                'install_dir': self.__install_dir,
-                'config_options': self._config_options,
-                'dse_config_options': self._dse_config_options,
-                'log_level': self.__log_level,
-                'use_vnodes': self.use_vnodes,
-                'datadirs': self.data_dir_count,
-                'environment_variables': self._environment_variables
-            }, f)
+            yaml.safe_dump(config_map, f)
 
     def __update_pids(self, started):
         for node, p, _ in started:

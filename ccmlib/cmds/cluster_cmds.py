@@ -14,9 +14,7 @@ from ccmlib.dse_cluster import DseCluster
 from ccmlib.dse_node import DseNode
 from ccmlib.node import Node, NodeError
 
-
-def cluster_cmds():
-    return [
+CLUSTER_CMDS = [
         "create",
         "add",
         "populate",
@@ -47,6 +45,8 @@ def cluster_cmds():
         "setworkload"
     ]
 
+def cluster_cmds():
+    return CLUSTER_CMDS
 
 def parse_populate_count(v):
     if v is None:

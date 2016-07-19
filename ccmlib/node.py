@@ -18,7 +18,7 @@ from datetime import datetime
 import yaml
 from six import iteritems, print_, string_types
 
-from ccmlib import common
+from ccmlib import common, extension
 from ccmlib.cli_session import CliSession
 from ccmlib.repository import setup
 from six.moves import xrange
@@ -496,6 +496,16 @@ class Node(object):
             warnings.warn("Binary interface %s:%s is not listening after 10 seconds, node may have failed to start."
                           % (binary_itf[0], binary_itf[1]))
 
+    def get_launch_bin(self):
+        cdir = self.get_install_dir()
+        launch_bin = common.join_bin(cdir, 'bin', 'cassandra')
+        # Copy back the cassandra scripts since profiling may have modified it the previous time
+        shutil.copy(launch_bin, self.get_bin_dir())
+        return common.join_bin(self.get_path(), 'bin', 'cassandra')
+
+    def add_custom_launch_arguments(self, args):
+        pass
+
     def start(self,
               join_ring=True,
               no_wait=False,
@@ -546,11 +556,7 @@ class Node(object):
 
         self.mark = self.mark_log()
 
-        cdir = self.get_install_dir()
-        launch_bin = common.join_bin(cdir, 'bin', 'cassandra')
-        # Copy back the cassandra scripts since profiling may have modified it the previous time
-        shutil.copy(launch_bin, self.get_bin_dir())
-        launch_bin = common.join_bin(self.get_path(), 'bin', 'cassandra')
+        launch_bin = self.get_launch_bin()
 
         # If Windows, change entries in .bat file to split conf from binaries
         if common.is_win():
@@ -572,11 +578,18 @@ class Node(object):
 
         env = self.get_env()
 
+        extension.append_to_server_env(self, env)
+
         if common.is_win():
             self._clean_win_jmx()
 
         pidfile = os.path.join(self.get_path(), 'cassandra.pid')
-        args = [launch_bin, '-p', pidfile, '-Dcassandra.join_ring=%s' % str(join_ring)]
+        args = [launch_bin]
+
+        self.add_custom_launch_arguments(args)
+
+        args = args + ['-p', pidfile, '-Dcassandra.join_ring=%s' % str(join_ring)]
+
         args.append('-Dcassandra.logdir=%s' % os.path.join(self.get_path(), 'logs'))
         if replace_token is not None:
             args.append('-Dcassandra.replace_token=%s' % str(replace_token))
@@ -764,6 +777,7 @@ class Node(object):
     def bulkload(self, options):
         loader_bin = common.join_bin(self.get_path(), 'bin', 'sstableloader')
         env = self.get_env()
+        extension.append_to_client_env(self, env)
         # CASSANDRA-8358 switched from thrift to binary port
         host, port = self.network_interfaces['thrift'] if self.get_cassandra_version() < '2.2' else self.network_interfaces['binary']
         args = ['-d', host, '-p', str(port)]
@@ -811,12 +825,16 @@ class Node(object):
             cqlsh_options = []
         cqlsh = self.get_tool('cqlsh')
         env = self.get_env()
+        extension.append_to_client_env(self, env)
         host = self.network_interfaces['thrift'][0]
         if self.get_base_cassandra_version() >= 2.1:
             port = self.network_interfaces['binary'][1]
         else:
             port = self.network_interfaces['thrift'][1]
-        args = cqlsh_options + [host, str(port)]
+        args = []
+        args += cqlsh_options
+        extension.append_to_cqlsh_args(self, env, args)
+        args += [host, str(port)]
         sys.stdout.flush()
 
         if cmds is None:
