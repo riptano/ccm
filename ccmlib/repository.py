@@ -196,7 +196,10 @@ def clone_development(git_repo, version, verbose=False):
                 rmdirs(target_dir)
                 common.error("Deleted {} due to error".format(target_dir))
             except:
-                raise CCMError("Building C* version %s failed. Attempted to delete %s but failed. This will need to be manually deleted" % (version, target_dir))
+                raise CCMError(
+                    "Building C* version {version} failed. Attempted to delete {target_dir}"
+                    " but failed. This will need to be manually deleted".format(version=version, target_dir=target_dir)
+                )
             raise
 
 
