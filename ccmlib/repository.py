@@ -190,17 +190,19 @@ def clone_development(git_repo, version, verbose=False):
 
                     # now compile
                     compile_version(git_branch, target_dir, verbose)
-        except:
+        except Exception as e:
             # wipe out the directory if anything goes wrong. Otherwise we will assume it has been compiled the next time it runs.
             try:
                 rmdirs(target_dir)
                 common.error("Deleted {} due to error".format(target_dir))
             except:
-                raise CCMError(
-                    "Building C* version {version} failed. Attempted to delete {target_dir}"
-                    " but failed. This will need to be manually deleted".format(version=version, target_dir=target_dir)
-                )
-            raise
+                print_('Building C* version {version} failed. Attempted to delete {target_dir}'
+                       'but failed. This will need to be manually deleted'.format(
+                           version=version,
+                           target_dir=target_dir
+                       ))
+            finally:
+                raise e
 
 
 def download_dse_version(version, username, password, verbose=False):
