@@ -279,7 +279,7 @@ class DseNode(Node):
         self.__update_yaml()
 
     def copy_config_files(self):
-        for product in ['dse', 'cassandra', 'hadoop', 'sqoop', 'hive', 'tomcat', 'spark', 'shark', 'mahout', 'pig', 'solr', 'graph']:
+        for product in ['dse', 'cassandra', 'hadoop', 'hadoop2-client', 'sqoop', 'hive', 'tomcat', 'spark', 'shark', 'mahout', 'pig', 'solr', 'graph']:
             src_conf = os.path.join(self.get_install_dir(), 'resources', product, 'conf')
             dst_conf = os.path.join(self.get_path(), 'resources', product, 'conf')
             if not os.path.isdir(src_conf):
@@ -298,7 +298,8 @@ class DseNode(Node):
                 dst_lib = os.path.join(self.get_path(), 'resources', product, 'lib')
                 if os.path.isdir(dst_lib):
                     common.rmdirs(dst_lib)
-                shutil.copytree(src_lib, dst_lib)
+                if os.path.exists(src_lib):
+                    shutil.copytree(src_lib, dst_lib)
                 src_webapps = os.path.join(self.get_install_dir(), 'resources', product, 'webapps')
                 dst_webapps = os.path.join(self.get_path(), 'resources', product, 'webapps')
                 if os.path.isdir(dst_webapps):
@@ -312,9 +313,33 @@ class DseNode(Node):
             shutil.copytree(src_lib, dst_lib)
 
     def import_bin_files(self):
-        os.makedirs(os.path.join(self.get_path(), 'resources', 'cassandra', 'bin'))
+        cassandra_bin_dir = os.path.join(self.get_path(), 'resources', 'cassandra', 'bin')
+        shutil.rmtree(cassandra_bin_dir, ignore_errors=True)
+        os.makedirs(cassandra_bin_dir)
         common.copy_directory(os.path.join(self.get_install_dir(), 'bin'), self.get_bin_dir())
-        common.copy_directory(os.path.join(self.get_install_dir(), 'resources', 'cassandra', 'bin'), os.path.join(self.get_path(), 'resources', 'cassandra', 'bin'))
+        common.copy_directory(os.path.join(self.get_install_dir(), 'resources', 'cassandra', 'bin'), cassandra_bin_dir)
+        self.export_dse_home_in_dse_env_sh()
+
+    def export_dse_home_in_dse_env_sh(self):
+        '''
+        Due to the way CCM lays out files, separating the repository
+        from the node(s) confs, the `dse-env.sh` script of each node
+        needs to have its DSE_HOME var set and exported. Since DSE
+        4.5.x, the stock `dse-env.sh` file includes a commented-out
+        place to do exactly this, intended for installers.
+        Basically: read in the file, write it back out and add the two
+        lines.
+        'sstableloader' is an example of a node script that depends on
+        this, when used in a CCM-built cluster.
+        '''
+        with open(self.get_bin_dir() + "/dse-env.sh", "r") as dse_env_sh:
+            buf = dse_env_sh.readlines()
+
+        with open(self.get_bin_dir() + "/dse-env.sh", "w") as out_file:
+            for line in buf:
+                out_file.write(line)
+                if line == "# This is here so the installer can force set DSE_HOME\n":
+                    out_file.write("DSE_HOME=" + self.get_install_dir() + "\nexport DSE_HOME\n")
 
     def _update_log4j(self):
         super(DseNode, self)._update_log4j()
@@ -453,17 +478,29 @@ class DseNode(Node):
             f.close()
 
     def _update_spark_env(self):
-        conf_file = os.path.join(self.get_path(), 'resources', 'spark', 'conf',
-                                 'spark-env.sh')
+        try:
+            node_num = re.search(ur'node(\d+)', self.name).group(1)
+        except AttributeError:
+            node_num = 0
+        conf_file = os.path.join(self.get_path(), 'resources', 'spark', 'conf', 'spark-env.sh')
         env = self.get_env()
         content = []
         with open(conf_file, 'r') as f:
             for line in f.readlines():
                 for spark_var in env.keys():
-                    if line.startswith('export %s=' % spark_var):
-                        line = 'export %s=%s' % (spark_var, env[spark_var])
+                    if line.startswith('export %s=' % spark_var) or line.startswith('export %s=' % spark_var, 2):
+                        line = 'export %s=%s\n' % (spark_var, env[spark_var])
                         break
                 content.append(line)
 
         with open(conf_file, 'w') as f:
             f.writelines(content)
+
+        # starting with DSE 5.0 (Spark 1.6) we need to set a unique
+        # spark.shuffle.service.port for each node
+        if self.cluster.version() > '5.0':
+            print_('Writing shuffle')
+            defaults_file = os.path.join(self.get_path(), 'resources', 'spark', 'conf', 'spark-defaults.conf')
+            with open(defaults_file, 'a') as f:
+                port_num = 7737 + int(node_num)
+                f.write("\nspark.shuffle.service.port %s\n" % port_num)
