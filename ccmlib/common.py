@@ -242,11 +242,12 @@ def make_dse_env(install_dir, node_path, node_ip):
     env = os.environ.copy()
     env['MAX_HEAP_SIZE'] = os.environ.get('CCM_MAX_HEAP_SIZE', '500M')
     env['HEAP_NEWSIZE'] = os.environ.get('CCM_HEAP_NEWSIZE', '50M')
+    env['SPARK_WORKER_MEMORY'] = os.environ.get('SPARK_WORKER_MEMORY', '1024M')
+    env['SPARK_WORKER_CORES'] = os.environ.get('SPARK_WORKER_CORES', '2')
     env['DSE_HOME'] = os.path.join(install_dir)
     env['DSE_CONF'] = os.path.join(node_path, 'resources', 'dse', 'conf')
     env['CASSANDRA_HOME'] = os.path.join(install_dir, 'resources', 'cassandra')
     env['CASSANDRA_CONF'] = os.path.join(node_path, 'resources', 'cassandra', 'conf')
-    env['HADOOP_CONF_DIR'] = os.path.join(node_path, 'resources', 'hadoop', 'conf')
     env['HIVE_CONF_DIR'] = os.path.join(node_path, 'resources', 'hive', 'conf')
     env['SQOOP_CONF_DIR'] = os.path.join(node_path, 'resources', 'sqoop', 'conf')
     env['TOMCAT_HOME'] = os.path.join(node_path, 'resources', 'tomcat')
@@ -263,7 +264,12 @@ def make_dse_env(install_dir, node_path, node_ip):
     env['DSE_LOG_ROOT'] = os.path.join(node_path, 'logs', 'dse')
     env['CASSANDRA_LOG_DIR'] = os.path.join(node_path, 'logs')
     env['SPARK_LOCAL_IP'] = '' + node_ip
-    return env
+    if get_version_from_build(node_path=node_path) >= '5.0':
+        env['HADOOP1_CONF_DIR'] = os.path.join(node_path, 'resources', 'hadoop', 'conf')
+        env['HADOOP2_CONF_DIR'] = os.path.join(node_path, 'resources', 'hadoop2-client', 'conf')
+    else:
+        env['HADOOP_CONF_DIR'] = os.path.join(node_path, 'resources', 'hadoop', 'conf')
+     return env
 
 
 def check_win_requirements():
