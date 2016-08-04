@@ -269,7 +269,7 @@ def make_dse_env(install_dir, node_path, node_ip):
         env['HADOOP2_CONF_DIR'] = os.path.join(node_path, 'resources', 'hadoop2-client', 'conf')
     else:
         env['HADOOP_CONF_DIR'] = os.path.join(node_path, 'resources', 'hadoop', 'conf')
-     return env
+    return env
 
 
 def check_win_requirements():
