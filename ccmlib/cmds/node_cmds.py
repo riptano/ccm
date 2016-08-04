@@ -255,7 +255,7 @@ class _NodeToolCmd(Cmd):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
 
     def run(self):
-        stdout, stderr = self.node.nodetool(self.nodetool_cmd + " " + " ".join((self.args[1:])))
+        stdout, stderr, rc = self.node.nodetool(self.nodetool_cmd + " " + " ".join((self.args[1:])))
         print_(stderr)
         print_(stdout)
 
@@ -265,7 +265,7 @@ class NodeNodetoolCmd(_NodeToolCmd):
     descr_text = "Run nodetool (connecting to node name)"
 
     def run(self):
-        stdout, stderr = self.node.nodetool(" ".join(self.args[1:]))
+        stdout, stderr, rc = self.node.nodetool(" ".join(self.args[1:]))
         print_(stderr)
         print_(stdout)
 
@@ -392,7 +392,7 @@ class NodeCqlshCmd(Cmd):
         self.cqlsh_options = parser.get_ignored() + args[1:]
 
     def run(self):
-        self.node.run_cqlsh(self.options.cmds, self.options.verbose, self.cqlsh_options)
+        self.node.run_cqlsh(self.options.cmds, self.cqlsh_options)
 
 
 class NodeBulkloadCmd(Cmd):

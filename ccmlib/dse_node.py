@@ -13,7 +13,7 @@ import yaml
 from six import print_,iteritems
 
 from ccmlib import common, extension
-from ccmlib.node import Node, NodeError, NodetoolError
+from ccmlib.node import Node, NodeError, ToolError
 
 
 class DseNode(Node):
@@ -191,7 +191,7 @@ class DseNode(Node):
         if wait:
             exit_status = p.wait()
             if exit_status != 0:
-                raise NodetoolError(" ".join(args), exit_status, stdout, stderr)
+                raise ToolError(" ".join(args), exit_status, stdout, stderr)
 
         return stdout, stderr
 
