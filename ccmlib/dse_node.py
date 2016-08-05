@@ -166,34 +166,12 @@ class DseNode(Node):
 
 
     def nodetool(self, cmd, username=None, password=None, capture_output=True, wait=True):
-        """
-        Setting wait=False makes it impossible to detect errors,
-        if capture_output is also False. wait=False allows us to return
-        while nodetool is still running.
-        """
-        if capture_output and not wait:
-            raise common.ArgumentError("Cannot set capture_output while wait is False.")
-        env = self.get_env()
-        nodetool = common.join_bin(self.get_install_dir(), 'bin', 'nodetool')
-        args = [nodetool, '-h', 'localhost', '-p', str(self.jmx_port)]
-        if username is not None:
-            args += [ '-u', username]
         if password is not None:
-            args += [ '-pw', password]
-        args += cmd.split()
-        if capture_output:
-            p = subprocess.Popen(args, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            stdout, stderr = p.communicate()
-        else:
-            p = subprocess.Popen(args, env=env)
-            stdout, stderr = None, None
+            cmd = '-pw {} '.format(password) + cmd
+        if username is not None:
+            cmd = '-u {} '.format(username) + cmd
 
-        if wait:
-            exit_status = p.wait()
-            if exit_status != 0:
-                raise ToolError(" ".join(args), exit_status, stdout, stderr)
-
-        return stdout, stderr
+        return super(DseNode, self).nodetool(cmd)
 
     def dsetool(self, cmd):
         env = self.get_env()
