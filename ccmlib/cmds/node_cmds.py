@@ -958,16 +958,7 @@ class NodeVersionfrombuildCmd(Cmd):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
 
     def run(self):
-        version_from_nodetool = self.node.nodetool('version')[0].strip()
-        version_from_build = common.get_version_from_build(self.node.get_install_dir())
-
-        if version_from_nodetool and (version_from_nodetool != version_from_build):
-            print_('nodetool reports Cassandra version {ntv}; '
-                   'version from build.xml is {bv}'.format(ntv=version_from_nodetool,
-                                                           bv=version_from_build),
-                   file=sys.stderr)
-
-        print_(version_from_build)
+        print_(common.get_version_from_build(self.node.get_install_dir()))
 
 
 class NodeBytemanCmd(Cmd):
