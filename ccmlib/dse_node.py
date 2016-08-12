@@ -457,7 +457,7 @@ class DseNode(Node):
 
     def _update_spark_env(self):
         try:
-            node_num = re.search(ur'node(\d+)', self.name).group(1)
+            node_num = re.search(u'node(\d+)', self.name).group(1)
         except AttributeError:
             node_num = 0
         conf_file = os.path.join(self.get_path(), 'resources', 'spark', 'conf', 'spark-env.sh')
