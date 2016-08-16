@@ -768,7 +768,7 @@ class Node(object):
         # CASSANDRA-8358 switched from thrift to binary port
         host, port = self.network_interfaces['thrift'] if self.get_cassandra_version() < '2.2' else self.network_interfaces['binary']
         args = ['-d', host, '-p', str(port)]
-        return subprocess.Popen([loader_bin] + args + options, env=env, stdout=sys.stdout, stderr=sys.stderr, stdin=sys.stdin)
+        return subprocess.Popen([loader_bin] + args + options, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
 
     def bulkload(self, options):
         p = self.bulkload_process(options=options)
@@ -777,7 +777,7 @@ class Node(object):
     def scrub_process(self, options):
         scrub_bin = self.get_tool('sstablescrub')
         env = self.get_env()
-        return subprocess.Popen([scrub_bin] + options, env=env, stdout=sys.stdout, stderr=sys.stderr, stdin=sys.stdin)
+        return subprocess.Popen([scrub_bin] + options, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
 
     def scrub(self, options):
         p = self.scrub_process(options=options)
@@ -786,7 +786,7 @@ class Node(object):
     def verify_process(self, options):
         verify_bin = self.get_tool('sstableverify')
         env = self.get_env()
-        return subprocess.Popen([verify_bin] + options, env=env, stdout=sys.stdout, stderr=sys.stderr, stdin=sys.stdin)
+        return subprocess.Popen([verify_bin] + options, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
 
     def verify(self, options):
         p = self.verify_process(options=options)
