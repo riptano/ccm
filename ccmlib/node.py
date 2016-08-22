@@ -1887,6 +1887,24 @@ class Node(object):
     def data_directories(self):
         return [os.path.join(self.get_path(), 'data{0}'.format(x)) for x in xrange(0, self.cluster.data_dir_count)]
 
+    def get_sstable_data_files_process(self, ks, table):
+        env = self.get_env()
+        args = [self.get_tool('sstableutil'), '--type', 'final', ks, table]
+
+        p = subprocess.Popen(args, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        return p
+
+    def get_sstable_data_files(self, ks, table):
+        """
+        Read sstable data files by using sstableutil, so we ignore temporary files
+        """
+        p = self.get_sstable_data_files_process(ks=ks, table=table)
+
+        out, _, _ = handle_external_tool_process(p, ["sstableutil", '--type', 'final', ks, table])
+
+        return sorted(filter(lambda s: s.endswith('-Data.db'), out.splitlines()))
+
 
 def _get_load_from_info_output(info):
     load_lines = [s for s in info.split('\n')
