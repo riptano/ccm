@@ -16,6 +16,7 @@ import time
 import logging
 
 import yaml
+from distutils.version import LooseVersion
 from six import print_
 
 BIN_DIR = "bin"
@@ -74,6 +75,34 @@ class ArgumentError(CCMError):
 
 class UnavailableSocketError(CCMError):
     pass
+
+
+class LogPatternToVersion(object):
+
+    def __init__(self, versions_to_patterns, default_pattern=None):
+        self.versions_to_patterns, self.default_pattern = versions_to_patterns, default_pattern
+
+    def __call__(self, version):
+        keys_less_than_version = [k for k in self.versions_to_patterns if k <= version]
+
+        if not keys_less_than_version:
+            if self.default_pattern is not None:
+                return self.default_pattern
+            else:
+                raise ValueError("Some kind of default pattern must be specified!")
+
+        return self.versions_to_patterns[max(keys_less_than_version, key=lambda v: LooseVersion(v) if not isinstance(v, LooseVersion) else v)]
+
+    def __repr__(self):
+        return str(self.__class__) + "(versions_to_patterns={}, default_pattern={})".format(self.versions_to_patterns, self.default_pattern)
+
+    @property
+    def patterns(self):
+        return list(self.versions_to_patterns.values())
+
+    @property
+    def versions(self):
+        return list(self.versions_to_patterns)
 
 
 def get_default_path():
