@@ -497,6 +497,17 @@ class Node(object):
             warnings.warn("Binary interface %s:%s is not listening after 10 seconds, node may have failed to start."
                           % (binary_itf[0], binary_itf[1]))
 
+    def wait_for_thrift_interface(self, **kwargs):
+        """
+        Waits for the Thrift interface to be listening.
+
+        Emits a warning if not listening after 10 seconds.
+        """
+
+        thrift_itf = self.network_interfaces['thrift']
+        if not common.check_socket_listening(thrift_itf, timeout=10):
+            warnings.warn("Thrift interface {}:{} is not listening after 10 seconds, node may have failed to start.".format(thrift_itf[0], thrift_itf[1]))
+
     def get_launch_bin(self):
         cdir = self.get_install_dir()
         launch_bin = common.join_bin(cdir, 'bin', 'cassandra')
