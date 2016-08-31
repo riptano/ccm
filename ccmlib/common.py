@@ -98,7 +98,10 @@ class LogPatternToVersion(object):
 
     @property
     def patterns(self):
-        return list(self.versions_to_patterns.values())
+        patterns = list(self.versions_to_patterns.values())
+        if self.default_pattern:
+            patterns = patterns + [self.default_pattern]
+        return patterns
 
     @property
     def versions(self):
