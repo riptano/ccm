@@ -237,7 +237,7 @@ class Node(object):
 
     def get_base_cassandra_version(self):
         version = self.get_cassandra_version()
-        return float(version[:version.index('.') + 2])
+        return float('.'.join(version.vstring.split('.')[:2]))
 
     def set_configuration_options(self, values=None):
         """
@@ -1300,9 +1300,6 @@ class Node(object):
     def cleanup(self):
         self.nodetool("cleanup")
 
-    def version(self):
-        self.nodetool("version")
-
     def decommission(self):
         self.nodetool("decommission")
         self.status = Status.DECOMMISSIONED
@@ -1463,7 +1460,7 @@ class Node(object):
         if self.get_cassandra_version() > '3.0' and 'hints_directory' in yaml_text:
             data['hints_directory'] = os.path.join(self.get_path(), 'hints')
 
-        if LooseVersion(self.get_cassandra_version()) >= '3.8':
+        if self.get_cassandra_version() >= '3.8':
             data['cdc_raw_directory'] = os.path.join(self.get_path(), 'cdc_raw')
 
         if self.cluster.partitioner:
