@@ -503,6 +503,7 @@ class Node(object):
 
         Emits a warning if not listening after 10 seconds.
         """
+        self.watch_log_for("Listening for thrift clients...", **kwargs)
 
         thrift_itf = self.network_interfaces['thrift']
         if not common.check_socket_listening(thrift_itf, timeout=10):
