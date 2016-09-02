@@ -658,23 +658,23 @@ class Cluster(object):
         self._config_options['authenticator'] = 'PasswordAuthenticator'
         self._update_config()
 
-    def timed_grep_nodes_for_patterns(self, versions_to_patterns, timeout, filename="system.log"):
+    def timed_grep_nodes_for_patterns(self, versions_to_patterns, timeout_seconds, filename="system.log"):
         """
         Searches all nodes in the cluster for a specific regular expression based on the node's version.
         Params:
         @versions_to_patterns : an instance of LogPatternToVersionMap, specifying the different log patterns based on a node's version.
         @version : the earliest version the new pattern was introduced.
-        @timeout : the amount of time to spend searching the logs for.
+        @timeout_seconds : the amount of time to spend searching the logs for.
         @filename : the name of the file to search for the patterns. Defaults to "system.log".
 
         Returns the first node where the pattern was found, along with the matching lines.
         Raises a TimeoutError if the pattern is not found within the specified timeout period.
         """
-        end_time = time.time() + timeout
+        end_time = time.time() + timeout_seconds
         while True:
             if time.time() > end_time:
                 raise TimeoutError(time.strftime("%d %b %Y %H:%M:%S", time.gmtime()) +
-                                   " Unable to find: " + versions_to_patterns.patterns + " in any node log within " + str(timeout) + "s")
+                                   " Unable to find: " + versions_to_patterns.patterns + " in any node log within " + str(timeout_seconds) + "s")
 
             for node in self.nodelist():
                 pattern = versions_to_patterns(node.get_cassandra_version())
