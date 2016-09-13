@@ -99,7 +99,7 @@ class LogPatternToVersion(object):
     @property
     def patterns(self):
         patterns = list(self.versions_to_patterns.values())
-        if self.default_pattern:
+        if self.default_pattern is not None:
             patterns = patterns + [self.default_pattern]
         return patterns
 
