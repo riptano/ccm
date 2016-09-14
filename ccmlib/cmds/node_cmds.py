@@ -373,9 +373,9 @@ class NodeCliCmd(Cmd):
     def run(self):
         out, err, rc = self.node.run_cli(self.options.cmds, self.cli_options)
         if self.options.verbose:
-            print "CLI OUTPUT:\n\n"
+            print "CLI OUTPUT:\n-------------------------------"
             print out
-            print "\nCLI ERROR:\n\n"
+            print "-------------------------------\nCLI ERROR:\n-------------------------------"
             print err
 
 
