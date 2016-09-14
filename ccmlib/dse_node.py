@@ -1,5 +1,5 @@
 # ccm node
-from __future__ import with_statement
+from __future__ import absolute_import, with_statement
 
 import os
 import re
@@ -10,7 +10,7 @@ import subprocess
 import time
 
 import yaml
-from six import print_,iteritems
+from six import iteritems, print_
 
 from ccmlib import common, extension
 from ccmlib.node import Node, NodeError, ToolError

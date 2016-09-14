@@ -1,8 +1,11 @@
+
+from __future__ import absolute_import
+
 import os
 
 import yaml
 
-from ccmlib import common, repository, extension
+from ccmlib import common, extension, repository
 from ccmlib.cluster import Cluster
 from ccmlib.dse_cluster import DseCluster
 from ccmlib.node import Node

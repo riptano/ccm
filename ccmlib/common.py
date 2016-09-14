@@ -2,8 +2,11 @@
 # Cassandra Cluster Management lib
 #
 
+from __future__ import absolute_import
+
 import copy
 import fnmatch
+import logging
 import os
 import platform
 import re
@@ -13,10 +16,9 @@ import stat
 import subprocess
 import sys
 import time
-import logging
+from distutils.version import LooseVersion
 
 import yaml
-from distutils.version import LooseVersion
 from six import print_
 
 BIN_DIR = "bin"

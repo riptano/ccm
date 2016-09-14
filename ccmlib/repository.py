@@ -1,5 +1,5 @@
 # downloaded sources handling
-from __future__ import with_statement
+from __future__ import absolute_import, division, with_statement
 
 import json
 import os
@@ -13,9 +13,9 @@ import tempfile
 import time
 from distutils.version import LooseVersion
 
-from six import print_
-from ccmlib import common
+from six import next, print_
 
+from ccmlib import common
 from ccmlib.common import (ArgumentError, CCMError,
                            assert_jdk_valid_for_cassandra_version,
                            get_default_path, get_version_from_build,
@@ -216,7 +216,7 @@ def download_dse_version(version, username, password, verbose=False):
         __download(url, target, username=username, password=password, show_progress=verbose)
         common.debug("Extracting {} as version {} ...".format(target, version))
         tar = tarfile.open(target)
-        dir = tar.next().name.split("/")[0]
+        dir = next(tar).name.split("/")[0]
         tar.extractall(path=__get_dir())
         tar.close()
         target_dir = os.path.join(__get_dir(), version)
@@ -238,7 +238,7 @@ def download_opscenter_version(version, target_version, verbose=False):
         __download(url, target, show_progress=verbose)
         common.info("Extracting {} as version {} ...".format(target, target_version))
         tar = tarfile.open(target)
-        dir = tar.next().name.split("/")[0]
+        dir = next(tar).name.split("/")[0]
         tar.extractall(path=__get_dir())
         tar.close()
         target_dir = os.path.join(__get_dir(), target_version)
@@ -269,7 +269,7 @@ def download_version(version, url=None, verbose=False, binary=False):
         __download(u, target, show_progress=verbose)
         common.info("Extracting {} as version {} ...".format(target, version))
         tar = tarfile.open(target)
-        dir = tar.next().name.split("/")[0]
+        dir = next(tar).name.split("/")[0]
         tar.extractall(path=__get_dir())
         tar.close()
         target_dir = os.path.join(__get_dir(), version)
