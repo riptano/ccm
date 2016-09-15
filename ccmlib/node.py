@@ -1016,7 +1016,7 @@ class Node(object):
 
         return results
 
-    def run_sstablemetadata_process(self, output_file=None, datafiles=None, keyspace=None, column_families=None):
+    def run_sstablemetadata_process(self, datafiles=None, keyspace=None, column_families=None):
         cdir = self.get_install_dir()
         sstablemetadata = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstablemetadata')
         env = self.get_env()
@@ -1025,19 +1025,13 @@ class Node(object):
         cmd = [sstablemetadata]
         cmd.extend(sstablefiles)
 
-        if output_file is None:
-            return subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=env)
-        else:
-            subprocess.call(cmd, env=env, stdout=output_file)
+        return subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=env)
 
-    def run_sstablemetadata(self, output_file=None, datafiles=None, keyspace=None, column_families=None):
-        p = self.run_sstablemetadata_process(output_file, datafiles, keyspace, column_families)
-        if p is not None:
-            return handle_external_tool_process(p, "sstablemetadata on keyspace: {}, column_family: {}".format(keyspace, column_families))
-        else:
-            return None, None, None
+    def run_sstablemetadata(self, datafiles=None, keyspace=None, column_families=None):
+        p = self.run_sstablemetadata_process(datafiles, keyspace, column_families)
+        return handle_external_tool_process(p, "sstablemetadata on keyspace: {}, column_family: {}".format(keyspace, column_families))
 
-    def run_sstabledump_process(self, output_file=None, datafiles=None, keyspace=None, column_families=None, keys=None, enumerate_keys=False):
+    def run_sstabledump_process(self, datafiles=None, keyspace=None, column_families=None, keys=None, enumerate_keys=False):
         cdir = self.get_install_dir()
         sstabledump = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstabledump')
         env = self.get_env()
@@ -1054,19 +1048,16 @@ class Node(object):
             if keys is not None:
                 for key in keys:
                     cmd = cmd + ["-k", key]
-            if output_file is None:
-                p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=env)
-                processes.append(p)
-            else:
-                subprocess.call(cmd, env=env, stdout=output_file)
+            p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=env)
+            processes.append(p)
 
         for sstable in sstablefiles:
             do_dump(sstable)
 
         return processes
 
-    def run_sstabledump(self, output_file=None, datafiles=None, keyspace=None, column_families=None, keys=None, enumerate_keys=False):
-        processes = self.run_sstabledump_process(output_file, datafiles, keyspace, column_families, keys, enumerate_keys)
+    def run_sstabledump(self, datafiles=None, keyspace=None, column_families=None, keys=None, enumerate_keys=False):
+        processes = self.run_sstabledump_process(datafiles, keyspace, column_families, keys, enumerate_keys)
         results = []
 
         for p in processes:
@@ -1074,37 +1065,30 @@ class Node(object):
 
         return results
 
-    def run_sstableexpiredblockers_process(self, output_file=None, keyspace=None, column_family=None):
+    def run_sstableexpiredblockers_process(self, keyspace=None, column_family=None):
         cdir = self.get_install_dir()
         sstableexpiredblockers = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstableexpiredblockers')
         env = self.get_env()
         cmd = [sstableexpiredblockers, keyspace, column_family]
-        if output_file is None:
-            return subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=env)
-        else:
-            subprocess.call(cmd, env=env, stdout=output_file)
+        return subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=env)
 
-    def run_sstableexpiredblockers(self, output_file=None, keyspace=None, column_family=None):
-        p = self.run_sstableexpiredblockers_process(output_file=output_file, keyspace=keyspace, column_family=column_family)
+    def run_sstableexpiredblockers(self, keyspace=None, column_family=None):
+        p = self.run_sstableexpiredblockers_process(keyspace=keyspace, column_family=column_family)
         if p is not None:
             return handle_external_tool_process(p, ['sstableexpiredblockers', keyspace, column_family])
         else:
             return None, None, None
 
-    def run_sstableupgrade_process(self, output_file=None, keyspace=None, column_family=None):
+    def run_sstableupgrade_process(self, keyspace=None, column_family=None):
         cdir = self.get_install_dir()
         sstableupgrade = self.get_tool('sstableupgrade')
         env = self.get_env()
         cmd = [sstableupgrade, keyspace, column_family]
-        if output_file is None:
-            p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=env)
-            return p
-        else:
-            subprocess.call(cmd, env=env, stdout=output_file)
-            return None
+        p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=env)
+        return p
 
-    def run_sstableupgrade(self, output_file=None, keyspace=None, column_family=None):
-        p = self.run_sstableupgrade_process(output_file, keyspace, column_family)
+    def run_sstableupgrade(self, keyspace=None, column_family=None):
+        p = self.run_sstableupgrade_process(keyspace, column_family)
         if p is not None:
             return handle_external_tool_process(p, "sstableupgrade on {} : {}".format(keyspace, column_family))
         else:
