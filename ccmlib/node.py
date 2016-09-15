@@ -1863,7 +1863,7 @@ class Node(object):
             else:
                 os.kill(self.pid, signal.SIGCONT)
 
-    def jstack(self, opts=None):
+    def jstack_process(self, opts=None):
         opts = [] if opts is None else opts
         jstack_location = os.path.abspath(os.path.join(os.environ['JAVA_HOME'],
                                                        'bin',

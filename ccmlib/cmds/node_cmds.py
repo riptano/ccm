@@ -247,6 +247,9 @@ class NodeStopCmd(Cmd):
 
 
 class _NodeToolCmd(Cmd):
+    usage = "This is a private class, how did you get here?"
+    descr_text = "This is a private class, how did you get here?"
+    nodetool_cmd = ''
 
     def get_parser(self):
         parser = self._get_default_parser(self.usage, self.description())
@@ -332,6 +335,9 @@ class NodeDecommissionCmd(_NodeToolCmd):
 
 
 class _DseToolCmd(Cmd):
+    usage = "This is a private class, how did you get here?"
+    descr_text = "This is a private class, how did you get here?"
+    dsetool_cmd = ''
 
     def get_parser(self):
         parser = self._get_default_parser(self.usage, self.description())

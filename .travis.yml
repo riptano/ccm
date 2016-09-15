@@ -7,3 +7,4 @@ install:
   - pip install pylint
 script:
   - pylint --py3k --disable=W1633 ccmlib
+  - pylint --disable=all --enable=E ccmlib

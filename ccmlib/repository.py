@@ -425,7 +425,7 @@ def __download(url, target, username=None, password=None, show_progress=False):
         password_mgr.add_password(None, url, username, password)
         handler = urllib.request.HTTPBasicAuthHandler(password_mgr)
         opener = urllib.request.build_opener(handler)
-        urllib.request.install_opener(opener)
+        urllib.request.install_opener(opener) # pylint: disable=E1121
 
     u = urllib.request.urlopen(url)
     f = open(target, 'wb')

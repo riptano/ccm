@@ -356,28 +356,6 @@ class DseNode(Node):
         with open(conf_file, 'w') as f:
             yaml.safe_dump(data, f, default_flow_style=False)
 
-    def _update_log4j(self):
-        super(DseNode, self)._update_log4j()
-
-        conf_file = os.path.join(self.get_conf_dir(), common.LOG4J_CONF)
-        append_pattern = 'log4j.appender.V.File='
-        log_file = os.path.join(self.get_path(), 'logs', 'solrvalidation.log')
-        if common.is_win():
-            log_file = re.sub("\\\\", "/", log_file)
-        common.replace_in_file(conf_file, append_pattern, append_pattern + log_file)
-
-        append_pattern = 'log4j.appender.A.File='
-        log_file = os.path.join(self.get_path(), 'logs', 'audit.log')
-        if common.is_win():
-            log_file = re.sub("\\\\", "/", log_file)
-        common.replace_in_file(conf_file, append_pattern, append_pattern + log_file)
-
-        append_pattern = 'log4j.appender.B.File='
-        log_file = os.path.join(self.get_path(), 'logs', 'audit', 'dropped-events.log')
-        if common.is_win():
-            log_file = re.sub("\\\\", "/", log_file)
-        common.replace_in_file(conf_file, append_pattern, append_pattern + log_file)
-
     def __generate_server_xml(self):
         server_xml = os.path.join(self.get_path(), 'resources', 'tomcat', 'conf', 'server.xml')
         if os.path.isfile(server_xml):

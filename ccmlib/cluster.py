@@ -15,7 +15,7 @@ import yaml
 from six import iteritems, print_
 
 from ccmlib import common, extension, repository
-from ccmlib.node import Node, NodeError
+from ccmlib.node import Node, NodeError, TimeoutError
 from six.moves import xrange
 
 
@@ -62,8 +62,8 @@ class Cluster(object):
                         self.__install_dir = os.path.abspath(install_dir)
                     self.__version = self.__get_version_from_build()
             else:
-                dir, v = self.load_from_repository(version, verbose)
-                self.__install_dir = dir
+                repo_dir, v = self.load_from_repository(version, verbose)
+                self.__install_dir = repo_dir
                 self.__version = v if v is not None else self.__get_version_from_build()
 
             if create_directory:
@@ -138,7 +138,7 @@ class Cluster(object):
                     for node in self.cluster.nodelist():
                         scan_from_mark = self.log_positions[node.name]
                         next_time_scan_from_mark = node.mark_log()
-                        if (next_time_scan_from_mark == scan_from_mark):
+                        if next_time_scan_from_mark == scan_from_mark:
                             # log hasn't advanced, nothing to do for this node
                             continue
                         else:
@@ -355,7 +355,7 @@ class Cluster(object):
             print_("No node in this cluster yet")
             return
         for node in list(self.nodes.values()):
-            if (verbose):
+            if verbose:
                 node.show(show_cluster=False)
                 print_("")
             else:
@@ -627,7 +627,7 @@ class Cluster(object):
         ssl_options = {'enabled': True,
                        'keystore': os.path.join(self.get_path(), 'keystore.jks'),
                        'keystore_password': 'cassandra'
-                       }
+                      }
 
         # determine if truststore client encryption options should be enabled
         truststore_file = os.path.join(ssl_path, 'truststore.jks')
@@ -636,7 +636,7 @@ class Cluster(object):
             truststore_ssl_options = {'require_client_auth': require_client_auth,
                                       'truststore': os.path.join(self.get_path(), 'truststore.jks'),
                                       'truststore_password': 'cassandra'
-                                      }
+                                     }
             ssl_options.update(truststore_ssl_options)
 
         self._config_options['client_encryption_options'] = ssl_options
