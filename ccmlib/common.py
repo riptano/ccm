@@ -596,18 +596,18 @@ def get_version_from_build(install_dir=None, node_path=None):
         version_file = os.path.join(install_dir, '0.version.txt')
         if os.path.exists(version_file):
             with open(version_file) as f:
-                return f.read().strip()
+                return LooseVersion(f.read().strip())
         # For DSE look for a dse*.jar and extract the version number
         dse_version = get_dse_version(install_dir)
         if (dse_version is not None):
-            return dse_version
+            return LooseVersion(dse_version)
         # Source cassandra installs we can read from build.xml
         build = os.path.join(install_dir, 'build.xml')
         with open(build) as f:
             for line in f:
                 match = re.search('name="base\.version" value="([0-9.]+)[^"]*"', line)
                 if match:
-                    return match.group(1)
+                    return LooseVersion(match.group(1))
     raise CCMError("Cannot find version")
 
 
