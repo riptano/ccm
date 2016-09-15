@@ -1,4 +1,5 @@
 # ccm clusters
+from __future__ import absolute_import
 
 import itertools
 import os
@@ -13,7 +14,7 @@ from collections import OrderedDict, defaultdict, namedtuple
 import yaml
 from six import iteritems, print_
 
-from ccmlib import common, repository, extension
+from ccmlib import common, extension, repository
 from ccmlib.node import Node, NodeError
 from six.moves import xrange
 

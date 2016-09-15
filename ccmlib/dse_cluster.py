@@ -1,19 +1,25 @@
 # ccm clusters
+
+from __future__ import absolute_import
+
 import os
 import shutil
 import signal
 import subprocess
 import sys
-try:
-    import ConfigParser
-except ImportError:
-    import configparser as ConfigParser
 
 from six import iteritems, print_
 
 from ccmlib import common, repository
 from ccmlib.cluster import Cluster
 from ccmlib.dse_node import DseNode
+
+try:
+    import ConfigParser
+except ImportError:
+    import configparser as ConfigParser
+
+
 
 
 class DseCluster(Cluster):

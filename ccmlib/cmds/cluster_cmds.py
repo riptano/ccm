@@ -1,8 +1,11 @@
+
+from __future__ import absolute_import
+
 import os
 import subprocess
 import sys
-import yaml
 
+import yaml
 from six import print_
 
 from ccmlib import common, repository

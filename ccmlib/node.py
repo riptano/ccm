@@ -1,8 +1,6 @@
 # ccm node
-from __future__ import with_statement
+from __future__ import absolute_import, with_statement
 
-from collections import namedtuple
-from distutils.version import LooseVersion
 import errno
 import glob
 import os
@@ -14,7 +12,9 @@ import subprocess
 import sys
 import time
 import warnings
+from collections import namedtuple
 from datetime import datetime
+from distutils.version import LooseVersion
 
 import yaml
 from six import iteritems, print_, string_types
