@@ -373,10 +373,10 @@ class NodeCliCmd(Cmd):
     def run(self):
         out, err, rc = self.node.run_cli(self.options.cmds, self.cli_options)
         if self.options.verbose:
-            print "CLI OUTPUT:\n-------------------------------"
-            print out
-            print "-------------------------------\nCLI ERROR:\n-------------------------------"
-            print err
+            print_("CLI OUTPUT:\n-------------------------------")
+            print_(out)
+            print_("-------------------------------\nCLI ERROR:\n-------------------------------")
+            print_(err)
 
 
 class NodeCqlshCmd(Cmd):
