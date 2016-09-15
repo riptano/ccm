@@ -626,7 +626,7 @@ def get_dse_cassandra_version(install_dir):
         if fnmatch.fnmatch(file, 'cassandra-all*.jar'):
             match = re.search('cassandra-all-([0-9.]+)(?:-.*)?\.jar', file)
             if match:
-                return match.group(1)
+                return LooseVersion(match.group(1))
     raise ArgumentError("Unable to determine Cassandra version in: " + install_dir)
 
 
