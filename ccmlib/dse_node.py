@@ -66,12 +66,12 @@ class DseNode(Node):
                 data = yaml.load(f)
             graph_options = data['graph']
             graph_options['gremlin_server']['host'] = node_ip
-            self.set_dse_configuration_options({'graph' : graph_options})
+            self.set_dse_configuration_options({'graph': graph_options})
             self.__update_gremlin_config_yaml()
         if 'dsefs' in self.workloads:
-            dsefs_options = {'dsefs_options' : {'enabled': 'true',
-                                                'work_dir': os.path.join(self.get_path(), 'dsefs'),
-                                                'data_directories': [{'dir': os.path.join(self.get_path(), 'dsefs', 'data')}]}}
+            dsefs_options = {'dsefs_options': {'enabled': 'true',
+                                               'work_dir': os.path.join(self.get_path(), 'dsefs'),
+                                               'data_directories': [{'dir': os.path.join(self.get_path(), 'dsefs', 'data')}]}}
             self.set_dse_configuration_options(dsefs_options)
         if 'spark' in self.workloads:
             self._update_spark_env()
@@ -133,7 +133,6 @@ class DseNode(Node):
         if self.cluster.hasOpscenter():
             self._start_agent()
 
-
     def _start_agent(self):
         agent_dir = os.path.join(self.get_path(), 'datastax-agent')
         if os.path.exists(agent_dir):
@@ -142,12 +141,10 @@ class DseNode(Node):
             args = [os.path.join(agent_dir, 'bin', common.platform_binary('datastax-agent'))]
             subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-
     def stop(self, wait=True, wait_other_notice=False, gently=True):
         if self.cluster.hasOpscenter():
             self._stop_agent()
         return super(DseNode, self).stop(wait, wait_other_notice, gently)
-
 
     def _stop_agent(self):
         agent_dir = os.path.join(self.get_path(), 'datastax-agent')
@@ -163,7 +160,6 @@ class DseNode(Node):
                 except OSError:
                     pass
             os.remove(pidfile)
-
 
     def nodetool(self, cmd, username=None, password=None, capture_output=True, wait=True):
         if password is not None:

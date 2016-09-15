@@ -58,6 +58,7 @@ NODE_CMDS = [
     "byteman"
 ]
 
+
 def node_cmds():
     return NODE_CMDS
 
@@ -493,10 +494,10 @@ class NodeJsonCmd(Cmd):
                                            enumerate_keys=self.options.enumerate_keys)
             elif self.node.has_cmd('sstabledump'):
                 self.node.run_sstabledump(keyspace=self.keyspace,
-                                           output_file=f,
-                                           column_families=self.column_families,
-                                           keys=self.options.keys,
-                                           enumerate_keys=self.options.enumerate_keys)
+                                          output_file=f,
+                                          column_families=self.column_families,
+                                          keys=self.options.keys,
+                                          enumerate_keys=self.options.enumerate_keys)
         except common.ArgumentError as e:
             print_(e, file=sys.stderr)
 
@@ -631,6 +632,7 @@ class NodeUpdateconfCmd(Cmd):
         if self.options.cl_periodic:
             self.node.set_batch_commitlog(False)
 
+
 class NodeUpdatedseconfCmd(Cmd):
 
     def description(self):
@@ -659,6 +661,7 @@ class NodeUpdatedseconfCmd(Cmd):
 # on the given node by copying the given config into
 # ~/.ccm/name-of-cluster/nodeX/conf/log4j-server.properties
 #
+
 
 class NodeUpdatelog4jCmd(Cmd):
 

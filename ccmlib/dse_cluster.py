@@ -20,8 +20,6 @@ except ImportError:
     import configparser as ConfigParser
 
 
-
-
 class DseCluster(Cluster):
 
     def __init__(self, path, name, partitioner=None, install_dir=None, create_directory=True, version=None, dse_username=None, dse_password=None, dse_credentials_file=None, opscenter=None, verbose=False):

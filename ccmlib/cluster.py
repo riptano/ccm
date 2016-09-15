@@ -122,6 +122,7 @@ class Cluster(object):
             This class is embedded here for now, because it is used only from
             within Cluster, and depends on cluster.nodelist().
             """
+
             def __init__(self, cluster):
                 super(LogWatchingThread, self).__init__()
                 self.cluster = cluster
@@ -181,7 +182,7 @@ class Cluster(object):
                 # signals to the main run() loop that a stop is requested
                 self.req_stop_event.set()
                 # now wait for the main loop to get through a final log scan, and signal that it's done
-                self.done_event.wait(timeout=interval*2)  # need to wait at least interval seconds before expecting thread to finish. 2x for safety.
+                self.done_event.wait(timeout=interval * 2)  # need to wait at least interval seconds before expecting thread to finish. 2x for safety.
                 super(LogWatchingThread, self).join(timeout)
 
         log_watcher = LogWatchingThread(self)
@@ -429,7 +430,7 @@ class Cluster(object):
 
     def stop(self, wait=True, gently=True):
         not_running = []
-        extension.pre_cluster_stop(self);
+        extension.pre_cluster_stop(self)
         for node in list(self.nodes.values()):
             if not node.stop(wait, gently=gently):
                 not_running.append(node)

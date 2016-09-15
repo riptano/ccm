@@ -18,38 +18,40 @@ from ccmlib.dse_node import DseNode
 from ccmlib.node import Node, NodeError
 
 CLUSTER_CMDS = [
-        "create",
-        "add",
-        "populate",
-        "list",
-        "switch",
-        "status",
-        "remove",
-        "clear",
-        "liveset",
-        "start",
-        "stop",
-        "flush",
-        "compact",
-        "stress",
-        "updateconf",
-        "updatedseconf",
-        "updatelog4j",
-        "cli",
-        "setdir",
-        "bulkload",
-        "setlog",
-        "scrub",
-        "verify",
-        "invalidatecache",
-        "checklogerror",
-        "showlastlog",
-        "jconsole",
-        "setworkload"
-    ]
+    "create",
+    "add",
+    "populate",
+    "list",
+    "switch",
+    "status",
+    "remove",
+    "clear",
+    "liveset",
+    "start",
+    "stop",
+    "flush",
+    "compact",
+    "stress",
+    "updateconf",
+    "updatedseconf",
+    "updatelog4j",
+    "cli",
+    "setdir",
+    "bulkload",
+    "setlog",
+    "scrub",
+    "verify",
+    "invalidatecache",
+    "checklogerror",
+    "showlastlog",
+    "jconsole",
+    "setworkload"
+]
+
 
 def cluster_cmds():
     return CLUSTER_CMDS
+
 
 def parse_populate_count(v):
     if v is None:
@@ -988,6 +990,7 @@ class ClusterJconsoleCmd(Cmd):
         except OSError:
             print_("Could not start jconsole. Please make sure jconsole can be found in your $PATH.")
             exit(1)
+
 
 class ClusterSetworkloadCmd(Cmd):
 
