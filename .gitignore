@@ -10,3 +10,4 @@ ccm.egg-info/
 .project
 .tox/
 .coverage
+dse_creds.txt
