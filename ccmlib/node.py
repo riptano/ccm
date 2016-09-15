@@ -14,7 +14,7 @@ import time
 import warnings
 from collections import namedtuple
 from datetime import datetime
-from distutils.version import LooseVersion
+from distutils.version import LooseVersion  # pylint: disable=all
 
 import yaml
 from six import iteritems, print_, string_types

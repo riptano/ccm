@@ -147,7 +147,7 @@ class Cluster(object):
                         if errors:
                             errordata[node.name] = errors
                 except IOError as e:
-                    if 'No such file or directory' in e.strerror:
+                    if 'No such file or directory' in str(e.strerror):
                         pass  # most likely log file isn't yet written
 
                     # in the case of unexpected error, report this thread to the callback
