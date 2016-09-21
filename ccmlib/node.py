@@ -824,7 +824,8 @@ class Node(object):
         return p
 
     def run_cli(self, cmds=None, cli_options=None):
-        return handle_external_tool_process(self.run_cli_process(cmds=cmds, cli_options=cli_options), ['cassandra-cli'] + [cli_options])
+        p = self.run_cli_process(cmds=cmds, cli_options=cli_options)
+        return handle_external_tool_process(p, ['cassandra-cli'] + [cli_options])
 
     def run_cqlsh_process(self, cmds=None, cqlsh_options=None):
         if cqlsh_options is None:
