@@ -502,7 +502,7 @@ class Cluster(object):
         livenodes = [node for node in list(self.nodes.values()) if node.is_live()]
         if len(livenodes) == 0:
             raise common.ArgumentError("No live node")
-        livenodes[0].run_cli(cmds, show_output, cli_options)
+        return livenodes[0].run_cli(cmds, cli_options)
 
     def set_configuration_options(self, values=None):
         if values is not None:

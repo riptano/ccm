@@ -828,7 +828,12 @@ class ClusterCliCmd(Cmd):
         self.cli_options = parser.get_ignored() + args[1:]
 
     def run(self):
-        self.cluster.run_cli(self.options.cmds, self.options.verbose, self.cli_options)
+        out, err, rc = self.cluster.run_cli(self.options.cmds, self.cli_options)
+        if self.options.verbose:
+            print_("CLI OUTPUT:\n-------------------------------")
+            print_(out)
+            print_("-------------------------------\nCLI ERROR:\n-------------------------------")
+            print_(err)
 
 
 class ClusterBulkloadCmd(Cmd):
