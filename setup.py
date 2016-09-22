@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from os.path import abspath, join, dirname
+from os.path import abspath, dirname, join
 from platform import system
 from shutil import copyfile
 
@@ -16,7 +16,7 @@ if system() == "Windows":
 
 setup(
     name='ccm',
-    version='2.4.2',
+    version='2.4.3',
     description='Cassandra Cluster Manager',
     long_description=open(abspath(join(dirname(__file__), 'README.md'))).read(),
     author='Sylvain Lebresne',

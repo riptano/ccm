@@ -27,7 +27,6 @@ OPSC_ARCHIVE = "http://downloads.datastax.com/community/opscenter-%s.tar.gz"
 ARCHIVE = "http://archive.apache.org/dist/cassandra"
 GIT_REPO = "http://git-wip-us.apache.org/repos/asf/cassandra.git"
 GITHUB_TAGS = "https://api.github.com/repos/apache/cassandra/git/refs/tags"
-LOCAL_GIT_REPO = os.environ.get('LOCAL_GIT_REPO', None)  # absolute path to local cassandra git repo, e.g. /home/user/cassandra/
 
 
 def setup(version, verbose=False):
@@ -37,12 +36,19 @@ def setup(version, verbose=False):
     if version.startswith('git:'):
         clone_development(GIT_REPO, version, verbose=verbose)
         return (version_directory(version), None)
-
     elif version.startswith('local:'):
-        if LOCAL_GIT_REPO is None:
-            raise CCMError("LOCAL_GIT_REPO is not defined!")
-        clone_development(LOCAL_GIT_REPO, version, verbose=verbose)
-        return (version_directory(version), None)
+        # local: slugs take the form of: "local:/some/path/:somebranch"
+        try:
+            _, path, branch = version.split(':')
+        except ValueError:
+            raise CCMError("local version ({}) appears to be invalid. Please format as local:/some/path/:somebranch".format(version))
+
+        clone_development(path, version, verbose=verbose)
+        version_dir = version_directory(version)
+
+        if version_dir is None:
+            raise CCMError("Path provided in local slug appears invalid ({})".format(path))
+        return (version_dir, None)
 
     elif version.startswith('binary:'):
         version = version.replace('binary:', '')
@@ -112,8 +118,8 @@ def clone_development(git_repo, version, verbose=False):
     if 'github' in version:
         git_repo_name, git_branch = github_username_and_branch_name(version)
     elif 'local:' in version:
-        git_repo_name = 'local'
-        git_branch = version.split(':', 1)[1]
+        git_repo_name = 'local_{}'.format(git_repo)  # add git repo location to distinguish cache location for differing repos
+        git_branch = version.split(':')[-1]  # last token on 'local:...' slugs should always be branch name
     else:
         git_repo_name = 'apache'
         git_branch = version.split(':', 1)[1]
