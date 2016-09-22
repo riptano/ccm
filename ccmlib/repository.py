@@ -47,7 +47,7 @@ def setup(version, verbose=False):
         version_dir = version_directory(version)
 
         if version_dir is None:
-            raise CCMError("Path provided in local slug appears invalid.")
+            raise CCMError("Path provided in local slug appears invalid ({})".format(path))
         return (version_dir, None)
 
     elif version.startswith('binary:'):
