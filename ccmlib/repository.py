@@ -222,7 +222,7 @@ def download_dse_version(version, username, password, verbose=False):
         __download(url, target, username=username, password=password, show_progress=verbose)
         common.debug("Extracting {} as version {} ...".format(target, version))
         tar = tarfile.open(target)
-        dir = next(tar).name.split("/")[0]
+        dir = tar.next().name.split("/")[0]  # pylint: disable=all
         tar.extractall(path=__get_dir())
         tar.close()
         target_dir = os.path.join(__get_dir(), version)
