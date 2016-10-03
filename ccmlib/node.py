@@ -11,6 +11,7 @@ import stat
 import subprocess
 import sys
 import time
+import tempfile
 import warnings
 from collections import namedtuple
 from datetime import datetime
@@ -384,10 +385,17 @@ class Node(object):
             return f.tell()
 
     def print_process_output(self, name, proc, verbose=False):
-        try:
-            stderr = proc.communicate()[1]
-        except ValueError:
-            stderr = ''
+        # If stderr_file exists on the process, we opted to
+        # store stderr in a separate temporary file, consume that.
+        if hasattr(proc, 'stderr_file') and proc.stderr_file is not None:
+            proc.stderr_file.seek(0)
+            stderr = proc.stderr_file.read()
+        else:
+            try:
+                stderr = proc.communicate()[1]
+            except ValueError:
+                stderr = ''
+
         if len(stderr) > 1:
             print_("[{} ERROR] {}".format(name, stderr.strip()))
 
@@ -408,12 +416,14 @@ class Node(object):
             return None
 
         log_file = os.path.join(self.get_path(), 'logs', filename)
+        output_read = False
         while not os.path.exists(log_file):
             time.sleep(.5)
-            if process:
+            if process and not output_read:
                 process.poll()
                 if process.returncode is not None:
                     self.print_process_output(self.name, process, verbose)
+                    output_read = True
                     if process.returncode != 0:
                         raise RuntimeError()  # Shouldn't reuse RuntimeError but I'm lazy
 
@@ -424,11 +434,12 @@ class Node(object):
             while True:
                 # First, if we have a process to check, then check it.
                 # Skip on Windows - stdout/stderr is cassandra.bat
-                if not common.is_win():
+                if not common.is_win() and not output_read:
                     if process:
                         process.poll()
                         if process.returncode is not None:
                             self.print_process_output(self.name, process, verbose)
+                            output_read = True
                             if process.returncode != 0:
                                 raise RuntimeError()  # Shouldn't reuse RuntimeError but I'm lazy
 
@@ -621,6 +632,9 @@ class Node(object):
         process = None
         FNULL = open(os.devnull, 'w')
         stdout_sink = subprocess.PIPE if verbose else FNULL
+        # write stderr to a temporary file to prevent overwhelming pipe (> 65K data).
+        stderr = tempfile.SpooledTemporaryFile(max_size=0xFFFF)
+
         if common.is_win():
             # clean up any old dirty_pid files from prior runs
             if (os.path.isfile(self.get_path() + "/dirty_pid.tmp")):
@@ -629,12 +643,14 @@ class Node(object):
             if quiet_start and self.cluster.version() >= '2.2.4':
                 args.append('-q')
 
-            process = subprocess.Popen(args, cwd=self.get_bin_dir(), env=env, stdout=stdout_sink, stderr=subprocess.PIPE)
+            process = subprocess.Popen(args, cwd=self.get_bin_dir(), env=env, stdout=stdout_sink, stderr=stderr)
         else:
-            process = subprocess.Popen(args, env=env, stdout=stdout_sink, stderr=subprocess.PIPE)
+            process = subprocess.Popen(args, env=env, stdout=stdout_sink, stderr=stderr)
+        
+        process.stderr_file = stderr
+
         # Our modified batch file writes a dirty output with more than just the pid - clean it to get in parity
         # with *nix operation here.
-
         if verbose:
             stdout, stderr = process.communicate()
             print_(stdout)
