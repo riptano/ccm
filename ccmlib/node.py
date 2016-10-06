@@ -911,20 +911,19 @@ class Node(object):
 
     def clear(self, clear_all=False, only_data=False):
         data_dirs = ['data{0}'.format(x) for x in xrange(0, self.cluster.data_dir_count)]
-        if not only_data:
-            data_dirs.append("commitlogs")
-            if clear_all:
-                data_dirs.extend(['saved_caches', 'logs'])
+        data_dirs.append("commitlogs")
+        if clear_all:
+            data_dirs.extend(['saved_caches', 'logs'])
         for d in data_dirs:
             full_dir = os.path.join(self.get_path(), d)
-            if only_data:
+            if only_data and d != "commitlogs":
                 for dir in os.listdir(full_dir):
                     keyspace_dir = os.path.join(full_dir, dir)
                     if os.path.isdir(keyspace_dir) and dir != "system":
                         for f in os.listdir(keyspace_dir):
-                            full_path = os.path.join(keyspace_dir, f)
-                            if os.path.isfile(full_path):
-                                os.remove(full_path)
+                            table_dir = os.path.join(keyspace_dir, f)
+                            shutil.rmtree(table_dir)
+                            os.mkdir(table_dir)
             else:
                 common.rmdirs(full_dir)
                 os.mkdir(full_dir)
