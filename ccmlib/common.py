@@ -654,8 +654,10 @@ def is_dse_cluster(path):
         return False
 
 
-def invalidate_cache():
-    rmdirs(os.path.join(get_default_path(), 'repository'))
+def invalidate_cache(repository_path=None):
+    if repository_path is None:
+        repository_path = os.path.join(get_default_path(), 'repository')
+    rmdirs(repository_path)
 
 
 def get_jdk_version():
