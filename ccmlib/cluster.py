@@ -361,7 +361,7 @@ class Cluster(object):
             else:
                 node.show(only_status=True)
 
-    def start(self, no_wait=False, verbose=False, wait_for_binary_proto=False,
+    def start(self, no_wait=False, verbose=False, wait_for_binary_proto=True,
               wait_other_notice=True, jvm_args=None, profile_options=None,
               quiet_start=False, allow_root=False):
         if jvm_args is None:
