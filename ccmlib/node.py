@@ -646,7 +646,7 @@ class Node(object):
             process = subprocess.Popen(args, cwd=self.get_bin_dir(), env=env, stdout=stdout_sink, stderr=stderr)
         else:
             process = subprocess.Popen(args, env=env, stdout=stdout_sink, stderr=stderr)
-        
+
         process.stderr_file = stderr
 
         # Our modified batch file writes a dirty output with more than just the pid - clean it to get in parity
