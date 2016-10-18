@@ -27,6 +27,7 @@ OPSC_ARCHIVE = "http://downloads.datastax.com/community/opscenter-%s.tar.gz"
 ARCHIVE = "http://archive.apache.org/dist/cassandra"
 GIT_REPO = "http://git-wip-us.apache.org/repos/asf/cassandra.git"
 GITHUB_TAGS = "https://api.github.com/repos/apache/cassandra/git/refs/tags"
+CCM_CONFIG = os.path.join(os.path.expanduser("~"), ".ccm", "config")
 
 
 def setup(version, verbose=False):
@@ -63,6 +64,15 @@ def setup(version, verbose=False):
         version = version.replace('source:', '')
         binary = False
         fallback = False
+
+    elif version.startswith('alias:'):
+        alias = version.split(":")[1].split("/")[0]
+        with open(CCM_CONFIG) as config:
+            for line in config:
+                if(line.split("=")[0].strip() == alias):
+                    clone_development(line.split("=")[1].strip(), version, verbose=verbose, alias=True)
+                    return (directory_name(version), None)
+            raise ValueError("Alias specified in -v does not exist in user's configuration file!")
 
     if version in ('stable', 'oldstable', 'testing'):
         version = get_tagged_version_numbers(version)[0]
@@ -111,7 +121,7 @@ def validate(path):
         setup(version)
 
 
-def clone_development(git_repo, version, verbose=False):
+def clone_development(git_repo, version, verbose=False, alias=False):
     print_(git_repo, version)
     target_dir = directory_name(version)
     assert target_dir
@@ -120,6 +130,9 @@ def clone_development(git_repo, version, verbose=False):
     elif 'local:' in version:
         git_repo_name = 'local_{}'.format(git_repo)  # add git repo location to distinguish cache location for differing repos
         git_branch = version.split(':')[-1]  # last token on 'local:...' slugs should always be branch name
+    elif alias:
+        git_repo_name = 'alias_{}'.format(version.split(':')[0])
+        git_branch = version.split('/')[-1]
     else:
         git_repo_name = 'apache'
         git_branch = version.split(':', 1)[1]
@@ -129,6 +142,7 @@ def clone_development(git_repo, version, verbose=False):
         try:
             # Checkout/fetch a local repository cache to reduce the number of
             # remote fetches we need to perform:
+            print_("git clone --mirror {} {}".format(git_repo, local_git_cache))
             if not os.path.exists(local_git_cache):
                 common.info("Cloning Cassandra...")
                 out = subprocess.call(
