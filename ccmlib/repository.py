@@ -1,6 +1,7 @@
 # downloaded sources handling
 from __future__ import absolute_import, division, with_statement
 
+import ConfigParser
 import json
 import os
 import re
@@ -27,7 +28,8 @@ OPSC_ARCHIVE = "http://downloads.datastax.com/community/opscenter-%s.tar.gz"
 ARCHIVE = "http://archive.apache.org/dist/cassandra"
 GIT_REPO = "http://git-wip-us.apache.org/repos/asf/cassandra.git"
 GITHUB_TAGS = "https://api.github.com/repos/apache/cassandra/git/refs/tags"
-CCM_CONFIG = os.path.join(os.path.expanduser("~"), ".ccm", "config")
+CCM_CONFIG = ConfigParser.ConfigParser()
+CCM_CONFIG.read(os.path.join(os.path.expanduser("~"), ".ccm", "config"))
 
 
 def setup(version, verbose=False):
@@ -67,12 +69,13 @@ def setup(version, verbose=False):
 
     elif version.startswith('alias:'):
         alias = version.split(":")[1].split("/")[0]
-        with open(CCM_CONFIG) as config:
-            for line in config:
-                if(line.split("=")[0].strip() == alias):
-                    clone_development(line.split("=")[1].strip(), version, verbose=verbose, alias=True)
-                    return (directory_name(version), None)
-            raise ValueError("Alias specified in -v does not exist in user's configuration file!")
+        try:
+            git_repo = CCM_CONFIG.get("aliases", alias)
+            clone_development(git_repo, version, verbose=verbose, alias=True)
+            return (directory_name(version), None)
+        except ConfigParser.NoOptionError as e:
+            common.warning("Unable to find {} in configuration file.".format(alias))
+            raise e
 
     if version in ('stable', 'oldstable', 'testing'):
         version = get_tagged_version_numbers(version)[0]
@@ -142,7 +145,6 @@ def clone_development(git_repo, version, verbose=False, alias=False):
         try:
             # Checkout/fetch a local repository cache to reduce the number of
             # remote fetches we need to perform:
-            print_("git clone --mirror {} {}".format(git_repo, local_git_cache))
             if not os.path.exists(local_git_cache):
                 common.info("Cloning Cassandra...")
                 out = subprocess.call(
