@@ -74,7 +74,7 @@ def setup(version, verbose=False):
             clone_development(git_repo, version, verbose=verbose, alias=True)
             return (directory_name(version), None)
         except ConfigParser.NoOptionError as e:
-            common.warning("Unable to find {} in configuration file.".format(alias))
+            common.warning("Unable to find alias {} in configuration file.".format(alias))
             raise e
 
     if version in ('stable', 'oldstable', 'testing'):
