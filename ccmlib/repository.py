@@ -134,7 +134,7 @@ def clone_development(git_repo, version, verbose=False, alias=False):
         git_repo_name = 'local_{}'.format(git_repo)  # add git repo location to distinguish cache location for differing repos
         git_branch = version.split(':')[-1]  # last token on 'local:...' slugs should always be branch name
     elif alias:
-        git_repo_name = 'alias_{}'.format(version.split(':')[0])
+        git_repo_name = 'alias_{}'.format(version.split('/')[0].split(':')[-1])
         git_branch = version.split('/')[-1]
     else:
         git_repo_name = 'apache'
