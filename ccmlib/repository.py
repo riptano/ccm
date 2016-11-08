@@ -1,7 +1,6 @@
 # downloaded sources handling
 from __future__ import absolute_import, division, with_statement
 
-import ConfigParser
 import json
 import os
 import re
@@ -15,6 +14,11 @@ import time
 from distutils.version import LooseVersion  # pylint: disable=all
 
 from six import next, print_
+
+try:
+    import ConfigParser
+except ImportError:
+    import configparser as ConfigParser
 
 from ccmlib import common
 from ccmlib.common import (ArgumentError, CCMError,
