@@ -136,7 +136,10 @@ class Node(object):
             binary_interface = None
             if 'binary' in itf and itf['binary'] is not None:
                 binary_interface = tuple(itf['binary'])
-            node = cluster.create_node(data['name'], data['auto_bootstrap'], tuple(itf['thrift']), tuple(itf['storage']), data['jmx_port'], remote_debug_port, initial_token, save=False, binary_interface=binary_interface, byteman_port=data['byteman_port'])
+            thrift_interface = None
+            if 'thrift' in itf and itf['thrift'] is not None:
+                thrift_interface = tuple(itf['thrift'])
+            node = cluster.create_node(data['name'], data['auto_bootstrap'], thrift_interface, tuple(itf['storage']), data['jmx_port'], remote_debug_port, initial_token, save=False, binary_interface=binary_interface, byteman_port=data['byteman_port'])
             node.status = data['status']
             if 'pid' in data:
                 node.pid = int(data['pid'])
@@ -222,6 +225,10 @@ class Node(object):
         else:
             dir, v = setup(version, verbose=verbose)
             self.__install_dir = dir
+
+        if self.get_base_cassandra_version() >= '4':
+            self.network_interfaces['thrift'] = None
+
         self.import_config_files()
         self.import_bin_files()
         self.__conf_updated = False
@@ -292,7 +299,8 @@ class Node(object):
             if show_cluster:
                 print_("{}{}={}".format(indent, 'cluster', self.cluster.name))
             print_("{}{}={}".format(indent, 'auto_bootstrap', self.auto_bootstrap))
-            print_("{}{}={}".format(indent, 'thrift', self.network_interfaces['thrift']))
+            if self.network_interfaces['thrift'] is not None:
+                print_("{}{}={}".format(indent, 'thrift', self.network_interfaces['thrift']))
             if self.network_interfaces['binary'] is not None:
                 print_("{}{}={}".format(indent, 'binary', self.network_interfaces['binary']))
             print_("{}{}={}".format(indent, 'storage', self.network_interfaces['storage']))
@@ -514,6 +522,9 @@ class Node(object):
 
         Emits a warning if not listening after 10 seconds.
         """
+        if self.cluster.version() < '4':
+            return;
+
         self.watch_log_for("Listening for thrift clients...", **kwargs)
 
         thrift_itf = self.network_interfaces['thrift']
@@ -849,11 +860,10 @@ class Node(object):
         cqlsh = self.get_tool('cqlsh')
         env = self.get_env()
         extension.append_to_client_env(self, env)
-        host = self.network_interfaces['thrift'][0]
         if self.get_base_cassandra_version() >= 2.1:
-            port = self.network_interfaces['binary'][1]
+            host, port = self.network_interfaces['binary']
         else:
-            port = self.network_interfaces['thrift'][1]
+            host, port = self.network_interfaces['thrift']
         args = []
         args += cqlsh_options
         extension.append_to_cqlsh_args(self, env, args)
@@ -1449,9 +1459,10 @@ class Node(object):
             # cassandra 0.8
             data['seed_provider'][0]['parameters'][0]['seeds'] = ','.join(self.cluster.get_seeds())
         data['listen_address'], data['storage_port'] = self.network_interfaces['storage']
-        data['rpc_address'], data['rpc_port'] = self.network_interfaces['thrift']
+        if self.network_interfaces['thrift'] is not None and self.get_base_cassandra_version() < 4:
+            data['rpc_address'], data['rpc_port'] = self.network_interfaces['thrift']
         if self.network_interfaces['binary'] is not None and self.get_base_cassandra_version() >= 1.2:
-            _, data['native_transport_port'] = self.network_interfaces['binary']
+            data['rpc_address'], data['native_transport_port'] = self.network_interfaces['binary']
 
         data['data_file_directories'] = [os.path.join(self.get_path(), 'data{0}'.format(x)) for x in xrange(0, self.cluster.data_dir_count)]
         data['commitlog_directory'] = os.path.join(self.get_path(), 'commitlogs')
