@@ -265,9 +265,12 @@ class Cluster(object):
             binary = None
             if self.cassandra_version() >= '1.2':
                 binary = (ipformat % i, 9042)
+            thrift = None
+            if self.cassandra_version() < '4':
+                thrift = (ipformat % i, 9160)
             node = self.create_node(name='node%s' % i,
                                     auto_bootstrap=False,
-                                    thrift_interface=(ipformat % i, 9160),
+                                    thrift_interface=thrift,
                                     storage_interface=(ipformat % i, 7000),
                                     jmx_port=str(7000 + i * 100),
                                     remote_debug_port=str(2000 + i * 100) if debug else str(0),
