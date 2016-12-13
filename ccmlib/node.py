@@ -522,7 +522,7 @@ class Node(object):
 
         Emits a warning if not listening after 10 seconds.
         """
-        if self.cluster.version() < '4':
+        if self.cluster.version() >= '4':
             return;
 
         self.watch_log_for("Listening for thrift clients...", **kwargs)
