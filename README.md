@@ -243,10 +243,10 @@ The ccm facilities are available programmatically through ccmlib. This could
 be used to implement automated tests against Cassandra. A simple example of
 how to use ccmlib follows:
 
-    import ccmlib
+    import ccmlib.cluster
 
     CLUSTER_PATH="."
-    cluster = ccmlib.Cluster(CLUSTER_PATH, 'test', cassandra_version='2.0.5')
+    cluster = ccmlib.cluster.Cluster(CLUSTER_PATH, 'test', cassandra_version='2.1.14')
     cluster.populate(3).start()
     [node1, node2, node3] = cluster.nodelist()
 

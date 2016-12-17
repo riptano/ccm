@@ -1,4 +1,5 @@
 # ccm clusters
+from __future__ import absolute_import
 
 import itertools
 import os
@@ -8,13 +9,13 @@ import subprocess
 import sys
 import threading
 import time
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict, defaultdict, namedtuple
 
 import yaml
 from six import iteritems, print_
 
-from ccmlib import common, repository
-from ccmlib.node import Node, NodeError
+from ccmlib import common, extension, repository
+from ccmlib.node import Node, NodeError, TimeoutError
 from six.moves import xrange
 
 
@@ -27,6 +28,7 @@ class Cluster(object):
         self.partitioner = partitioner
         self._config_options = {}
         self._dse_config_options = {}
+        self._environment_variables = {}
         self.__log_level = "INFO"
         self.__path = path
         self.__version = None
@@ -60,8 +62,8 @@ class Cluster(object):
                         self.__install_dir = os.path.abspath(install_dir)
                     self.__version = self.__get_version_from_build()
             else:
-                dir, v = self.load_from_repository(version, verbose)
-                self.__install_dir = dir
+                repo_dir, v = self.load_from_repository(version, verbose)
+                self.__install_dir = repo_dir
                 self.__version = v if v is not None else self.__get_version_from_build()
 
             if create_directory:
@@ -105,36 +107,87 @@ class Cluster(object):
 
     def actively_watch_logs_for_error(self, on_error_call, interval=1):
         """
-        Begins a timed daemon thread that scans logs for errors every interval seconds.
+        Begins a thread that repeatedly scans system.log for new errors, every interval seconds.
+        (The first pass covers the entire log contents written at that point,
+        subsequent scans cover newly appended log messages).
 
-        If an error is seen and the callback is executed, it will be called with an
-        OrderedDictionary mapping node name to a list of error lines.
+        Reports new errors, by calling the provided callback with an OrderedDictionary
+        mapping node name to a list of error lines.
+
+        Returns the thread itself, which should be .join()'ed to wrap up execution,
+        otherwise will run until the main thread exits.
         """
-        log_positions = defaultdict(int)
+        class LogWatchingThread(threading.Thread):
+            """
+            This class is embedded here for now, because it is used only from
+            within Cluster, and depends on cluster.nodelist().
+            """
 
-        def grep_and_mark_all_logs():
-            errordata = OrderedDict()
+            def __init__(self, cluster):
+                super(LogWatchingThread, self).__init__()
+                self.cluster = cluster
+                self.daemon = True  # set so that thread will exit when main thread exits
+                self.req_stop_event = threading.Event()
+                self.done_event = threading.Event()
+                self.log_positions = defaultdict(int)
 
-            try:
-                for node in self.nodelist():
-                    errors = node.grep_log_for_errors_from(seek_start=log_positions[node.name])
-                    log_positions[node.name] = node.mark_log()
-                    if errors:
-                        errordata[node.name] = errors
-            except IOError as e:
-                if 'No such file or directory' in e.strerror:
-                    pass  # most likely log file isn't yet written
-                else:
-                    raise
+            def scan(self):
+                errordata = OrderedDict()
 
-            if errordata:
-                on_error_call(errordata)
+                try:
+                    for node in self.cluster.nodelist():
+                        scan_from_mark = self.log_positions[node.name]
+                        next_time_scan_from_mark = node.mark_log()
+                        if next_time_scan_from_mark == scan_from_mark:
+                            # log hasn't advanced, nothing to do for this node
+                            continue
+                        else:
+                            errors = node.grep_log_for_errors_from(seek_start=scan_from_mark)
+                        self.log_positions[node.name] = next_time_scan_from_mark
+                        if errors:
+                            errordata[node.name] = errors
+                except IOError as e:
+                    if 'No such file or directory' in str(e.strerror):
+                        pass  # most likely log file isn't yet written
 
-            timer = threading.Timer(interval, grep_and_mark_all_logs)
-            timer.daemon = True  # so it will exit when the main process exits
-            timer.start()
+                    # in the case of unexpected error, report this thread to the callback
+                    else:
+                        errordata['log_scanner'] = [[str(e)]]
 
-        grep_and_mark_all_logs()
+                return errordata
+
+            def scan_and_report(self):
+                errordata = self.scan()
+
+                if errordata:
+                    on_error_call(errordata)
+
+            def run(self):
+                common.debug("Log-watching thread starting.")
+
+                # run until stop gets requested by .join()
+                while not self.req_stop_event.is_set():
+                    self.scan_and_report()
+                    time.sleep(interval)
+
+                try:
+                    # do a final scan to make sure we got to the very end of the files
+                    self.scan_and_report()
+                finally:
+                    common.debug("Log-watching thread exiting.")
+                    # done_event signals that the scan completed a final pass
+                    self.done_event.set()
+
+            def join(self, timeout=None):
+                # signals to the main run() loop that a stop is requested
+                self.req_stop_event.set()
+                # now wait for the main loop to get through a final log scan, and signal that it's done
+                self.done_event.wait(timeout=interval * 2)  # need to wait at least interval seconds before expecting thread to finish. 2x for safety.
+                super(LogWatchingThread, self).join(timeout)
+
+        log_watcher = LogWatchingThread(self)
+        log_watcher.start()
+        return log_watcher
 
     def get_install_dir(self):
         common.validate_install_dir(self.__install_dir)
@@ -212,27 +265,31 @@ class Cluster(object):
             binary = None
             if self.cassandra_version() >= '1.2':
                 binary = (ipformat % i, 9042)
+            thrift = None
+            if self.cassandra_version() < '4':
+                thrift = (ipformat % i, 9160)
             node = self.create_node(name='node%s' % i,
                                     auto_bootstrap=False,
-                                    thrift_interface=(ipformat % i, 9160),
+                                    thrift_interface=thrift,
                                     storage_interface=(ipformat % i, 7000),
                                     jmx_port=str(7000 + i * 100),
                                     remote_debug_port=str(2000 + i * 100) if debug else str(0),
                                     byteman_port=str(4000 + i * 100) if install_byteman else str(0),
                                     initial_token=tk,
-                                    binary_interface=binary)
+                                    binary_interface=binary,
+                                    environment_variables=self._environment_variables)
             self.add(node, True, dc)
             self._update_config()
         return self
 
-    def create_node(self, name, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save=True, binary_interface=None, byteman_port='0'):
-        return Node(name, self, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save, binary_interface, byteman_port)
+    def create_node(self, name, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save=True, binary_interface=None, byteman_port='0', environment_variables=None):
+        return Node(name, self, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save, binary_interface, byteman_port, environment_variables)
 
     def balanced_tokens(self, node_count):
         if self.cassandra_version() >= '1.2' and (not self.partitioner or 'Murmur3' in self.partitioner):
-            ptokens = [(i * (2**64 // node_count)) for i in xrange(0, node_count)]
-            return [int(t - 2**63) for t in ptokens]
-        return [int(i * (2**127 // node_count)) for i in range(0, node_count)]
+            ptokens = [(i * (2 ** 64 // node_count)) for i in xrange(0, node_count)]
+            return [int(t - 2 ** 63) for t in ptokens]
+        return [int(i * (2 ** 127 // node_count)) for i in range(0, node_count)]
 
     def balanced_tokens_across_dcs(self, dcs):
         tokens = []
@@ -294,24 +351,26 @@ class Cluster(object):
         return [s.network_interfaces['storage'][0] if isinstance(s, Node) else s for s in self.seeds]
 
     def show(self, verbose):
-        msg = "Cluster: '%s'" % self.name
+        msg = "Cluster: '{}'".format(self.name)
         print_(msg)
         print_('-' * len(msg))
         if len(list(self.nodes.values())) == 0:
             print_("No node in this cluster yet")
             return
         for node in list(self.nodes.values()):
-            if (verbose):
+            if verbose:
                 node.show(show_cluster=False)
                 print_("")
             else:
                 node.show(only_status=True)
 
-    def start(self, no_wait=False, verbose=False, wait_for_binary_proto=False,
+    def start(self, no_wait=False, verbose=False, wait_for_binary_proto=True,
               wait_other_notice=True, jvm_args=None, profile_options=None,
               quiet_start=False, allow_root=False):
         if jvm_args is None:
             jvm_args = []
+
+        extension.pre_cluster_start(self)
 
         common.assert_jdk_valid_for_cassandra_version(self.cassandra_version())
 
@@ -322,7 +381,7 @@ class Cluster(object):
                     if itf is not None:
                         if not common.check_socket_available(itf, return_on_error=True):
                             addr, port = itf
-                            print_("Inet address %s:%s is not available; a cluster may already be running or you may need to add the loopback alias" % (addr, port))
+                            common.error("Inet address {}:{} is not available; a cluster may already be running or you may need to add the loopback alias".format(addr, port))
                             sys.exit(1)
 
         started = []
@@ -368,13 +427,17 @@ class Cluster(object):
                 for node, p, mark in started:
                     node.wait_for_binary_interface(process=p, verbose=verbose, from_mark=mark)
 
+        extension.post_cluster_start(self)
+
         return started
 
     def stop(self, wait=True, gently=True):
         not_running = []
+        extension.pre_cluster_stop(self)
         for node in list(self.nodes.values()):
             if not node.stop(wait, gently=gently):
                 not_running.append(node)
+        extension.post_cluster_stop(self)
         return not_running
 
     def set_log_level(self, new_level, class_names=None):
@@ -442,30 +505,34 @@ class Cluster(object):
         livenodes = [node for node in list(self.nodes.values()) if node.is_live()]
         if len(livenodes) == 0:
             raise common.ArgumentError("No live node")
-        livenodes[0].run_cli(cmds, show_output, cli_options)
+        return livenodes[0].run_cli(cmds, cli_options)
 
-    def set_configuration_options(self, values=None, batch_commitlog=None):
+    def set_configuration_options(self, values=None):
         if values is not None:
             for k, v in iteritems(values):
                 self._config_options[k] = v
-        if batch_commitlog is not None:
-            if batch_commitlog:
-                self._config_options["commitlog_sync"] = "batch"
-                self._config_options["commitlog_sync_batch_window_in_ms"] = 5
-                self._config_options["commitlog_sync_period_in_ms"] = None
-            else:
-                self._config_options["commitlog_sync"] = "periodic"
-                self._config_options["commitlog_sync_period_in_ms"] = 10000
-                self._config_options["commitlog_sync_batch_window_in_ms"] = None
 
-        self._update_config()
-        for node in list(self.nodes.values()):
-            node.import_config_files()
+        self._persist_config()
         self.__update_topology_files()
         return self
 
+    def set_batch_commitlog(self, enabled):
+        for node in list(self.nodes.values()):
+            node.set_batch_commitlog(enabled=enabled)
+
     def set_dse_configuration_options(self, values=None):
         raise common.ArgumentError('Cannot set DSE configuration options on a Cassandra cluster')
+
+    def set_environment_variable(self, key, value):
+        self._environment_variables[key] = value
+        for node in list(self.nodes.values()):
+            node.set_environment_variable(key, value)
+        self._persist_config()
+
+    def _persist_config(self):
+        self._update_config()
+        for node in list(self.nodes.values()):
+            node.import_config_files()
 
     def flush(self):
         self.nodetool("flush")
@@ -521,19 +588,22 @@ class Cluster(object):
         node_list = [node.name for node in list(self.nodes.values())]
         seed_list = self.get_seeds()
         filename = os.path.join(self.__path, self.name, 'cluster.conf')
+        config_map = {
+            'name': self.name,
+            'nodes': node_list,
+            'seeds': seed_list,
+            'partitioner': self.partitioner,
+            'install_dir': self.__install_dir,
+            'config_options': self._config_options,
+            'dse_config_options': self._dse_config_options,
+            'log_level': self.__log_level,
+            'use_vnodes': self.use_vnodes,
+            'datadirs': self.data_dir_count,
+            'environment_variables': self._environment_variables
+        }
+        extension.append_to_cluster_config(self, config_map)
         with open(filename, 'w') as f:
-            yaml.safe_dump({
-                'name': self.name,
-                'nodes': node_list,
-                'seeds': seed_list,
-                'partitioner': self.partitioner,
-                'install_dir': self.__install_dir,
-                'config_options': self._config_options,
-                'dse_config_options': self._dse_config_options,
-                'log_level': self.__log_level,
-                'use_vnodes': self.use_vnodes,
-                'datadirs': self.data_dir_count
-            }, f)
+            yaml.safe_dump(config_map, f)
 
     def __update_pids(self, started):
         for node, p, _ in started:
@@ -560,7 +630,7 @@ class Cluster(object):
         ssl_options = {'enabled': True,
                        'keystore': os.path.join(self.get_path(), 'keystore.jks'),
                        'keystore_password': 'cassandra'
-                       }
+                      }
 
         # determine if truststore client encryption options should be enabled
         truststore_file = os.path.join(ssl_path, 'truststore.jks')
@@ -569,7 +639,7 @@ class Cluster(object):
             truststore_ssl_options = {'require_client_auth': require_client_auth,
                                       'truststore': os.path.join(self.get_path(), 'truststore.jks'),
                                       'truststore_password': 'cassandra'
-                                      }
+                                     }
             ssl_options.update(truststore_ssl_options)
 
         self._config_options['client_encryption_options'] = ssl_options
@@ -592,3 +662,29 @@ class Cluster(object):
     def enable_pwd_auth(self):
         self._config_options['authenticator'] = 'PasswordAuthenticator'
         self._update_config()
+
+    def timed_grep_nodes_for_patterns(self, versions_to_patterns, timeout_seconds, filename="system.log"):
+        """
+        Searches all nodes in the cluster for a specific regular expression based on the node's version.
+        Params:
+        @versions_to_patterns : an instance of LogPatternToVersionMap, specifying the different log patterns based on a node's version.
+        @version : the earliest version the new pattern was introduced.
+        @timeout_seconds : the amount of time to spend searching the logs for.
+        @filename : the name of the file to search for the patterns. Defaults to "system.log".
+
+        Returns the first node where the pattern was found, along with the matching lines.
+        Raises a TimeoutError if the pattern is not found within the specified timeout period.
+        """
+        end_time = time.time() + timeout_seconds
+        while True:
+            if time.time() > end_time:
+                raise TimeoutError(time.strftime("%d %b %Y %H:%M:%S", time.gmtime()) +
+                                   " Unable to find: " + versions_to_patterns.patterns + " in any node log within " + str(timeout_seconds) + "s")
+
+            for node in self.nodelist():
+                pattern = versions_to_patterns(node.get_cassandra_version())
+                matchings = node.grep_log(pattern, filename)
+                if matchings:
+                    ret = namedtuple('Node_Log_Matching', 'node matchings')
+                    return ret(node=node, matchings=matchings)
+            time.sleep(1)

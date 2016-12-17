@@ -1,8 +1,11 @@
+
+from __future__ import absolute_import
+
 import os
 
 import yaml
 
-from ccmlib import common, repository
+from ccmlib import common, extension, repository
 from ccmlib.cluster import Cluster
 from ccmlib.dse_cluster import DseCluster
 from ccmlib.node import Node
@@ -43,6 +46,7 @@ class ClusterFactory():
                 cluster.use_vnodes = data['use_vnodes']
             if 'datadirs' in data:
                 cluster.data_dir_count = int(data['datadirs'])
+            extension.load_from_cluster_config(cluster, data)
         except KeyError as k:
             raise common.LoadError("Error Loading " + filename + ", missing property:" + k)
 

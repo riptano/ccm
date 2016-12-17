@@ -1,8 +1,11 @@
+
+from __future__ import absolute_import
+
 import os
 import subprocess
 import sys
-import yaml
 
+import yaml
 from six import print_
 
 from ccmlib import common, repository
@@ -14,38 +17,40 @@ from ccmlib.dse_cluster import DseCluster
 from ccmlib.dse_node import DseNode
 from ccmlib.node import Node, NodeError
 
+CLUSTER_CMDS = [
+    "create",
+    "add",
+    "populate",
+    "list",
+    "switch",
+    "status",
+    "remove",
+    "clear",
+    "liveset",
+    "start",
+    "stop",
+    "flush",
+    "compact",
+    "stress",
+    "updateconf",
+    "updatedseconf",
+    "updatelog4j",
+    "cli",
+    "setdir",
+    "bulkload",
+    "setlog",
+    "scrub",
+    "verify",
+    "invalidatecache",
+    "checklogerror",
+    "showlastlog",
+    "jconsole",
+    "setworkload"
+]
+
 
 def cluster_cmds():
-    return [
-        "create",
-        "add",
-        "populate",
-        "list",
-        "switch",
-        "status",
-        "remove",
-        "clear",
-        "liveset",
-        "start",
-        "stop",
-        "flush",
-        "compact",
-        "stress",
-        "updateconf",
-        "updatedseconf",
-        "updatelog4j",
-        "cli",
-        "setdir",
-        "bulkload",
-        "setlog",
-        "scrub",
-        "verify",
-        "invalidatecache",
-        "checklogerror",
-        "showlastlog",
-        "jconsole",
-        "setworkload"
-    ]
+    return CLUSTER_CMDS
 
 
 def parse_populate_count(v):
@@ -204,10 +209,10 @@ class ClusterCreateCmd(Cmd):
                         profile_options = {}
                         if self.options.profile_options:
                             profile_options['options'] = self.options.profile_options
-                    if cluster.start(verbose=self.options.debug_log, wait_for_binary_proto=self.options.binary_protocol, jvm_args=self.options.jvm_args, profile_options=profile_options, allow_root=self.options.allow_root) is None:
+                    if cluster.start(verbose=self.options.debug, wait_for_binary_proto=self.options.binary_protocol, jvm_args=self.options.jvm_args, profile_options=profile_options, allow_root=self.options.allow_root) is None:
                         details = ""
                         if not self.options.debug_log:
-                            details = " (you can use --debug-log for more information)"
+                            details = " (you can use --debug for more information)"
                         print_("Error starting nodes, see above for details%s" % details, file=sys.stderr)
             except common.ArgumentError as e:
                 print_(str(e), file=sys.stderr)
@@ -251,6 +256,11 @@ class ClusterAddCmd(Cmd):
 
         if options.itfs is None and (options.thrift_itf is None or options.storage_itf is None or options.binary_itf is None):
             print_('Missing thrift and/or storage and/or binary protocol interfaces or jmx port', file=sys.stderr)
+            parser.print_help()
+            exit(1)
+
+        if self.name in self.cluster.nodes:
+            print_("This name is already in use. Choose another.", file=sys.stderr)
             parser.print_help()
             exit(1)
 
@@ -629,6 +639,9 @@ class ClusterStopCmd(Cmd):
 
 
 class _ClusterNodetoolCmd(Cmd):
+    usage = "This is a private class, how did you get here?"
+    descr_text = "This is a private class, how did you get here?"
+    nodetool_cmd = ''
 
     def get_parser(self):
         parser = self._get_default_parser(self.usage, self.description())
@@ -694,7 +707,9 @@ class ClusterUpdateconfCmd(Cmd):
         parser.add_option('--no-hh', '--no-hinted-handoff', action="store_false",
                           dest="hinted_handoff", default=True, help="Disable hinted handoff")
         parser.add_option('--batch-cl', '--batch-commit-log', action="store_true",
-                          dest="cl_batch", default=False, help="Set commit log to batch mode")
+                          dest="cl_batch", default=None, help="Set commit log to batch mode")
+        parser.add_option('--periodic-cl', '--periodic-commit-log', action="store_true",
+                          dest="cl_periodic", default=None, help="Set commit log to periodic mode")
         parser.add_option('--rt', '--rpc-timeout', action="store", type='int',
                           dest="rpc_timeout", help="Set rpc timeout")
         parser.add_option('-y', '--yaml', action="store_true", dest="literal_yaml", default=False, help="If enabled, treat argument as yaml, not kv pairs. Option syntax looks like ccm updateconf -y 'a: [b: [c,d]]'")
@@ -704,6 +719,10 @@ class ClusterUpdateconfCmd(Cmd):
         Cmd.validate(self, parser, options, args, load_cluster=True)
         try:
             self.setting = common.parse_settings(args, literal_yaml=self.options.literal_yaml)
+            if self.options.cl_batch and self.options.cl_periodic:
+                print_("Can't set commitlog to be both batch and periodic.{}".format(os.linesep))
+                parser.print_help()
+                exit(1)
         except common.ArgumentError as e:
             print_(str(e), file=sys.stderr)
             exit(1)
@@ -721,7 +740,11 @@ class ClusterUpdateconfCmd(Cmd):
                 self.setting['truncate_request_timeout_in_ms'] = self.options.rpc_timeout
                 self.setting['request_timeout_in_ms'] = self.options.rpc_timeout
 
-        self.cluster.set_configuration_options(values=self.setting, batch_commitlog=self.options.cl_batch)
+        self.cluster.set_configuration_options(values=self.setting)
+        if self.options.cl_batch:
+            self.cluster.set_batch_commitlog(True)
+        if self.options.cl_periodic:
+            self.cluster.set_batch_commitlog(False)
 
 
 class ClusterUpdatedseconfCmd(Cmd):
@@ -805,7 +828,12 @@ class ClusterCliCmd(Cmd):
         self.cli_options = parser.get_ignored() + args[1:]
 
     def run(self):
-        self.cluster.run_cli(self.options.cmds, self.options.verbose, self.cli_options)
+        out, err, rc = self.cluster.run_cli(self.options.cmds, self.cli_options)
+        if self.options.verbose:
+            print_("CLI OUTPUT:\n-------------------------------")
+            print_(out)
+            print_("-------------------------------\nCLI ERROR:\n-------------------------------")
+            print_(err)
 
 
 class ClusterBulkloadCmd(Cmd):
@@ -970,6 +998,7 @@ class ClusterJconsoleCmd(Cmd):
         except OSError:
             print_("Could not start jconsole. Please make sure jconsole can be found in your $PATH.")
             exit(1)
+
 
 class ClusterSetworkloadCmd(Cmd):
 

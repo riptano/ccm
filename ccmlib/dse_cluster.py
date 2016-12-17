@@ -1,19 +1,23 @@
 # ccm clusters
+
+from __future__ import absolute_import
+
 import os
 import shutil
 import signal
 import subprocess
 import sys
-try:
-    import ConfigParser
-except ImportError:
-    import configparser as ConfigParser
 
 from six import iteritems, print_
 
 from ccmlib import common, repository
 from ccmlib.cluster import Cluster
 from ccmlib.dse_node import DseNode
+
+try:
+    import ConfigParser
+except ImportError:
+    import configparser as ConfigParser
 
 
 class DseCluster(Cluster):
@@ -53,13 +57,13 @@ class DseCluster(Cluster):
                 if parser.has_option('dse_credentials', 'dse_password'):
                     self.dse_password = parser.get('dse_credentials', 'dse_password')
             else:
-                print_("Warning: {} does not contain a 'dse_credentials' section.".format(dse_credentials_file), file=sys.stderr)
+                common.warning("{} does not contain a 'dse_credentials' section.".format(dse_credentials_file))
 
     def hasOpscenter(self):
         return os.path.exists(os.path.join(self.get_path(), 'opscenter'))
 
-    def create_node(self, name, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save=True, binary_interface=None, byteman_port='0'):
-        return DseNode(name, self, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save, binary_interface, byteman_port)
+    def create_node(self, name, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save=True, binary_interface=None, byteman_port='0', environment_variables=None):
+        return DseNode(name, self, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save, binary_interface, byteman_port, environment_variables=environment_variables)
 
     def start(self, no_wait=False, verbose=False, wait_for_binary_proto=False, wait_other_notice=True, jvm_args=None, profile_options=None, quiet_start=False, allow_root=False):
         if jvm_args is None:
@@ -108,14 +112,14 @@ class DseCluster(Cluster):
         cluster_conf = os.path.join(self.get_path(), 'opscenter', 'conf', 'clusters')
         if not os.path.exists(cluster_conf):
             os.makedirs(cluster_conf)
-            if len(self.seeds) > 0:
-                seed = self.seeds[0]
-                (seed_ip, seed_port) = seed.network_interfaces['thrift']
-                seed_jmx = seed.jmx_port
+            if len(self.nodes) > 0:
+                node = list(self.nodes.values())[0]
+                (node_ip, node_port) = node.network_interfaces['thrift']
+                node_jmx = node.jmx_port
                 with open(os.path.join(cluster_conf, self.name + '.conf'), 'w+') as f:
                     f.write('[jmx]\n')
-                    f.write('port = %s\n' % seed_jmx)
+                    f.write('port = %s\n' % node_jmx)
                     f.write('[cassandra]\n')
-                    f.write('seed_hosts = %s\n' % seed_ip)
-                    f.write('api_port = %s\n' % seed_port)
+                    f.write('seed_hosts = %s\n' % node_ip)
+                    f.write('api_port = %s\n' % node_port)
                     f.close()

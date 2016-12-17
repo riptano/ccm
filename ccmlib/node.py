@@ -1,9 +1,8 @@
 # ccm node
-from __future__ import with_statement
+from __future__ import absolute_import, with_statement
 
 import errno
 import glob
-import itertools
 import os
 import re
 import shutil
@@ -12,13 +11,16 @@ import stat
 import subprocess
 import sys
 import time
+import tempfile
 import warnings
+from collections import namedtuple
 from datetime import datetime
+from distutils.version import LooseVersion  # pylint: disable=all
 
 import yaml
 from six import iteritems, print_, string_types
 
-from ccmlib import common
+from ccmlib import common, extension
 from ccmlib.cli_session import CliSession
 from ccmlib.repository import setup
 from six.moves import xrange
@@ -44,7 +46,7 @@ class TimeoutError(Exception):
         Exception.__init__(self, str(data))
 
 
-class NodetoolError(Exception):
+class ToolError(Exception):
 
     def __init__(self, command, exit_status, stdout=None, stderr=None):
         self.command = command
@@ -52,12 +54,12 @@ class NodetoolError(Exception):
         self.stdout = stdout
         self.stderr = stderr
 
-        message = "Nodetool command '%s' failed; exit status: %d" % (command, exit_status)
+        message = "Subprocess {} exited with non-zero status; exit status: {}".format(command, exit_status)
         if stdout:
-            message += "; stdout: "
+            message += "; \nstdout: "
             message += stdout
         if stderr:
-            message += "; stderr: "
+            message += "; \nstderr: "
             message += stderr
 
         Exception.__init__(self, message)
@@ -72,7 +74,7 @@ class Node(object):
     Provides interactions to a Cassandra node.
     """
 
-    def __init__(self, name, cluster, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save=True, binary_interface=None, byteman_port='0'):
+    def __init__(self, name, cluster, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save=True, binary_interface=None, byteman_port='0', environment_variables=None):
         """
         Create a new Node.
           - name: the name for that node
@@ -105,6 +107,7 @@ class Node(object):
         self.__install_dir = None
         self.__global_log_level = None
         self.__classes_log_level = {}
+        self.__environment_variables = environment_variables or {}
         self.__conf_updated = False
         if save:
             self.import_config_files()
@@ -133,7 +136,10 @@ class Node(object):
             binary_interface = None
             if 'binary' in itf and itf['binary'] is not None:
                 binary_interface = tuple(itf['binary'])
-            node = cluster.create_node(data['name'], data['auto_bootstrap'], tuple(itf['thrift']), tuple(itf['storage']), data['jmx_port'], remote_debug_port, initial_token, save=False, binary_interface=binary_interface, byteman_port=data['byteman_port'])
+            thrift_interface = None
+            if 'thrift' in itf and itf['thrift'] is not None:
+                thrift_interface = tuple(itf['thrift'])
+            node = cluster.create_node(data['name'], data['auto_bootstrap'], thrift_interface, tuple(itf['storage']), data['jmx_port'], remote_debug_port, initial_token, save=False, binary_interface=binary_interface, byteman_port=data['byteman_port'])
             node.status = data['status']
             if 'pid' in data:
                 node.pid = int(data['pid'])
@@ -143,6 +149,8 @@ class Node(object):
                 node.__config_options = data['config_options']
             if 'dse_config_options' in data:
                 node._dse_config_options = data['dse_config_options']
+            if 'environment_variables' in data:
+                node.__environment_variables = data['environment_variables']
             if 'data_center' in data:
                 node.data_center = data['data_center']
             if 'workloads' in data:
@@ -173,7 +181,10 @@ class Node(object):
         update_conf = not self.__conf_updated
         if update_conf:
             self.__conf_updated = True
-        return common.make_cassandra_env(self.get_install_dir(), self.get_path(), update_conf)
+        env = common.make_cassandra_env(self.get_install_dir(), self.get_path(), update_conf)
+        for (key, value) in self.__environment_variables.items():
+            env[key] = value
+        return env
 
     def get_install_cassandra_root(self):
         return self.get_install_dir()
@@ -214,6 +225,10 @@ class Node(object):
         else:
             dir, v = setup(version, verbose=verbose)
             self.__install_dir = dir
+
+        if self.get_base_cassandra_version() >= '4':
+            self.network_interfaces['thrift'] = None
+
         self.import_config_files()
         self.import_bin_files()
         self.__conf_updated = False
@@ -230,9 +245,9 @@ class Node(object):
 
     def get_base_cassandra_version(self):
         version = self.get_cassandra_version()
-        return float(version[:version.index('.') + 2])
+        return float('.'.join(version.vstring.split('.')[:2]))
 
-    def set_configuration_options(self, values=None, batch_commitlog=None):
+    def set_configuration_options(self, values=None):
         """
         Set Cassandra configuration options.
         ex:
@@ -240,23 +255,35 @@ class Node(object):
                 'hinted_handoff_enabled' : True,
                 'concurrent_writes' : 64,
             })
-        The batch_commitlog option gives an easier way to switch to batch
-        commitlog (since it requires setting 2 options and unsetting one).
         """
         if values is not None:
             for k, v in iteritems(values):
                 self.__config_options[k] = v
-        if batch_commitlog is not None:
-            if batch_commitlog:
-                self.__config_options["commitlog_sync"] = "batch"
-                self.__config_options["commitlog_sync_batch_window_in_ms"] = 5
-                self.__config_options["commitlog_sync_period_in_ms"] = None
-            else:
-                self.__config_options["commitlog_sync"] = "periodic"
-                self.__config_options["commitlog_sync_period_in_ms"] = 10000
-                self.__config_options["commitlog_sync_batch_window_in_ms"] = None
 
         self.import_config_files()
+
+    def set_environment_variable(self, key, value):
+        self.__environment_variables[key] = value
+        self.import_config_files()
+
+    def set_batch_commitlog(self, enabled=False):
+        """
+        The batch_commitlog option gives an easier way to switch to batch
+        commitlog (since it requires setting 2 options and unsetting one).
+        """
+        if enabled:
+            values = {
+                "commitlog_sync": "batch",
+                "commitlog_sync_batch_window_in_ms": 5,
+                "commitlog_sync_period_in_ms": None
+            }
+        else:
+            values = {
+                "commitlog_sync": "periodic",
+                "commitlog_sync_batch_window_in_ms": 10000,
+                "commitlog_sync_period_in_ms": None
+            }
+        self.set_configuration_options(values)
 
     def set_dse_configuration_options(self, values=None):
         pass
@@ -267,21 +294,22 @@ class Node(object):
         """
         self.__update_status()
         indent = ''.join([" " for i in xrange(0, len(self.name) + 2)])
-        print_("%s: %s" % (self.name, self.__get_status_string()))
+        print_("{}: {}".format(self.name, self.__get_status_string()))
         if not only_status:
             if show_cluster:
-                print_("%s%s=%s" % (indent, 'cluster', self.cluster.name))
-            print_("%s%s=%s" % (indent, 'auto_bootstrap', self.auto_bootstrap))
-            print_("%s%s=%s" % (indent, 'thrift', self.network_interfaces['thrift']))
+                print_("{}{}={}".format(indent, 'cluster', self.cluster.name))
+            print_("{}{}={}".format(indent, 'auto_bootstrap', self.auto_bootstrap))
+            if self.network_interfaces['thrift'] is not None:
+                print_("{}{}={}".format(indent, 'thrift', self.network_interfaces['thrift']))
             if self.network_interfaces['binary'] is not None:
-                print_("%s%s=%s" % (indent, 'binary', self.network_interfaces['binary']))
-            print_("%s%s=%s" % (indent, 'storage', self.network_interfaces['storage']))
-            print_("%s%s=%s" % (indent, 'jmx_port', self.jmx_port))
-            print_("%s%s=%s" % (indent, 'remote_debug_port', self.remote_debug_port))
-            print_("%s%s=%s" % (indent, 'byteman_port', self.byteman_port))
-            print_("%s%s=%s" % (indent, 'initial_token', self.initial_token))
+                print_("{}{}={}".format(indent, 'binary', self.network_interfaces['binary']))
+            print_("{}{}={}".format(indent, 'storage', self.network_interfaces['storage']))
+            print_("{}{}={}".format(indent, 'jmx_port', self.jmx_port))
+            print_("{}{}={}".format(indent, 'remote_debug_port', self.remote_debug_port))
+            print_("{}{}={}".format(indent, 'byteman_port', self.byteman_port))
+            print_("{}{}={}".format(indent, 'initial_token', self.initial_token))
             if self.pid:
-                print_("%s%s=%s" % (indent, 'pid', self.pid))
+                print_("{}{}={}".format(indent, 'pid', self.pid))
 
     def is_running(self):
         """
@@ -305,6 +333,12 @@ class Node(object):
 
     def debuglogfilename(self):
         return os.path.join(self.get_path(), 'logs', 'debug.log')
+
+    def gclogfilename(self):
+        return os.path.join(self.get_path(), 'logs', 'gc.log.0.current')
+
+    def compactionlogfilename(self):
+        return os.path.join(self.get_path(), 'logs', 'compaction.log')
 
     def envfilename(self):
         return os.path.join(
@@ -359,12 +393,19 @@ class Node(object):
             return f.tell()
 
     def print_process_output(self, name, proc, verbose=False):
-        try:
-            stderr = proc.communicate()[1]
-        except ValueError:
-            stderr = ''
+        # If stderr_file exists on the process, we opted to
+        # store stderr in a separate temporary file, consume that.
+        if hasattr(proc, 'stderr_file') and proc.stderr_file is not None:
+            proc.stderr_file.seek(0)
+            stderr = proc.stderr_file.read()
+        else:
+            try:
+                stderr = proc.communicate()[1]
+            except ValueError:
+                stderr = ''
+
         if len(stderr) > 1:
-            print_("[%s ERROR] %s" % (name, stderr.strip()))
+            print_("[{} ERROR] {}".format(name, stderr.strip()))
 
     # This will return when exprs are found or it timeouts
     def watch_log_for(self, exprs, from_mark=None, timeout=600, process=None, verbose=False, filename='system.log'):
@@ -383,12 +424,14 @@ class Node(object):
             return None
 
         log_file = os.path.join(self.get_path(), 'logs', filename)
+        output_read = False
         while not os.path.exists(log_file):
             time.sleep(.5)
-            if process:
+            if process and not output_read:
                 process.poll()
                 if process.returncode is not None:
                     self.print_process_output(self.name, process, verbose)
+                    output_read = True
                     if process.returncode != 0:
                         raise RuntimeError()  # Shouldn't reuse RuntimeError but I'm lazy
 
@@ -399,11 +442,12 @@ class Node(object):
             while True:
                 # First, if we have a process to check, then check it.
                 # Skip on Windows - stdout/stderr is cassandra.bat
-                if not common.is_win():
+                if not common.is_win() and not output_read:
                     if process:
                         process.poll()
                         if process.returncode is not None:
                             self.print_process_output(self.name, process, verbose)
+                            output_read = True
                             if process.returncode != 0:
                                 raise RuntimeError()  # Shouldn't reuse RuntimeError but I'm lazy
 
@@ -472,6 +516,31 @@ class Node(object):
             warnings.warn("Binary interface %s:%s is not listening after 10 seconds, node may have failed to start."
                           % (binary_itf[0], binary_itf[1]))
 
+    def wait_for_thrift_interface(self, **kwargs):
+        """
+        Waits for the Thrift interface to be listening.
+
+        Emits a warning if not listening after 10 seconds.
+        """
+        if self.cluster.version() >= '4':
+            return;
+
+        self.watch_log_for("Listening for thrift clients...", **kwargs)
+
+        thrift_itf = self.network_interfaces['thrift']
+        if not common.check_socket_listening(thrift_itf, timeout=10):
+            warnings.warn("Thrift interface {}:{} is not listening after 10 seconds, node may have failed to start.".format(thrift_itf[0], thrift_itf[1]))
+
+    def get_launch_bin(self):
+        cdir = self.get_install_dir()
+        launch_bin = common.join_bin(cdir, 'bin', 'cassandra')
+        # Copy back the cassandra scripts since profiling may have modified it the previous time
+        shutil.copy(launch_bin, self.get_bin_dir())
+        return common.join_bin(self.get_path(), 'bin', 'cassandra')
+
+    def add_custom_launch_arguments(self, args):
+        pass
+
     def start(self,
               join_ring=True,
               no_wait=False,
@@ -508,10 +577,10 @@ class Node(object):
             raise NodeError("PS Execution Policy must be unrestricted when running C* 2.1+")
 
         if not common.is_win() and quiet_start:
-            print_("WARN: Tried to set Windows quiet start behavior, but we're not running on Windows.")
+            common.warning("Tried to set Windows quiet start behavior, but we're not running on Windows.")
 
         if self.is_running():
-            raise NodeError("%s is already running" % self.name)
+            raise NodeError("{} is already running".format(self.name))
 
         for itf in list(self.network_interfaces.values()):
             if itf is not None and replace_address is None:
@@ -522,11 +591,7 @@ class Node(object):
 
         self.mark = self.mark_log()
 
-        cdir = self.get_install_dir()
-        launch_bin = common.join_bin(cdir, 'bin', 'cassandra')
-        # Copy back the cassandra scripts since profiling may have modified it the previous time
-        shutil.copy(launch_bin, self.get_bin_dir())
-        launch_bin = common.join_bin(self.get_path(), 'bin', 'cassandra')
+        launch_bin = self.get_launch_bin()
 
         # If Windows, change entries in .bat file to split conf from binaries
         if common.is_win():
@@ -536,7 +601,7 @@ class Node(object):
             config = common.get_config()
             if 'yourkit_agent' not in config:
                 raise NodeError("Cannot enable profile. You need to set 'yourkit_agent' to the path of your agent in a ~/.ccm/config")
-            cmd = '-agentpath:%s' % config['yourkit_agent']
+            cmd = '-agentpath:{}'.format(config['yourkit_agent'])
             if 'options' in profile_options:
                 cmd = cmd + '=' + profile_options['options']
             print_(cmd)
@@ -548,11 +613,18 @@ class Node(object):
 
         env = self.get_env()
 
+        extension.append_to_server_env(self, env)
+
         if common.is_win():
             self._clean_win_jmx()
 
         pidfile = os.path.join(self.get_path(), 'cassandra.pid')
-        args = [launch_bin, '-p', pidfile, '-Dcassandra.join_ring=%s' % str(join_ring)]
+        args = [launch_bin]
+
+        self.add_custom_launch_arguments(args)
+
+        args = args + ['-p', pidfile, '-Dcassandra.join_ring=%s' % str(join_ring)]
+
         args.append('-Dcassandra.logdir=%s' % os.path.join(self.get_path(), 'logs'))
         if replace_token is not None:
             args.append('-Dcassandra.replace_token=%s' % str(replace_token))
@@ -571,6 +643,9 @@ class Node(object):
         process = None
         FNULL = open(os.devnull, 'w')
         stdout_sink = subprocess.PIPE if verbose else FNULL
+        # write stderr to a temporary file to prevent overwhelming pipe (> 65K data).
+        stderr = tempfile.SpooledTemporaryFile(max_size=0xFFFF)
+
         if common.is_win():
             # clean up any old dirty_pid files from prior runs
             if (os.path.isfile(self.get_path() + "/dirty_pid.tmp")):
@@ -579,12 +654,14 @@ class Node(object):
             if quiet_start and self.cluster.version() >= '2.2.4':
                 args.append('-q')
 
-            process = subprocess.Popen(args, cwd=self.get_bin_dir(), env=env, stdout=stdout_sink, stderr=subprocess.PIPE)
+            process = subprocess.Popen(args, cwd=self.get_bin_dir(), env=env, stdout=stdout_sink, stderr=stderr)
         else:
-            process = subprocess.Popen(args, env=env, stdout=stdout_sink, stderr=subprocess.PIPE)
+            process = subprocess.Popen(args, env=env, stdout=stdout_sink, stderr=stderr)
+
+        process.stderr_file = stderr
+
         # Our modified batch file writes a dirty output with more than just the pid - clean it to get in parity
         # with *nix operation here.
-
         if verbose:
             stdout, stderr = process.communicate()
             print_(stdout)
@@ -646,12 +723,12 @@ class Node(object):
                     try:
                         self.flush()
                     except:
-                        print_("WARN: Failed to flush node: {0} on shutdown.".format(self.name))
+                        common.warning("Failed to flush node: {0} on shutdown.".format(self.name))
                         pass
 
                 os.system("taskkill /F /PID " + str(self.pid))
                 if self._find_pid_on_windows():
-                    print_("WARN: Failed to terminate node: {0} with pid: {1}".format(self.name, self.pid))
+                    common.warning("Failed to terminate node: {0} with pid: {1}".format(self.name, self.pid))
             else:
                 if gently:
                     os.kill(self.pid, signal.SIGTERM)
@@ -685,41 +762,25 @@ class Node(object):
         Wait for all compactions to finish on this node.
         """
         pattern = re.compile("pending tasks: 0")
-        elapsed = 0
-        while elapsed < timeout:
-            output, err = self.nodetool("compactionstats", capture_output=True)
+        start = time.time()
+        while time.time() - start < timeout:
+            output, err, rc = self.nodetool("compactionstats")
             if pattern.search(output):
                 return
-            elapsed += 1
             time.sleep(1)
         raise TimeoutError("{} [{}] Compactions did not finish in {} seconds".format(time.strftime("%d %b %Y %H:%M:%S", time.gmtime()), self.name, timeout))
 
-
-    def nodetool(self, cmd, capture_output=True, wait=True):
-        """
-        Setting wait=False makes it impossible to detect errors,
-        if capture_output is also False. wait=False allows us to return
-        while nodetool is still running.
-        """
-        if capture_output and not wait:
-            raise common.ArgumentError("Cannot set capture_output while wait is False.")
+    def nodetool_process(self, cmd):
         env = self.get_env()
         nodetool = self.get_tool('nodetool')
         args = [nodetool, '-h', 'localhost', '-p', str(self.jmx_port)]
         args += cmd.split()
-        if capture_output:
-            p = subprocess.Popen(args, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
-            stdout, stderr = p.communicate()
-        else:
-            p = subprocess.Popen(args, env=env)
-            stdout, stderr = None, None
 
-        if wait:
-            exit_status = p.wait()
-            if exit_status != 0:
-                raise NodetoolError(" ".join(args), exit_status, stdout, stderr)
+        return subprocess.Popen(args, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
 
-        return stdout, stderr
+    def nodetool(self, cmd):
+        p = self.nodetool_process(cmd)
+        return handle_external_tool_process(p, ['nodetool', '-h', 'localhost', '-p', str(self.jmx_port), cmd.split()])
 
     def dsetool(self, cmd):
         raise common.ArgumentError('Cassandra nodes do not support dsetool')
@@ -739,24 +800,38 @@ class Node(object):
     def sqoop(self, sqoop_options=None):
         raise common.ArgumentError('Cassandra nodes do not support sqoop')
 
-    def bulkload(self, options):
+    def bulkload_process(self, options):
         loader_bin = common.join_bin(self.get_path(), 'bin', 'sstableloader')
         env = self.get_env()
-        host, port = self.network_interfaces['thrift']
+        extension.append_to_client_env(self, env)
+        # CASSANDRA-8358 switched from thrift to binary port
+        host, port = self.network_interfaces['thrift'] if self.get_cassandra_version() < '2.2' else self.network_interfaces['binary']
         args = ['-d', host, '-p', str(port)]
-        os.execve(loader_bin, [common.platform_binary('sstableloader')] + args + options, env)
+        return subprocess.Popen([loader_bin] + args + options, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
 
-    def scrub(self, options):
+    def bulkload(self, options):
+        p = self.bulkload_process(options=options)
+        return handle_external_tool_process(p, ['sstable bulkload'] + options)
+
+    def scrub_process(self, options):
         scrub_bin = self.get_tool('sstablescrub')
         env = self.get_env()
-        os.execve(scrub_bin, [common.platform_binary('sstablescrub')] + options, env)
+        return subprocess.Popen([scrub_bin] + options, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
 
-    def verify(self, options):
+    def scrub(self, options):
+        p = self.scrub_process(options=options)
+        return handle_external_tool_process(p, ['sstablescrub'] + options)
+
+    def verify_process(self, options):
         verify_bin = self.get_tool('sstableverify')
         env = self.get_env()
-        os.execve(verify_bin, [common.platform_binary('sstableverify')] + options, env)
+        return subprocess.Popen([verify_bin] + options, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
 
-    def run_cli(self, cmds=None, show_output=False, cli_options=None):
+    def verify(self, options):
+        p = self.verify_process(options=options)
+        return handle_external_tool_process(p, ['sstableverify'] + options)
+
+    def run_cli_process(self, cmds=None, cli_options=None):
         if cli_options is None:
             cli_options = []
         cli = self.get_tool('cassandra-cli')
@@ -765,35 +840,34 @@ class Node(object):
         port = self.network_interfaces['thrift'][1]
         args = ['-h', host, '-p', str(port), '--jmxport', str(self.jmx_port)] + cli_options
         sys.stdout.flush()
-        if cmds is None:
-            os.execve(cli, [common.platform_binary('cassandra-cli')] + args, env)
-        else:
-            p = subprocess.Popen([cli] + args, env=env, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+
+        p = subprocess.Popen([cli] + args, env=env, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+
+        if cmds is not None:
             for cmd in cmds.split(';'):
                 p.stdin.write(cmd + ';\n')
             p.stdin.write("quit;\n")
-            p.wait()
-            for err in p.stderr:
-                print_("(EE) ", err, end='')
-            if show_output:
-                i = 0
-                for log in p.stdout:
-                    # first four lines are not interesting
-                    if i >= 4:
-                        print_(log, end='')
-                    i = i + 1
 
-    def run_cqlsh(self, cmds=None, show_output=False, cqlsh_options=None, return_output=False):
+        return p
+
+    def run_cli(self, cmds=None, cli_options=None):
+        p = self.run_cli_process(cmds=cmds, cli_options=cli_options)
+        return handle_external_tool_process(p, ['cassandra-cli'] + [cli_options])
+
+    def run_cqlsh_process(self, cmds=None, cqlsh_options=None):
         if cqlsh_options is None:
             cqlsh_options = []
         cqlsh = self.get_tool('cqlsh')
         env = self.get_env()
-        host = self.network_interfaces['thrift'][0]
+        extension.append_to_client_env(self, env)
         if self.get_base_cassandra_version() >= 2.1:
-            port = self.network_interfaces['binary'][1]
+            host, port = self.network_interfaces['binary']
         else:
-            port = self.network_interfaces['thrift'][1]
-        args = cqlsh_options + [host, str(port)]
+            host, port = self.network_interfaces['thrift']
+        args = []
+        args += cqlsh_options
+        extension.append_to_cqlsh_args(self, env, args)
+        args += [host, str(port)]
         sys.stdout.flush()
 
         if cmds is None:
@@ -804,22 +878,19 @@ class Node(object):
         else:
             p = subprocess.Popen([cqlsh] + args, env=env, stdin=subprocess.PIPE, stderr=subprocess.PIPE,
                                  stdout=subprocess.PIPE, universal_newlines=True)
-            cmd_str = ''
+
+        if cmds is not None:
             for cmd in cmds.split(';'):
                 cmd = cmd.strip()
                 if cmd:
                     p.stdin.write(cmd + ';\n')
             p.stdin.write("quit;\n")
-            output = p.communicate(input=cmd_str)
 
-            for err in output[1].split('\n'):
-                print_("(EE) ", err, end='')
+        return p
 
-            if show_output:
-                print_(output[0], end='')
-
-            if return_output:
-                return output
+    def run_cqlsh(self, cmds=None, cqlsh_options=None):
+        p = self.run_cqlsh_process(cmds, cqlsh_options)
+        return handle_external_tool_process(p, ['cqlsh', cmds, cqlsh_options])
 
     def cli(self):
         cdir = self.get_install_dir()
@@ -866,20 +937,19 @@ class Node(object):
 
     def clear(self, clear_all=False, only_data=False):
         data_dirs = ['data{0}'.format(x) for x in xrange(0, self.cluster.data_dir_count)]
-        if not only_data:
-            data_dirs.append("commitlogs")
-            if clear_all:
-                data_dirs.extend(['saved_caches', 'logs'])
+        data_dirs.append("commitlogs")
+        if clear_all:
+            data_dirs.extend(['saved_caches', 'logs'])
         for d in data_dirs:
             full_dir = os.path.join(self.get_path(), d)
-            if only_data:
+            if only_data and d != "commitlogs":
                 for dir in os.listdir(full_dir):
                     keyspace_dir = os.path.join(full_dir, dir)
                     if os.path.isdir(keyspace_dir) and dir != "system":
                         for f in os.listdir(keyspace_dir):
-                            full_path = os.path.join(keyspace_dir, f)
-                            if os.path.isfile(full_path):
-                                os.remove(full_path)
+                            table_dir = os.path.join(keyspace_dir, f)
+                            shutil.rmtree(table_dir)
+                            os.mkdir(table_dir)
             else:
                 common.rmdirs(full_dir)
                 os.mkdir(full_dir)
@@ -919,13 +989,13 @@ class Node(object):
             args = [json2sstable, "-s", "-K", ks, "-c", cf, in_file_name, sstablefile]
             subprocess.call(args, env=env)
 
-    def run_sstablesplit(self, datafiles=None, size=None, keyspace=None, column_families=None,
-                         no_snapshot=False, debug=False):
+    def run_sstablesplit_process(self, datafiles=None, size=None, keyspace=None, column_families=None,
+                                 no_snapshot=False, debug=False):
         sstablesplit = self._find_cmd('sstablesplit')
         env = self.get_env()
         sstablefiles = self.__gather_sstables(datafiles, keyspace, column_families)
 
-        results = []
+        processes = []
 
         def do_split(f):
             print_("-- {0}-----".format(os.path.basename(f)))
@@ -939,43 +1009,48 @@ class Node(object):
             cmd.append(f)
             p = subprocess.Popen(cmd, cwd=os.path.join(self.get_install_dir(), 'bin'),
                                  env=env, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-            (out, err) = p.communicate()
-            rc = p.returncode
-            results.append((out, err, rc))
+            processes.append(p)
 
         for sstablefile in sstablefiles:
             do_split(sstablefile)
 
+        return processes
+
+    def run_sstablesplit(self, datafiles=None, size=None, keyspace=None, column_families=None,
+                         no_snapshot=False, debug=False):
+        processes = self.run_sstablesplit_process(datafiles, size, keyspace, column_families, no_snapshot, debug)
+        results = []
+
+        for p in processes:
+            results.append(handle_external_tool_process(p, "sstablesplit"))
+
         return results
 
-    def run_sstablemetadata(self, output_file=None, datafiles=None, keyspace=None, column_families=None):
+    def run_sstablemetadata_process(self, datafiles=None, keyspace=None, column_families=None):
         cdir = self.get_install_dir()
         sstablemetadata = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstablemetadata')
         env = self.get_env()
         sstablefiles = self.__gather_sstables(datafiles=datafiles, keyspace=keyspace, columnfamilies=column_families)
-        results = []
 
-        for sstable in sstablefiles:
-            cmd = [sstablemetadata, sstable]
-            if output_file is None:
-                p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=env)
-                (out, err) = p.communicate()
-                rc = p.returncode
-                results.append((out, err, rc))
-            else:
-                subprocess.call(cmd, env=env, stdout=output_file)
-        if output_file is None:
-            return results
+        cmd = [sstablemetadata]
+        cmd.extend(sstablefiles)
 
-    def run_sstabledump(self, output_file=None, datafiles=None, keyspace=None, column_families=None, keys=None, enumerate_keys=False):
+        return subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=env)
+
+    def run_sstablemetadata(self, datafiles=None, keyspace=None, column_families=None):
+        p = self.run_sstablemetadata_process(datafiles, keyspace, column_families)
+        return handle_external_tool_process(p, "sstablemetadata on keyspace: {}, column_family: {}".format(keyspace, column_families))
+
+    def run_sstabledump_process(self, datafiles=None, keyspace=None, column_families=None, keys=None, enumerate_keys=False):
         cdir = self.get_install_dir()
         sstabledump = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstabledump')
         env = self.get_env()
         sstablefiles = self.__gather_sstables(datafiles=datafiles, keyspace=keyspace, columnfamilies=column_families)
-        results = []
+        processes = []
 
         print_(sstablefiles)
-        for sstable in sstablefiles:
+
+        def do_dump(sstable):
             print_("-- {0} -----".format(os.path.basename(sstable)))
             cmd = [sstabledump, sstable]
             if enumerate_keys:
@@ -983,81 +1058,94 @@ class Node(object):
             if keys is not None:
                 for key in keys:
                     cmd = cmd + ["-k", key]
-            if output_file is None:
-                p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=env)
-                (out, err) = p.communicate()
-                rc = p.returncode
-                results.append((out, err, rc))
-            else:
-                subprocess.call(cmd, env=env, stdout=output_file)
-        if output_file is None:
-            return results
+            p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=env)
+            processes.append(p)
 
-    def run_sstableexpiredblockers(self, output_file=None, keyspace=None, column_family=None):
+        for sstable in sstablefiles:
+            do_dump(sstable)
+
+        return processes
+
+    def run_sstabledump(self, datafiles=None, keyspace=None, column_families=None, keys=None, enumerate_keys=False):
+        processes = self.run_sstabledump_process(datafiles, keyspace, column_families, keys, enumerate_keys)
+        results = []
+
+        for p in processes:
+            results.append(handle_external_tool_process(p, "sstabledump"))
+
+        return results
+
+    def run_sstableexpiredblockers_process(self, keyspace=None, column_family=None):
         cdir = self.get_install_dir()
         sstableexpiredblockers = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstableexpiredblockers')
         env = self.get_env()
         cmd = [sstableexpiredblockers, keyspace, column_family]
-        results = []
-        if output_file is None:
-            p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=env)
-            (out, err) = p.communicate()
-            rc = p.returncode
-            results.append((out, err, rc))
-        else:
-            subprocess.call(cmd, env=env, stdout=output_file)
-        if output_file is None:
-            return results
+        return subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=env)
 
-    def run_sstableupgrade(self, output_file=None, keyspace=None, column_family=None):
+    def run_sstableexpiredblockers(self, keyspace=None, column_family=None):
+        p = self.run_sstableexpiredblockers_process(keyspace=keyspace, column_family=column_family)
+        if p is not None:
+            return handle_external_tool_process(p, ['sstableexpiredblockers', keyspace, column_family])
+        else:
+            return None, None, None
+
+    def run_sstableupgrade_process(self, keyspace=None, column_family=None):
         cdir = self.get_install_dir()
         sstableupgrade = self.get_tool('sstableupgrade')
         env = self.get_env()
         cmd = [sstableupgrade, keyspace, column_family]
-        results = []
-        if output_file is None:
-            p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=env)
-            (out, err) = p.communicate()
-            rc = p.returncode
-            results.append((out, err, rc))
-        else:
-            subprocess.call(cmd, env=env, stdout=output_file)
-        if output_file is None:
-            return results
+        p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=env)
+        return p
 
-    def get_sstablespath(self, output_file=None, datafiles=None, keyspace=None, tables=None):
+    def run_sstableupgrade(self, keyspace=None, column_family=None):
+        p = self.run_sstableupgrade_process(keyspace, column_family)
+        if p is not None:
+            return handle_external_tool_process(p, "sstableupgrade on {} : {}".format(keyspace, column_family))
+        else:
+            return None, None, None
+
+    def get_sstablespath(self, datafiles=None, keyspace=None, tables=None, **kawrgs):
         sstablefiles = self.__gather_sstables(datafiles=datafiles, keyspace=keyspace, columnfamilies=tables)
         return sstablefiles
 
-    def run_sstablerepairedset(self, set_repaired=True, datafiles=None, keyspace=None, column_families=None):
+    def run_sstablerepairedset_process(self, set_repaired=True, datafiles=None, keyspace=None, column_families=None):
         cdir = self.get_install_dir()
         sstablerepairedset = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstablerepairedset')
         env = self.get_env()
         sstablefiles = self.__gather_sstables(datafiles, keyspace, column_families)
+        processes = []
 
         for sstable in sstablefiles:
             if set_repaired:
                 cmd = [sstablerepairedset, "--really-set", "--is-repaired", sstable]
             else:
                 cmd = [sstablerepairedset, "--really-set", "--is-unrepaired", sstable]
-            subprocess.call(cmd, env=env)
+            p = subprocess.Popen(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            processes.append(p)
 
-    def run_sstablelevelreset(self, keyspace, cf, output=False):
+        return processes
+
+    def run_sstablerepairedset(self, set_repaired=True, datafiles=None, keyspace=None, column_families=None):
+        processes = self.run_sstablerepairedset_process(set_repaired=set_repaired, datafiles=datafiles, keyspace=keyspace, column_families=column_families)
+        results = []
+        for p in processes:
+            results.append(handle_external_tool_process(p, "sstablerepairedset on {} : {}".format(keyspace, column_families)))
+        return results
+
+    def run_sstablelevelreset_process(self, keyspace, cf):
         cdir = self.get_install_dir()
         sstablelevelreset = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstablelevelreset')
         env = self.get_env()
 
         cmd = [sstablelevelreset, "--really-reset", keyspace, cf]
 
-        if output:
-            p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=env)
-            (stdout, stderr) = p.communicate()
-            rc = p.returncode
-            return (stdout, stderr, rc)
-        else:
-            return subprocess.call(cmd, env=env)
+        return subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=env)
 
-    def run_sstableofflinerelevel(self, keyspace, cf, dry_run=False, output=False):
+    def run_sstablelevelreset(self, keyspace, cf):
+        p = self.run_sstablelevelreset_process(keyspace, cf)
+        return handle_external_tool_process(p, "sstablelevelreset on {} : {}".format(keyspace, cf))
+
+    def run_sstableofflinerelevel_process(self, keyspace, cf, dry_run=False):
         cdir = self.get_install_dir()
         sstableofflinerelevel = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstableofflinerelevel')
         env = self.get_env()
@@ -1067,15 +1155,13 @@ class Node(object):
         else:
             cmd = [sstableofflinerelevel, keyspace, cf]
 
-        if output:
-            p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=env)
-            (stdout, stderr) = p.communicate()
-            rc = p.returncode
-            return (stdout, stderr, rc)
-        else:
-            return subprocess.call(cmd, env=env)
+        return subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=env)
 
-    def run_sstableverify(self, keyspace, cf, options=None, output=False):
+    def run_sstableofflinerelevel(self, keyspace, cf, dry_run=False):
+        p = self.run_sstableofflinerelevel_process(keyspace, cf, dry_run=dry_run)
+        return handle_external_tool_process(p, "sstableoflinerelevel on {} : {}".format(keyspace, cf))
+
+    def run_sstableverify_process(self, keyspace, cf, options=None):
         cdir = self.get_install_dir()
         sstableverify = common.join_bin(cdir, 'bin', 'sstableverify')
         env = self.get_env()
@@ -1084,13 +1170,11 @@ class Node(object):
         if options is not None:
             cmd[1:1] = options
 
-        if output:
-            p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=env)
-            (stdout, stderr) = p.communicate()
-            rc = p.returncode
-            return (stdout, stderr, rc)
-        else:
-            return subprocess.call(cmd, env=env)
+        return subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=env)
+
+    def run_sstableverify(self, keyspace, cf, options=None):
+        p = self.run_sstableverify_process(keyspace, cf, options=options)
+        return handle_external_tool_process(p, "sstableverify on {} : {} with options: {}".format(keyspace, cf, options))
 
     def _find_cmd(self, cmd):
         """
@@ -1105,8 +1189,8 @@ class Node(object):
             if os.path.exists(fcmd):
                 os.chmod(fcmd, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
         except:
-            print_("WARN: Couldn't change permissions to use {0}.".format(cmd))
-            print_("WARN: If it didn't work, you will have to do so manually.")
+            common.warning("Couldn't change permissions to use {0}.".format(cmd))
+            common.warning("If it didn't work, you will have to do so manually.")
         return fcmd
 
     def has_cmd(self, cmd):
@@ -1150,7 +1234,7 @@ class Node(object):
     def get_sstables(self, keyspace, column_family):
         return [f for sublist in self.get_sstables_per_data_directory(keyspace, column_family) for f in sublist]
 
-    def stress(self, stress_options=None, capture_output=False, whitelist=False,**kwargs):
+    def stress_process(self, stress_options=None, whitelist=False):
         if stress_options is None:
             stress_options = []
         else:
@@ -1170,17 +1254,16 @@ class Node(object):
                 stress_options.extend(['-port', 'jmx=' + self.jmx_port])
         args = [stress] + stress_options
         try:
-            if capture_output:
-                p = subprocess.Popen(args, cwd=common.parse_path(stress),
-                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                     **kwargs)
-                stdout, stderr = p.communicate()
-            else:
-                p = subprocess.Popen(args, cwd=common.parse_path(stress),
-                                     **kwargs)
-                stdout, stderr = None, None
-            p.wait()
-            return stdout, stderr
+            p = subprocess.Popen(args, cwd=common.parse_path(stress),
+                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            return p
+        except KeyboardInterrupt:
+            pass
+
+    def stress(self, stress_options=None, whitelist=False):
+        p = self.stress_process(stress_options=stress_options, whitelist=whitelist)
+        try:
+            return handle_external_tool_process(p, ['stress'] + stress_options)
         except KeyboardInterrupt:
             pass
 
@@ -1199,8 +1282,8 @@ class Node(object):
         if live_data is not None:
             warnings.warn("The 'live_data' keyword argument is deprecated.",
                           DeprecationWarning)
-        info = self.nodetool('info', capture_output=True)[0]
-        return _get_load_from_info_output(info)
+        output = self.nodetool('info')[0]
+        return _get_load_from_info_output(output)
 
     def flush(self):
         self.nodetool("flush")
@@ -1214,21 +1297,18 @@ class Node(object):
         if block_on_log:
             self.watch_log_for("DRAINED", from_mark=mark)
 
-    def repair(self, options=None, **kwargs):
+    def repair(self, options=None):
         if options is None:
             options = []
         args = ["repair"] + options
         cmd = ' '.join(args)
-        return self.nodetool(cmd, **kwargs)
+        return self.nodetool(cmd)
 
     def move(self, new_token):
         self.nodetool("move " + str(new_token))
 
     def cleanup(self):
         self.nodetool("cleanup")
-
-    def version(self):
-        self.nodetool("version")
 
     def decommission(self):
         self.nodetool("decommission")
@@ -1329,7 +1409,7 @@ class Node(object):
         if not os.path.exists(dir_name):
             os.mkdir(dir_name)
             for dir in self._get_directories():
-                os.mkdir(os.path.join(dir_name, dir))
+                os.mkdir(dir)
 
         filename = os.path.join(dir_name, 'node.conf')
         values = {
@@ -1339,7 +1419,8 @@ class Node(object):
             'interfaces': self.network_interfaces,
             'jmx_port': self.jmx_port,
             'config_options': self.__config_options,
-            'dse_config_options': self._dse_config_options
+            'dse_config_options': self._dse_config_options,
+            'environment_variables': self.__environment_variables
         }
         if self.pid:
             values['pid'] = self.pid
@@ -1378,9 +1459,10 @@ class Node(object):
             # cassandra 0.8
             data['seed_provider'][0]['parameters'][0]['seeds'] = ','.join(self.cluster.get_seeds())
         data['listen_address'], data['storage_port'] = self.network_interfaces['storage']
-        data['rpc_address'], data['rpc_port'] = self.network_interfaces['thrift']
+        if self.network_interfaces['thrift'] is not None and self.get_base_cassandra_version() < 4:
+            data['rpc_address'], data['rpc_port'] = self.network_interfaces['thrift']
         if self.network_interfaces['binary'] is not None and self.get_base_cassandra_version() >= 1.2:
-            _, data['native_transport_port'] = self.network_interfaces['binary']
+            data['rpc_address'], data['native_transport_port'] = self.network_interfaces['binary']
 
         data['data_file_directories'] = [os.path.join(self.get_path(), 'data{0}'.format(x)) for x in xrange(0, self.cluster.data_dir_count)]
         data['commitlog_directory'] = os.path.join(self.get_path(), 'commitlogs')
@@ -1388,6 +1470,9 @@ class Node(object):
 
         if self.get_cassandra_version() > '3.0' and 'hints_directory' in yaml_text:
             data['hints_directory'] = os.path.join(self.get_path(), 'hints')
+
+        if self.get_cassandra_version() >= '3.8':
+            data['cdc_raw_directory'] = os.path.join(self.get_path(), 'cdc_raw')
 
         if self.cluster.partitioner:
             data['partitioner'] = self.cluster.partitioner
@@ -1489,7 +1574,6 @@ class Node(object):
 
         common.replace_in_file(conf_file, jmx_port_pattern, jmx_port_setting)
 
-
         if common.is_win() and common.get_version_from_build(node_path=self.get_path()) >= '2.1':
             dst = os.path.join(self.get_conf_dir(), common.CASSANDRA_WIN_ENV)
             replacements = [
@@ -1548,11 +1632,8 @@ class Node(object):
                                                'JVM_OPTS="$JVM_OPTS -Djava.net.preferIPv4Stack=false -Djava.net.preferIPv6Addresses=true"')
                     break
                 else:
-                    common.replace_in_file(jvm_file,'-Djava.net.preferIPv4Stack=true','')
+                    common.replace_in_file(jvm_file, '-Djava.net.preferIPv4Stack=true', '')
                     break
-
-
-
 
     def __update_status(self):
         if self.pid is None:
@@ -1602,7 +1683,7 @@ class Node(object):
             import psutil
             found = psutil.pid_exists(self.pid)
         except ImportError:
-            print_("WARN: psutil not installed. Pid tracking functionality will suffer. See README for details.")
+            common.warning("psutil not installed. Pid tracking functionality will suffer. See README for details.")
             cmd = 'tasklist /fi "PID eq ' + str(self.pid) + '"'
             proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
 
@@ -1621,7 +1702,7 @@ class Node(object):
 
     def __get_status_string(self):
         if self.status == Status.UNINITIALIZED:
-            return "%s (%s)" % (Status.DOWN, "Not initialized")
+            return "{} ({})".format(Status.DOWN, "Not initialized")
         else:
             return self.status
 
@@ -1680,7 +1761,7 @@ class Node(object):
                                         self.get_path() +
                                         '/dirty_pid.tmp. Manually kill it and check logs - ccm will be out of sync.')
             except Exception as e:
-                print_("ERROR: Problem starting " + self.name + " (" + str(e) + ")")
+                common.error("Problem starting " + self.name + " (" + str(e) + ")")
                 raise Exception('Error while parsing <node>/dirty_pid.tmp in path: ' + self.get_path())
 
     def _delete_old_pid(self):
@@ -1694,7 +1775,7 @@ class Node(object):
         start = time.time()
         while not (os.path.isfile(pidfile) and os.stat(pidfile).st_size > 0):
             if (time.time() - start > 30.0):
-                print_("Timed out waiting for pidfile to be filled (current time is %s)" % (datetime.now()))
+                common.error("Timed out waiting for pidfile to be filled (current time is {})".format(datetime.now()))
                 break
             else:
                 time.sleep(0.1)
@@ -1778,7 +1859,7 @@ class Node(object):
             p.suspend()
         except ImportError:
             if common.is_win():
-                print_("WARN: psutil not installed. Pause functionality will not work properly on Windows.")
+                common.warning("psutil not installed. Pause functionality will not work properly on Windows.")
             else:
                 os.kill(self.pid, signal.SIGSTOP)
 
@@ -1789,11 +1870,11 @@ class Node(object):
             p.resume()
         except ImportError:
             if common.is_win():
-                print_("WARN: psutil not installed. Resume functionality will not work properly on Windows.")
+                common.warning("psutil not installed. Resume functionality will not work properly on Windows.")
             else:
                 os.kill(self.pid, signal.SIGCONT)
 
-    def jstack(self, opts=None):
+    def jstack_process(self, opts=None):
         opts = [] if opts is None else opts
         jstack_location = os.path.abspath(os.path.join(os.environ['JAVA_HOME'],
                                                        'bin',
@@ -1801,7 +1882,11 @@ class Node(object):
         jstack_cmd = [jstack_location, '-J-d64'] + opts + [str(self.pid)]
         return subprocess.Popen(jstack_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-    def byteman_submit(self, opts):
+    def jstack(self, opts=None):
+        p = self.jstack_process(opts=opts)
+        return handle_external_tool_process(p, ['jstack'] + opts)
+
+    def byteman_submit_process(self, opts):
         cdir = self.get_install_dir()
         byteman_cmd = []
         byteman_cmd.append(os.path.join(os.environ['JAVA_HOME'],
@@ -1813,10 +1898,33 @@ class Node(object):
         byteman_cmd.append('-p')
         byteman_cmd.append(self.byteman_port)
         byteman_cmd += opts
-        subprocess.Popen(byteman_cmd).wait()
+        return subprocess.Popen(byteman_cmd)
+
+    def byteman_submit(self, opts):
+        p = self.byteman_submit_process(opts=opts)
+        return handle_external_tool_process(p, ['byteman_submit'] + opts)
 
     def data_directories(self):
         return [os.path.join(self.get_path(), 'data{0}'.format(x)) for x in xrange(0, self.cluster.data_dir_count)]
+
+    def get_sstable_data_files_process(self, ks, table):
+        env = self.get_env()
+        args = [self.get_tool('sstableutil'), '--type', 'final', ks, table]
+
+        p = subprocess.Popen(args, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        return p
+
+    def get_sstable_data_files(self, ks, table):
+        """
+        Read sstable data files by using sstableutil, so we ignore temporary files
+        """
+        p = self.get_sstable_data_files_process(ks=ks, table=table)
+
+        out, _, _ = handle_external_tool_process(p, ["sstableutil", '--type', 'final', ks, table])
+
+        return sorted(filter(lambda s: s.endswith('-Data.db'), out.splitlines()))
+
 
 def _get_load_from_info_output(info):
     load_lines = [s for s in info.split('\n')
@@ -1854,17 +1962,35 @@ def _get_load_from_info_output(info):
 
 
 def _grep_log_for_errors(log):
-    matchings = []
-    it = iter(log.splitlines())
-    for line in it:
-        is_error_line = ('ERROR' in line
-                         and 'DEBUG' not in line.split('ERROR')[0])
-        if is_error_line:
-            matchings.append([line])
-            try:
-                it, peeker = itertools.tee(it)
-                while 'INFO' not in next(peeker):
-                    matchings[-1].append(next(it))
-            except StopIteration:
-                break
-    return matchings
+    def log_line_category(line):
+        match = re.search(r'(INFO|DEBUG|WARN|ERROR)', line)
+        return match.group(0) if match else None
+
+    matches = []
+
+    loglines = log.splitlines()
+
+    for line_num, line in enumerate(loglines):
+        if log_line_category(line) == 'ERROR':
+            matches.append([line])
+
+            for next_line_num in range(line_num + 1, len(loglines)):
+                next_line = loglines[next_line_num]
+                # if a log line can't be identified, assume continuation of an ERROR message
+                if log_line_category(next_line) is None:
+                    matches[-1].append(next_line)
+                else:
+                    break
+
+    return matches
+
+
+def handle_external_tool_process(process, cmd_args):
+    out, err = process.communicate()
+    rc = process.returncode
+
+    if rc != 0:
+        raise ToolError(cmd_args, rc, out, err)
+
+    ret = namedtuple('Subprocess_Return', 'stdout stderr rc')
+    return ret(stdout=out, stderr=err, rc=rc)

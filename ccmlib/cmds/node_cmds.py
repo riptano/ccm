@@ -1,3 +1,6 @@
+
+from __future__ import absolute_import
+
 import os
 import subprocess
 import sys
@@ -8,54 +11,56 @@ from ccmlib import common
 from ccmlib.cmds.command import Cmd
 from ccmlib.node import NodeError
 
+NODE_CMDS = [
+    "show",
+    "remove",
+    "showlog",
+    "setlog",
+    "start",
+    "stop",
+    "ring",
+    "flush",
+    "compact",
+    "drain",
+    "cleanup",
+    "repair",
+    "scrub",
+    "verify",
+    "shuffle",
+    "sstablesplit",
+    "getsstables",
+    "decommission",
+    "json",
+    "updateconf",
+    "updatelog4j",
+    "stress",
+    "cli",
+    "cqlsh",
+    "scrub",
+    "verify",
+    "status",
+    "setdir",
+    "bulkload",
+    "version",
+    "nodetool",
+    "dsetool",
+    "setworkload",
+    "dse",
+    "hadoop",
+    "hive",
+    "pig",
+    "sqoop",
+    "spark",
+    "pause",
+    "resume",
+    "jconsole",
+    "versionfrombuild",
+    "byteman"
+]
+
 
 def node_cmds():
-    return [
-        "show",
-        "remove",
-        "showlog",
-        "setlog",
-        "start",
-        "stop",
-        "ring",
-        "flush",
-        "compact",
-        "drain",
-        "cleanup",
-        "repair",
-        "scrub",
-        "verify",
-        "shuffle",
-        "sstablesplit",
-        "getsstables",
-        "decommission",
-        "json",
-        "updateconf",
-        "updatelog4j",
-        "stress",
-        "cli",
-        "cqlsh",
-        "scrub",
-        "verify",
-        "status",
-        "setdir",
-        "bulkload",
-        "version",
-        "nodetool",
-        "dsetool",
-        "setworkload",
-        "dse",
-        "hadoop",
-        "hive",
-        "pig",
-        "sqoop",
-        "spark",
-        "pause",
-        "resume",
-        "jconsole",
-        "versionfrombuild",
-        "byteman"
-    ]
+    return NODE_CMDS
 
 
 class NodeShowCmd(Cmd):
@@ -242,6 +247,9 @@ class NodeStopCmd(Cmd):
 
 
 class _NodeToolCmd(Cmd):
+    usage = "This is a private class, how did you get here?"
+    descr_text = "This is a private class, how did you get here?"
+    nodetool_cmd = ''
 
     def get_parser(self):
         parser = self._get_default_parser(self.usage, self.description())
@@ -254,7 +262,7 @@ class _NodeToolCmd(Cmd):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
 
     def run(self):
-        stdout, stderr = self.node.nodetool(self.nodetool_cmd + " " + " ".join((self.args[1:])))
+        stdout, stderr, rc = self.node.nodetool(self.nodetool_cmd + " " + " ".join((self.args[1:])))
         print_(stderr)
         print_(stdout)
 
@@ -264,7 +272,7 @@ class NodeNodetoolCmd(_NodeToolCmd):
     descr_text = "Run nodetool (connecting to node name)"
 
     def run(self):
-        stdout, stderr = self.node.nodetool(" ".join(self.args[1:]))
+        stdout, stderr, rc = self.node.nodetool(" ".join(self.args[1:]))
         print_(stderr)
         print_(stdout)
 
@@ -327,6 +335,9 @@ class NodeDecommissionCmd(_NodeToolCmd):
 
 
 class _DseToolCmd(Cmd):
+    usage = "This is a private class, how did you get here?"
+    descr_text = "This is a private class, how did you get here?"
+    dsetool_cmd = ''
 
     def get_parser(self):
         parser = self._get_default_parser(self.usage, self.description())
@@ -369,7 +380,12 @@ class NodeCliCmd(Cmd):
         self.cli_options = parser.get_ignored() + args[1:]
 
     def run(self):
-        self.node.run_cli(self.options.cmds, self.options.verbose, self.cli_options)
+        out, err, rc = self.node.run_cli(self.options.cmds, self.cli_options)
+        if self.options.verbose:
+            print_("CLI OUTPUT:\n-------------------------------")
+            print_(out)
+            print_("-------------------------------\nCLI ERROR:\n-------------------------------")
+            print_(err)
 
 
 class NodeCqlshCmd(Cmd):
@@ -391,7 +407,7 @@ class NodeCqlshCmd(Cmd):
         self.cqlsh_options = parser.get_ignored() + args[1:]
 
     def run(self):
-        self.node.run_cqlsh(self.options.cmds, self.options.verbose, self.cqlsh_options)
+        self.node.run_cqlsh(self.options.cmds, self.cqlsh_options)
 
 
 class NodeBulkloadCmd(Cmd):
@@ -489,7 +505,6 @@ class NodeJsonCmd(Cmd):
                                            enumerate_keys=self.options.enumerate_keys)
             elif self.node.has_cmd('sstabledump'):
                 self.node.run_sstabledump(keyspace=self.keyspace,
-                                           output_file=f,
                                            column_families=self.column_families,
                                            keys=self.options.keys,
                                            enumerate_keys=self.options.enumerate_keys)
@@ -588,7 +603,9 @@ class NodeUpdateconfCmd(Cmd):
         parser.add_option('--no-hh', '--no-hinted-handoff', action="store_false",
                           dest="hinted_handoff", default=True, help="Disable hinted handoff")
         parser.add_option('--batch-cl', '--batch-commit-log', action="store_true",
-                          dest="cl_batch", default=False, help="Set commit log to batch mode")
+                          dest="cl_batch", default=None, help="Set commit log to batch mode")
+        parser.add_option('--periodic-cl', '--periodic-commit-log', action="store_true",
+                          dest="cl_periodic", default=None, help="Set commit log to periodic mode")
         parser.add_option('--rt', '--rpc-timeout', action="store", type='int',
                           dest="rpc_timeout", help="Set rpc timeout")
         parser.add_option('-y', '--yaml', action="store_true", dest="literal_yaml",
@@ -600,6 +617,10 @@ class NodeUpdateconfCmd(Cmd):
         args = args[1:]
         try:
             self.setting = common.parse_settings(args, literal_yaml=self.options.literal_yaml)
+            if self.options.cl_batch and self.options.cl_periodic:
+                print_("Can't set commitlog to be both batch and periodic.{}".format(os.linesep))
+                parser.print_help()
+                exit(1)
         except common.ArgumentError as e:
             print_(str(e), file=sys.stderr)
             exit(1)
@@ -615,7 +636,12 @@ class NodeUpdateconfCmd(Cmd):
                 self.setting['write_request_timeout_in_ms'] = self.options.rpc_timeout
                 self.setting['truncate_request_timeout_in_ms'] = self.options.rpc_timeout
                 self.setting['request_timeout_in_ms'] = self.options.rpc_timeout
-        self.node.set_configuration_options(values=self.setting, batch_commitlog=self.options.cl_batch)
+        self.node.set_configuration_options(values=self.setting)
+        if self.options.cl_batch:
+            self.node.set_batch_commitlog(True)
+        if self.options.cl_periodic:
+            self.node.set_batch_commitlog(False)
+
 
 class NodeUpdatedseconfCmd(Cmd):
 
@@ -645,6 +671,7 @@ class NodeUpdatedseconfCmd(Cmd):
 # on the given node by copying the given config into
 # ~/.ccm/name-of-cluster/nodeX/conf/log4j-server.properties
 #
+
 
 class NodeUpdatelog4jCmd(Cmd):
 
@@ -947,16 +974,7 @@ class NodeVersionfrombuildCmd(Cmd):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
 
     def run(self):
-        version_from_nodetool = self.node.nodetool('version')[0].strip()
-        version_from_build = common.get_version_from_build(self.node.get_install_dir())
-
-        if version_from_nodetool and (version_from_nodetool != version_from_build):
-            print_('nodetool reports Cassandra version {ntv}; '
-                   'version from build.xml is {bv}'.format(ntv=version_from_nodetool,
-                                                           bv=version_from_build),
-                   file=sys.stderr)
-
-        print_(version_from_build)
+        print_(common.get_version_from_build(self.node.get_install_dir()))
 
 
 class NodeBytemanCmd(Cmd):

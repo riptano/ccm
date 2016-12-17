@@ -2,8 +2,11 @@
 # Cassandra Cluster Management lib
 #
 
+from __future__ import absolute_import
+
 import copy
 import fnmatch
+import logging
 import os
 import platform
 import re
@@ -13,6 +16,7 @@ import stat
 import subprocess
 import sys
 import time
+from distutils.version import LooseVersion  # pylint: disable=all
 
 import yaml
 from six import print_
@@ -35,6 +39,29 @@ CASSANDRA_SH = "cassandra.in.sh"
 CONFIG_FILE = "config"
 CCM_CONFIG_DIR = "CCM_CONFIG_DIR"
 
+logging.basicConfig(format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
+                    datefmt='%H:%M:%S',
+                    level=logging.DEBUG
+                    )
+
+LOG = logging.getLogger('ccm')
+
+
+def error(msg):
+    LOG.error(msg)
+
+
+def warning(msg):
+    LOG.warning(msg)
+
+
+def info(msg):
+    LOG.info(msg)
+
+
+def debug(msg):
+    LOG.debug(msg)
+
 
 class CCMError(Exception):
     pass
@@ -50,6 +77,37 @@ class ArgumentError(CCMError):
 
 class UnavailableSocketError(CCMError):
     pass
+
+
+class LogPatternToVersion(object):
+
+    def __init__(self, versions_to_patterns, default_pattern=None):
+        self.versions_to_patterns, self.default_pattern = versions_to_patterns, default_pattern
+
+    def __call__(self, version):
+        keys_less_than_version = [k for k in self.versions_to_patterns if k <= version]
+
+        if not keys_less_than_version:
+            if self.default_pattern is not None:
+                return self.default_pattern
+            else:
+                raise ValueError("Some kind of default pattern must be specified!")
+
+        return self.versions_to_patterns[max(keys_less_than_version, key=lambda v: LooseVersion(v) if not isinstance(v, LooseVersion) else v)]
+
+    def __repr__(self):
+        return str(self.__class__) + "(versions_to_patterns={}, default_pattern={})".format(self.versions_to_patterns, self.default_pattern)
+
+    @property
+    def patterns(self):
+        patterns = list(self.versions_to_patterns.values())
+        if self.default_pattern is not None:
+            patterns = patterns + [self.default_pattern]
+        return patterns
+
+    @property
+    def versions(self):
+        return list(self.versions_to_patterns)
 
 
 def get_default_path():
@@ -218,11 +276,12 @@ def make_dse_env(install_dir, node_path, node_ip):
     env = os.environ.copy()
     env['MAX_HEAP_SIZE'] = os.environ.get('CCM_MAX_HEAP_SIZE', '500M')
     env['HEAP_NEWSIZE'] = os.environ.get('CCM_HEAP_NEWSIZE', '50M')
+    env['SPARK_WORKER_MEMORY'] = os.environ.get('SPARK_WORKER_MEMORY', '1024M')
+    env['SPARK_WORKER_CORES'] = os.environ.get('SPARK_WORKER_CORES', '2')
     env['DSE_HOME'] = os.path.join(install_dir)
     env['DSE_CONF'] = os.path.join(node_path, 'resources', 'dse', 'conf')
     env['CASSANDRA_HOME'] = os.path.join(install_dir, 'resources', 'cassandra')
     env['CASSANDRA_CONF'] = os.path.join(node_path, 'resources', 'cassandra', 'conf')
-    env['HADOOP_CONF_DIR'] = os.path.join(node_path, 'resources', 'hadoop', 'conf')
     env['HIVE_CONF_DIR'] = os.path.join(node_path, 'resources', 'hive', 'conf')
     env['SQOOP_CONF_DIR'] = os.path.join(node_path, 'resources', 'sqoop', 'conf')
     env['TOMCAT_HOME'] = os.path.join(node_path, 'resources', 'tomcat')
@@ -239,6 +298,11 @@ def make_dse_env(install_dir, node_path, node_ip):
     env['DSE_LOG_ROOT'] = os.path.join(node_path, 'logs', 'dse')
     env['CASSANDRA_LOG_DIR'] = os.path.join(node_path, 'logs')
     env['SPARK_LOCAL_IP'] = '' + node_ip
+    if get_version_from_build(node_path=node_path) >= '5.0':
+        env['HADOOP1_CONF_DIR'] = os.path.join(node_path, 'resources', 'hadoop', 'conf')
+        env['HADOOP2_CONF_DIR'] = os.path.join(node_path, 'resources', 'hadoop2-client', 'conf')
+    else:
+        env['HADOOP_CONF_DIR'] = os.path.join(node_path, 'resources', 'hadoop', 'conf')
     return env
 
 
@@ -532,18 +596,18 @@ def get_version_from_build(install_dir=None, node_path=None):
         version_file = os.path.join(install_dir, '0.version.txt')
         if os.path.exists(version_file):
             with open(version_file) as f:
-                return f.read().strip()
+                return LooseVersion(f.read().strip())
         # For DSE look for a dse*.jar and extract the version number
         dse_version = get_dse_version(install_dir)
         if (dse_version is not None):
-            return dse_version
+            return LooseVersion(dse_version)
         # Source cassandra installs we can read from build.xml
         build = os.path.join(install_dir, 'build.xml')
         with open(build) as f:
             for line in f:
                 match = re.search('name="base\.version" value="([0-9.]+)[^"]*"', line)
                 if match:
-                    return match.group(1)
+                    return LooseVersion(match.group(1))
     raise CCMError("Cannot find version")
 
 
@@ -562,7 +626,7 @@ def get_dse_cassandra_version(install_dir):
         if fnmatch.fnmatch(file, 'cassandra-all*.jar'):
             match = re.search('cassandra-all-([0-9.]+)(?:-.*)?\.jar', file)
             if match:
-                return match.group(1)
+                return LooseVersion(match.group(1))
     raise ArgumentError("Unable to determine Cassandra version in: " + install_dir)
 
 
