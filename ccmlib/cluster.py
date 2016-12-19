@@ -688,3 +688,6 @@ class Cluster(object):
                     ret = namedtuple('Node_Log_Matching', 'node matchings')
                     return ret(node=node, matchings=matchings)
             time.sleep(1)
+
+    def wait_for_any_log(self, pattern, timeout, filename='system.log'):
+        return common.wait_for_any_log(self.nodelist(), pattern, timeout, filename=filename)
