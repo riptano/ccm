@@ -7,4 +7,4 @@ install:
   - pip install pylint six
 script:
   - pylint --py3k --disable=W1633 ccmlib
-  - pylint --disable=all --enable=E ccmlib
+  - pylint --disable=all --enable=E,F ccmlib

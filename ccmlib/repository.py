@@ -11,7 +11,7 @@ import sys
 import tarfile
 import tempfile
 import time
-from distutils.version import LooseVersion  # pylint: disable=all
+from distutils.version import LooseVersion
 
 from six import next, print_
 

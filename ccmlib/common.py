@@ -16,7 +16,7 @@ import stat
 import subprocess
 import sys
 import time
-from distutils.version import LooseVersion  # pylint: disable=all
+from distutils.version import LooseVersion
 
 import yaml
 from six import print_
