@@ -21,8 +21,6 @@ from distutils.version import LooseVersion  # pylint: disable=all
 import yaml
 from six import print_
 
-from ccmlib.node import TimeoutError
-
 BIN_DIR = "bin"
 CASSANDRA_CONF_DIR = "conf"
 DSE_CASSANDRA_CONF_DIR = "resources/cassandra/conf"
@@ -80,6 +78,10 @@ class ArgumentError(CCMError):
 class UnavailableSocketError(CCMError):
     pass
 
+class TimeoutError(Exception):
+
+    def __init__(self, data):
+        Exception.__init__(self, str(data))
 
 class LogPatternToVersion(object):
 
