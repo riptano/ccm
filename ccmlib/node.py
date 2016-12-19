@@ -15,7 +15,7 @@ import tempfile
 import warnings
 from collections import namedtuple
 from datetime import datetime
-from distutils.version import LooseVersion
+from distutils.version import LooseVersion  #pylint: disable=import-error, no-name-in-module
 
 import yaml
 from six import iteritems, print_, string_types
