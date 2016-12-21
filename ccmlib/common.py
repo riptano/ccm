@@ -328,6 +328,13 @@ def is_win():
     return sys.platform in ("cygwin", "win32")
 
 
+def is_modern_windows_install(version):
+    if is_win() and version >= 2.1:
+        return True
+    else:
+        return False
+
+
 def is_ps_unrestricted():
     if not is_win():
         raise CCMError("Can only check PS Execution Policy on Windows")
