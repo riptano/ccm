@@ -264,7 +264,7 @@ def download_opscenter_version(version, target_version, verbose=False):
         __download(url, target, show_progress=verbose)
         common.info("Extracting {} as version {} ...".format(target, target_version))
         tar = tarfile.open(target)
-        dir = next(tar).name.split("/")[0]
+        dir = tar.next().name.split("/")[0]  # pylint: disable=all
         tar.extractall(path=__get_dir())
         tar.close()
         target_dir = os.path.join(__get_dir(), target_version)
@@ -295,7 +295,7 @@ def download_version(version, url=None, verbose=False, binary=False):
         __download(u, target, show_progress=verbose)
         common.info("Extracting {} as version {} ...".format(target, version))
         tar = tarfile.open(target)
-        dir = next(tar).name.split("/")[0]
+        dir = tar.next().name.split("/")[0]  # pylint: disable=all
         tar.extractall(path=__get_dir())
         tar.close()
         target_dir = os.path.join(__get_dir(), version)
