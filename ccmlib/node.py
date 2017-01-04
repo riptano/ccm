@@ -573,7 +573,7 @@ class Node(object):
             jvm_args += ['-Dcassandra.migration_task_wait_in_seconds={}'.format(len(self.cluster.nodes) * 2)]
 
         # Validate Windows env
-        if common.is_win() and not common.is_ps_unrestricted() and self.cluster.version() >= '2.1':
+        if common.is_modern_windows_install(self.cluster.version()) and not common.is_ps_unrestricted():
             raise NodeError("PS Execution Policy must be unrestricted when running C* 2.1+")
 
         if not common.is_win() and quiet_start:
@@ -1557,7 +1557,7 @@ class Node(object):
         agentlib_setting = '-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address={}'.format(str(self.remote_debug_port))
         remote_debug_options = agentlib_setting
         # The cassandra-env.ps1 file has been introduced in 2.1
-        if common.is_win() and self.get_base_cassandra_version() >= 2.1:
+        if common.is_modern_windows_install(self.get_base_cassandra_version()):
             conf_file = os.path.join(self.get_conf_dir(), common.CASSANDRA_WIN_ENV)
             jvm_file = os.path.join(self.get_conf_dir(), common.JVM_OPTS)
             jmx_port_pattern = '^\s+\$JMX_PORT='
@@ -1574,7 +1574,7 @@ class Node(object):
 
         common.replace_in_file(conf_file, jmx_port_pattern, jmx_port_setting)
 
-        if common.is_win() and common.get_version_from_build(node_path=self.get_path()) >= '2.1':
+        if common.is_modern_windows_install(common.get_version_from_build(node_path=self.get_path())):
             dst = os.path.join(self.get_conf_dir(), common.CASSANDRA_WIN_ENV)
             replacements = [
                 ('env:CASSANDRA_HOME =', '        $env:CASSANDRA_HOME="%s"' % self.get_install_dir()),
@@ -1593,7 +1593,7 @@ class Node(object):
         if self.byteman_port != '0':
             byteman_jar = glob.glob(os.path.join(self.get_install_dir(), 'build', 'lib', 'jars', 'byteman-[0-9]*.jar'))[0]
             agent_string = "-javaagent:{}=listener:true,boot:{},port:{}".format(byteman_jar, byteman_jar, str(self.byteman_port))
-            if common.is_win() and self.get_base_cassandra_version() >= 2.1:
+            if common.is_modern_windows_install(self.get_base_cassandra_version()):
                 with open(conf_file, "r+") as conf_rewrite:
                     conf_lines = conf_rewrite.readlines()
                     # Remove trailing brace, will be replaced
@@ -1782,7 +1782,7 @@ class Node(object):
 
         try:
             with open(pidfile, 'rb') as f:
-                if common.is_win() and self.get_base_cassandra_version() >= 2.1:
+                if common.is_modern_windows_install(self.get_base_cassandra_version()):
                     self.pid = int(f.readline().strip().decode('utf-16').strip())
                 else:
                     self.pid = int(f.readline().strip())

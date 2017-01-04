@@ -328,6 +328,20 @@ def is_win():
     return sys.platform in ("cygwin", "win32")
 
 
+def is_modern_windows_install(version):
+    """
+    The 2.1 release line was when Cassandra received beta windows support.
+    Many features are gated based on that added compatibility.
+
+    Handles floats, strings, and LooseVersions by first converting all three types to a string, then to a LooseVersion.
+    """
+    version = LooseVersion(str(version))
+    if is_win() and version >= LooseVersion('2.1'):
+        return True
+    else:
+        return False
+
+
 def is_ps_unrestricted():
     if not is_win():
         raise CCMError("Can only check PS Execution Policy on Windows")
