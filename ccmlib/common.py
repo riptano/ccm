@@ -329,7 +329,14 @@ def is_win():
 
 
 def is_modern_windows_install(version):
-    if is_win() and version >= 2.1:
+    """
+    The 2.1 release line was when Cassandra received beta windows support.
+    Many features are gated based on that added compatibility.
+
+    Handles floats, strings, and LooseVersions by first converting all three types to a string, then to a LooseVersion.
+    """
+    version = LooseVersion(str(version))
+    if is_win() and version >= LooseVersion('2.1'):
         return True
     else:
         return False

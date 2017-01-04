@@ -573,7 +573,7 @@ class Node(object):
             jvm_args += ['-Dcassandra.migration_task_wait_in_seconds={}'.format(len(self.cluster.nodes) * 2)]
 
         # Validate Windows env
-        if common.is_modern_windows_install(int(self.cluster.version())) and not common.is_ps_unrestricted():
+        if common.is_modern_windows_install(self.cluster.version()) and not common.is_ps_unrestricted():
             raise NodeError("PS Execution Policy must be unrestricted when running C* 2.1+")
 
         if not common.is_win() and quiet_start:
@@ -1574,7 +1574,7 @@ class Node(object):
 
         common.replace_in_file(conf_file, jmx_port_pattern, jmx_port_setting)
 
-        if common.is_modern_windows_install(int(common.get_version_from_build(node_path=self.get_path()))):
+        if common.is_modern_windows_install(common.get_version_from_build(node_path=self.get_path())):
             dst = os.path.join(self.get_conf_dir(), common.CASSANDRA_WIN_ENV)
             replacements = [
                 ('env:CASSANDRA_HOME =', '        $env:CASSANDRA_HOME="%s"' % self.get_install_dir()),
