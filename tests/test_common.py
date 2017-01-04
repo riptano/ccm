@@ -28,9 +28,13 @@ class TestCommon(ccmtest.Tester):
     @patch('ccmlib.common.is_win')
     def test_is_modern_windows_install(self, mock_is_win):
         mock_is_win.return_value = True
-        self.assertTrue(common.is_modern_windows_install(2.10))
-        self.assertTrue(common.is_modern_windows_install('2.10'))
-        self.assertTrue(common.is_modern_windows_install(LooseVersion('2.10')))
+        self.assertTrue(common.is_modern_windows_install(2.1))
+        self.assertTrue(common.is_modern_windows_install('2.1'))
+        self.assertTrue(common.is_modern_windows_install(LooseVersion('2.1')))
+
+        self.assertTrue(common.is_modern_windows_install(3.12))
+        self.assertTrue(common.is_modern_windows_install('3.12'))
+        self.assertTrue(common.is_modern_windows_install(LooseVersion('3.12')))
 
         self.assertFalse(common.is_modern_windows_install(1.0))
         self.assertFalse(common.is_modern_windows_install('1.0'))
