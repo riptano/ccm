@@ -509,8 +509,7 @@ class Cluster(object):
 
     def set_configuration_options(self, values=None):
         if values is not None:
-            for k, v in iteritems(values):
-                self._config_options[k] = v
+            self._config_options = common.merge_configuration(self._config_options, values)
 
         self._persist_config()
         self.__update_topology_files()

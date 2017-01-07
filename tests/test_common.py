@@ -40,5 +40,24 @@ class TestCommon(ccmtest.Tester):
         self.assertFalse(common.is_modern_windows_install('1.0'))
         self.assertFalse(common.is_modern_windows_install(LooseVersion('1.0')))
 
+    def test_merge_configuration(self):
+        # test for merging dict val in key, value pair
+        dict0 = dict1 = {'key': {'val1': True}}
+        dict2 = {'key': {'val2': False}}
+
+        for k, v in dict2.items():
+            dict0[k].update(v)
+
+        self.assertEqual(common.merge_configuration(dict1, dict2), dict0)
+
+        # test for merging str val in key, value pair
+        dict0 = dict1 = {'key': 'val1'}
+        dict2 = {'key': 'val2'}
+
+        for k, v in dict2.items():
+            dict0[k] = v
+
+        self.assertEqual(common.merge_configuration(dict1, dict2), dict0)
+
 if __name__ == '__main__':
     unittest.main()

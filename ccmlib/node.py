@@ -257,8 +257,7 @@ class Node(object):
             })
         """
         if values is not None:
-            for k, v in iteritems(values):
-                self.__config_options[k] = v
+            self._config_options = common.merge_configuration(self._config_options, values)
 
         self.import_config_files()
 

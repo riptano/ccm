@@ -78,8 +78,7 @@ class DseNode(Node):
 
     def set_dse_configuration_options(self, values=None):
         if values is not None:
-            for k, v in iteritems(values):
-                self._dse_config_options[k] = v
+            self._dse_config_options = common.merge_configuration(self._dse_config_options, values)
         self.import_dse_config_files()
 
     def watch_log_for_alive(self, nodes, from_mark=None, timeout=720, filename='system.log'):
