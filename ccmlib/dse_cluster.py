@@ -82,8 +82,7 @@ class DseCluster(Cluster):
 
     def set_dse_configuration_options(self, values=None):
         if values is not None:
-            for k, v in iteritems(values):
-                self._dse_config_options[k] = v
+            self._dse_config_options = common.merge_configuration(self._dse_config_options, values)
         self._update_config()
         for node in list(self.nodes.values()):
             node.import_dse_config_files()
