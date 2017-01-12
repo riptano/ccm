@@ -479,7 +479,7 @@ def validate_install_dir(install_dir):
         raise ArgumentError('%s does not appear to be a cassandra or dse installation directory' % install_dir)
 
 
-def check_socket_available(itf, return_on_error=False):
+def assert_socket_available(itf):
     info = socket.getaddrinfo(itf[0], itf[1], socket.AF_UNSPEC, socket.SOCK_STREAM)
     if not info:
         raise UnavailableSocketError("Failed to get address info for [%s]:%s" % itf)
@@ -492,12 +492,10 @@ def check_socket_available(itf, return_on_error=False):
         s.bind(sockaddr)
         s.close()
         return True
-    except socket.error as msg:
+    except socket.error:
         s.close()
-        if return_on_error:
-            return False
         addr, port = itf
-        raise UnavailableSocketError("Inet address %s:%s is not available: %s" % (addr, port, msg))
+        raise UnavailableSocketError("Inet address %s:%s is not available; a cluster may already be running or you may need to add the loopback alias" % (addr, port))
 
 
 def check_socket_listening(itf, timeout=60):

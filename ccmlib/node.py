@@ -583,7 +583,7 @@ class Node(object):
 
         for itf in list(self.network_interfaces.values()):
             if itf is not None and replace_address is None:
-                common.check_socket_available(itf)
+                common.assert_socket_available(itf)
 
         if wait_other_notice:
             marks = [(node, node.mark_log()) for node in list(self.cluster.nodes.values()) if node.is_live()]
