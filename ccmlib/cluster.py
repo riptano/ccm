@@ -379,10 +379,7 @@ class Cluster(object):
             if not node.is_running():
                 for itf in node.network_interfaces.values():
                     if itf is not None:
-                        if not common.check_socket_available(itf, return_on_error=True):
-                            addr, port = itf
-                            common.error("Inet address {}:{} is not available; a cluster may already be running or you may need to add the loopback alias".format(addr, port))
-                            sys.exit(1)
+                        common.assert_socket_available(itf)
 
         started = []
         for node in list(self.nodes.values()):
