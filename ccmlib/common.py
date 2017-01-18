@@ -492,10 +492,10 @@ def assert_socket_available(itf):
         s.bind(sockaddr)
         s.close()
         return True
-    except socket.error:
+    except socket.error as msg:
         s.close()
         addr, port = itf
-        raise UnavailableSocketError("Inet address %s:%s is not available; a cluster may already be running or you may need to add the loopback alias" % (addr, port))
+        raise UnavailableSocketError("Inet address %s:%s is not available: %s; a cluster may already be running or you may need to add the loopback alias" % (addr, port, msg))
 
 
 def check_socket_listening(itf, timeout=60):
