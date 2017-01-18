@@ -1309,8 +1309,11 @@ class Node(object):
     def cleanup(self):
         self.nodetool("cleanup")
 
-    def decommission(self):
-        self.nodetool("decommission")
+    def decommission(self, force=False):
+        cmd = 'decommission'
+        if force:
+            cmd += " --force"
+        self.nodetool(cmd)
         self.status = Status.DECOMMISSIONED
         self._update_config()
 
