@@ -330,8 +330,14 @@ class NodeDecommissionCmd(_NodeToolCmd):
     nodetool_cmd = 'decommission'
     descr_text = "Run decommission on node name"
 
+    def get_parser(self):
+        parser = self._get_default_parser(self.usage, self.description())
+        parser.add_option('--force', action="store_true", dest="force",
+                help="Force decommission of this node even when it reduces the number of replicas to below configured RF.  Note: This is only relevant for C* 3.12+.", default=False)
+        return parser
+
     def run(self):
-        self.node.decommission()
+        self.node.decommission(force=self.options.force)
 
 
 class _DseToolCmd(Cmd):
