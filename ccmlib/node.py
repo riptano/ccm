@@ -508,21 +508,21 @@ class Node(object):
         log for 'Starting listening for CQL clients' before checking for the
         interface to be listening.
 
-        Emits a warning if not listening after 10 seconds.
+        Emits a warning if not listening after 30 seconds.
         """
         if self.cluster.version() >= '1.2':
             self.watch_log_for("Starting listening for CQL clients", **kwargs)
 
         binary_itf = self.network_interfaces['binary']
-        if not common.check_socket_listening(binary_itf, timeout=10):
-            warnings.warn("Binary interface %s:%s is not listening after 10 seconds, node may have failed to start."
+        if not common.check_socket_listening(binary_itf, timeout=30):
+            warnings.warn("Binary interface %s:%s is not listening after 30 seconds, node may have failed to start."
                           % (binary_itf[0], binary_itf[1]))
 
     def wait_for_thrift_interface(self, **kwargs):
         """
         Waits for the Thrift interface to be listening.
 
-        Emits a warning if not listening after 10 seconds.
+        Emits a warning if not listening after 30 seconds.
         """
         if self.cluster.version() >= '4':
             return;
@@ -530,8 +530,8 @@ class Node(object):
         self.watch_log_for("Listening for thrift clients...", **kwargs)
 
         thrift_itf = self.network_interfaces['thrift']
-        if not common.check_socket_listening(thrift_itf, timeout=10):
-            warnings.warn("Thrift interface {}:{} is not listening after 10 seconds, node may have failed to start.".format(thrift_itf[0], thrift_itf[1]))
+        if not common.check_socket_listening(thrift_itf, timeout=30):
+            warnings.warn("Thrift interface {}:{} is not listening after 30 seconds, node may have failed to start.".format(thrift_itf[0], thrift_itf[1]))
 
     def get_launch_bin(self):
         cdir = self.get_install_dir()
