@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 
 import os
+import signal
 import subprocess
 import sys
 
@@ -616,10 +617,13 @@ class ClusterStopCmd(Cmd):
                           help="Print nodes that were not running", default=False)
         parser.add_option('--no-wait', action="store_true", dest="no_wait",
                           help="Do not wait for the node to be stopped", default=False)
-        parser.add_option('-g', '--gently', action="store_true", dest="gently",
-                          help="Shut down gently (default)", default=True)
-        parser.add_option('--not-gently', action="store_false", dest="gently",
-                          help="Shut down immediately (kill -9)", default=True)
+        parser.add_option('-g', '--gently', action="store_const", dest="signal_event",
+                          help="Shut down gently (default)", const=signal.SIGTERM,
+                          default=signal.SIGTERM)
+        parser.add_option('--hang-up', action="store_const", dest="signal_event",
+                          help="Shut down via hang up (kill -1)", const=signal.SIGHUP)
+        parser.add_option('--not-gently', action="store_const", dest="signal_event",
+                          help="Shut down immediately (kill -9)", const=signal.SIGKILL)
         return parser
 
     def validate(self, parser, options, args):
@@ -627,7 +631,7 @@ class ClusterStopCmd(Cmd):
 
     def run(self):
         try:
-            not_running = self.cluster.stop(not self.options.no_wait, gently=self.options.gently)
+            not_running = self.cluster.stop(wait=not self.options.no_wait, signal_event=self.options.signal_event)
             if self.options.verbose and len(not_running) > 0:
                 sys.stdout.write("The following nodes were not running: ")
                 for node in not_running:
