@@ -256,11 +256,11 @@ class Node(object):
                 'concurrent_writes' : 64,
             })
         """
-        if not hasattr(self,'_config_options') or self._config_options is None:
-            self._config_options = {}
+        if not hasattr(self,'_config_options') or self.__config_options is None:
+            self.__config_options = {}
 
         if values is not None:
-            self._config_options = common.merge_configuration(self._config_options, values)
+            self.__config_options = common.merge_configuration(self.__config_options, values)
 
         self.import_config_files()
 
