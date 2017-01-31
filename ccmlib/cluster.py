@@ -5,6 +5,7 @@ import itertools
 import os
 import random
 import shutil
+import signal
 import subprocess
 import sys
 import threading
@@ -428,11 +429,11 @@ class Cluster(object):
 
         return started
 
-    def stop(self, wait=True, gently=True):
+    def stop(self, wait=True, signal_event=signal.SIGTERM, **kwargs):
         not_running = []
         extension.pre_cluster_stop(self)
         for node in list(self.nodes.values()):
-            if not node.stop(wait, gently=gently):
+            if not node.stop(wait=wait, signal_event=signal_event, **kwargs):
                 not_running.append(node)
         extension.post_cluster_stop(self)
         return not_running

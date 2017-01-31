@@ -143,7 +143,7 @@ class DseNode(Node):
     def stop(self, wait=True, wait_other_notice=False, gently=True):
         if self.cluster.hasOpscenter():
             self._stop_agent()
-        return super(DseNode, self).stop(wait, wait_other_notice, gently)
+        return super(DseNode, self).stop(wait=wait, wait_other_notice=wait_other_notice, gently=gently)
 
     def _stop_agent(self):
         agent_dir = os.path.join(self.get_path(), 'datastax-agent')

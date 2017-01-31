@@ -697,16 +697,23 @@ class Node(object):
 
         return process
 
-    def stop(self, wait=True, wait_other_notice=False, gently=True):
+    def stop(self, wait=True, wait_other_notice=False, signal_event=signal.SIGTERM, **kwargs):
         """
         Stop the node.
           - wait: if True (the default), wait for the Cassandra process to be
             really dead. Otherwise return after having sent the kill signal.
           - wait_other_notice: return only when the other live nodes of the
             cluster have marked this node has dead.
-          - gently: Let Cassandra clean up and shut down properly. Otherwise do
-            a 'kill -9' which shuts down faster.
+          - signal_event: Signal event to send to Cassandra; default is to
+            let Cassandra clean up and shut down properly (SIGTERM [15])
+          - Optional:
+             + gently: Let Cassandra clean up and shut down properly; unless
+                       false perform a 'kill -9' which shuts down faster.
         """
+        # Determine if the signal event should be updated to keep API compatibility
+        if 'gently' in kwargs and kwargs['gently'] is False:
+            signal_event = signal.SIGKILL
+
         if self.is_running():
             if wait_other_notice:
                 marks = [(node, node.mark_log()) for node in list(self.cluster.nodes.values()) if node.is_live() and node is not self]
@@ -721,7 +728,7 @@ class Node(object):
                 # We want the node to flush its data before shutdown as some tests rely on small writes being present.
                 # The default Periodic sync at 10 ms may not have flushed data yet, causing tests to fail.
                 # This is not a hard requirement, however, so we swallow any exceptions this may throw and kill anyway.
-                if gently is True:
+                if signal_event is signal.SIGTERM:
                     try:
                         self.flush()
                     except:
@@ -732,10 +739,7 @@ class Node(object):
                 if self._find_pid_on_windows():
                     common.warning("Failed to terminate node: {0} with pid: {1}".format(self.name, self.pid))
             else:
-                if gently:
-                    os.kill(self.pid, signal.SIGTERM)
-                else:
-                    os.kill(self.pid, signal.SIGKILL)
+                os.kill(self.pid, signal_event)
 
             if wait_other_notice:
                 for node, mark in marks:
