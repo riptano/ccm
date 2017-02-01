@@ -140,10 +140,10 @@ class DseNode(Node):
             args = [os.path.join(agent_dir, 'bin', common.platform_binary('datastax-agent'))]
             subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-    def stop(self, wait=True, wait_other_notice=False, gently=True):
+    def stop(self, wait=True, wait_other_notice=False, signal_event=signal.SIGTERM, **kwargs):
         if self.cluster.hasOpscenter():
             self._stop_agent()
-        return super(DseNode, self).stop(wait=wait, wait_other_notice=wait_other_notice, gently=gently)
+        return super(DseNode, self).stop(wait=wait, wait_other_notice=wait_other_notice, signal_event=signal_event, **kwargs)
 
     def _stop_agent(self):
         agent_dir = os.path.join(self.get_path(), 'datastax-agent')
