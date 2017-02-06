@@ -69,7 +69,7 @@ class DseNode(Node):
             self.set_dse_configuration_options({'graph': graph_options})
             self.__update_gremlin_config_yaml()
         if 'dsefs' in self.workloads:
-            dsefs_options = {'dsefs_options': {'enabled': 'true',
+            dsefs_options = {'dsefs_options': {'enabled': True,
                                                'work_dir': os.path.join(self.get_path(), 'dsefs'),
                                                'data_directories': [{'dir': os.path.join(self.get_path(), 'dsefs', 'data')}]}}
             self.set_dse_configuration_options(dsefs_options)
@@ -447,10 +447,9 @@ class DseNode(Node):
         with open(conf_file, 'w') as f:
             f.writelines(content)
 
-        # starting with DSE 5.0 (Spark 1.6) we need to set a unique
-        # spark.shuffle.service.port for each node
-        if self.cluster.version() > '5.0':
-            print_('Writing shuffle')
+        # set unique spark.shuffle.service.port for each node; this is only needed for DSE 5.0.x;
+        # starting in 5.1 this setting is no longer needed
+        if self.cluster.version() > '5.0' and self.cluster.version() < '5.1':
             defaults_file = os.path.join(self.get_path(), 'resources', 'spark', 'conf', 'spark-defaults.conf')
             with open(defaults_file, 'a') as f:
                 port_num = 7737 + int(node_num)
