@@ -696,7 +696,7 @@ def merge_configuration(original, changes, delete_empty=True):
         for k, v in changes.items():
             # If the new value is None or an empty string, delete it
             # if it's in the original data.
-            if delete_empty and k in new and \
+            if delete_empty and k in new and new[k] is not None and \
                     (v is None or (isinstance(v, str) and len(v) == 0)):
                 del new[k]
             else:
