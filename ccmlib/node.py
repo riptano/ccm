@@ -710,10 +710,6 @@ class Node(object):
              + gently: Let Cassandra clean up and shut down properly; unless
                        false perform a 'kill -9' which shuts down faster.
         """
-        # Determine if the signal event should be updated to keep API compatibility
-        if 'gently' in kwargs and kwargs['gently'] is False:
-            signal_event = signal.SIGKILL
-
         if self.is_running():
             if wait_other_notice:
                 marks = [(node, node.mark_log()) for node in list(self.cluster.nodes.values()) if node.is_live() and node is not self]
@@ -739,6 +735,10 @@ class Node(object):
                 if self._find_pid_on_windows():
                     common.warning("Failed to terminate node: {0} with pid: {1}".format(self.name, self.pid))
             else:
+                # Determine if the signal event should be updated to keep API compatibility
+                if 'gently' in kwargs and kwargs['gently'] is False:
+                    signal_event = signal.SIGKILL
+
                 os.kill(self.pid, signal_event)
 
             if wait_other_notice:
