@@ -231,10 +231,20 @@ class NodeStopCmd(Cmd):
         parser.add_option('-g', '--gently', action="store_const", dest="signal_event",
                           help="Shut down gently (default)", const=signal.SIGTERM,
                           default=signal.SIGTERM)
+
+        if common.is_win():
+            # Fill the dictionary with SIGTERM as the cluster is killed forcefully
+            # on Windows regardless of assigned signal (TASKKILL is used)
+            default_signal_events = { '1': signal.SIGTERM, '9': signal.SIGTERM }
+        else:
+            default_signal_events = { '1': signal.SIGHUP, '9': signal.SIGKILL }
+
         parser.add_option('--hang-up', action="store_const", dest="signal_event",
-                          help="Shut down via hang up (kill -1)", const=signal.SIGHUP)
+                          help="Shut down via hang up (kill -1)",
+                          const=default_signal_events['1'])
         parser.add_option('--not-gently', action="store_const", dest="signal_event",
-                          help="Shut down immediately (kill -9)", const=signal.SIGKILL)
+                          help="Shut down immediately (kill -9)",
+                          const=default_signal_events['9'])
         return parser
 
     def validate(self, parser, options, args):
