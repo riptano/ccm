@@ -189,7 +189,7 @@ def replace_in_file(file, regexp, replace):
 
 def replaces_in_file(file, replacement_list):
     rs = [(re.compile(regexp), repl) for (regexp, repl) in replacement_list]
-    file_tmp = file + ".tmp"
+    file_tmp = file + "." + str(os.getpid()) + ".tmp"
     with open(file, 'r') as f:
         with open(file_tmp, 'w') as f_tmp:
             for line in f:
@@ -208,7 +208,7 @@ def replace_or_add_into_file_tail(file, regexp, replace):
 def replaces_or_add_into_file_tail(file, replacement_list, add_config_close=True):
     rs = [(re.compile(regexp), repl) for (regexp, repl) in replacement_list]
     is_line_found = False
-    file_tmp = file + ".tmp"
+    file_tmp = file + "." + str(os.getpid()) + ".tmp"
     with open(file, 'r') as f:
         with open(file_tmp, 'w') as f_tmp:
             for line in f:
