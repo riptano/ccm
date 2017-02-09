@@ -630,7 +630,7 @@ def get_version_from_build(install_dir=None, node_path=None):
 def get_dse_version(install_dir):
     for root, dirs, files in os.walk(install_dir):
         for file in files:
-            match = re.search('^dse(?:-core)?-([0-9.]+)(?:-SNAPSHOT)?\.jar', file)
+            match = re.search('^dse(?:-core)?-([0-9.]+)(?:-.*)?\.jar', file)
             if match:
                 return match.group(1)
     return None
