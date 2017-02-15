@@ -2,6 +2,8 @@
 from __future__ import absolute_import, division, with_statement
 
 import json
+import logging
+from logging import handlers
 import os
 import re
 import shutil
@@ -144,8 +146,11 @@ def clone_development(git_repo, version, verbose=False, alias=False):
         git_repo_name = 'apache'
         git_branch = version.split(':', 1)[1]
     local_git_cache = os.path.join(__get_dir(), '_git_cache_' + git_repo_name)
+
     logfile = lastlogfilename()
-    with open(logfile, 'w') as lf:
+    rotate_log(logfile)
+
+    with open(logfile, 'a') as lf:
         try:
             # Checkout/fetch a local repository cache to reduce the number of
             # remote fetches we need to perform:
@@ -339,8 +344,10 @@ def compile_version(version, target_dir, verbose=False):
 
     # compiling cassandra and the stress tool
     logfile = lastlogfilename()
+    rotate_log(logfile)
+
     common.info("Compiling Cassandra {} ...".format(version))
-    with open(logfile, 'w') as lf:
+    with open(logfile, 'a') as lf:
         lf.write("--- Cassandra Build -------------------\n")
         try:
             # Patch for pending Cassandra issue: https://issues.apache.org/jira/browse/CASSANDRA-5543
@@ -499,4 +506,16 @@ def __get_dir():
 
 
 def lastlogfilename():
-    return os.path.join(__get_dir(), "last.log")
+    return os.path.join(__get_dir(), "ccm-repository.log")
+
+
+def rotate_log(log_file):
+    """
+    This is a bad hack because I have not found an easy way
+    to re-write the logic that passes our log file around as a file
+    handle, and lets subprocess calls pipe right to it.
+    There might be a really easy way to do this. Please let me know.
+    """
+    logger = logging.getLogger('repository')
+    logger.addHandler(handlers.RotatingFileHandler(log_file, maxBytes=1024*1024*5, backupCount=5))
+    logger.debug("Checking if we can rotate.")
