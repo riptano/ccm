@@ -160,6 +160,7 @@ def clone_development(git_repo, version, verbose=False, alias=False):
                 out = subprocess.call(
                     ['git', 'fetch', '-fup', 'origin', '+refs/*:refs/*'],
                     cwd=local_git_cache, stdout=lf, stderr=lf)
+                assert out == 0, "Could not update git"
 
             # Checkout the version we want from the local cache:
             if not os.path.exists(target_dir):
@@ -170,9 +171,11 @@ def clone_development(git_repo, version, verbose=False, alias=False):
                 if sys.platform == "cygwin":
                     local_split = local_git_cache.split(os.sep)
                     target_split = target_dir.split(os.sep)
-                    subprocess.call(['git', 'clone', local_split[-1], target_split[-1]], cwd=__get_dir(), stdout=lf, stderr=lf)
+                    out = subprocess.call(['git', 'clone', local_split[-1], target_split[-1]], cwd=__get_dir(), stdout=lf, stderr=lf)
+                    assert out == 0, "Could not do a git clone"
                 else:
-                    subprocess.call(['git', 'clone', local_git_cache, target_dir], cwd=__get_dir(), stdout=lf, stderr=lf)
+                    out = subprocess.call(['git', 'clone', local_git_cache, target_dir], cwd=__get_dir(), stdout=lf, stderr=lf)
+                    assert out == 0, "Could not do a git clone"
 
                 # determine if the request is for a branch
                 is_branch = False
