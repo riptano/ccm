@@ -521,4 +521,3 @@ def rotate_log(log_file):
     """
     logger = logging.getLogger('repository')
     logger.addHandler(handlers.RotatingFileHandler(log_file, maxBytes=1024*1024*5, backupCount=5))
-    logger.debug("Checking if we can rotate.")
