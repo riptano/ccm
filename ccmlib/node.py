@@ -214,6 +214,10 @@ class Node(object):
             common.validate_install_dir(self.__install_dir)
             return self.__install_dir
 
+    def node_setup(self, version, verbose):
+        dir, v = setup(version, verbose=verbose)
+        return dir
+
     def set_install_dir(self, install_dir=None, version=None, verbose=False):
         """
         Sets the path to the cassandra source directory for use by this node.
@@ -223,8 +227,7 @@ class Node(object):
             if install_dir is not None:
                 common.validate_install_dir(install_dir)
         else:
-            dir, v = setup(version, verbose=verbose)
-            self.__install_dir = dir
+            self.__install_dir = self.node_setup(version, verbose=verbose)
 
         if self.get_base_cassandra_version() >= '4':
             self.network_interfaces['thrift'] = None
