@@ -12,7 +12,7 @@ import time
 import yaml
 from six import iteritems, print_
 
-from ccmlib import common, extension
+from ccmlib import common, extension, repository
 from ccmlib.node import Node, NodeError, ToolError
 
 
@@ -53,6 +53,10 @@ class DseNode(Node):
 
     def get_cassandra_version(self):
         return common.get_dse_cassandra_version(self.get_install_dir())
+
+    def node_setup(self, version, verbose):
+        dir, v = repository.setup_dse(version, self.cluster.dse_username, self.cluster.dse_password, verbose=verbose)
+        return dir
 
     def set_workloads(self, workloads):
         self.workloads = workloads
