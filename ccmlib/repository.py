@@ -148,7 +148,6 @@ def clone_development(git_repo, version, verbose=False, alias=False):
     local_git_cache = os.path.join(__get_dir(), '_git_cache_' + git_repo_name)
 
     logfile = lastlogfilename()
-    rotate_log(logfile)
 
     with open(logfile, 'a') as lf:
         try:
@@ -347,7 +346,6 @@ def compile_version(version, target_dir, verbose=False):
 
     # compiling cassandra and the stress tool
     logfile = lastlogfilename()
-    rotate_log(logfile)
 
     common.info("Compiling Cassandra {} ...".format(version))
     with open(logfile, 'a') as lf:
