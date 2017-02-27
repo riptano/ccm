@@ -540,8 +540,8 @@ def get_logger(log_file):
 
 
 def log_info(process, logger):
-    rc = process.returncode
     stdoutdata, stderrdata = process.communicate()
+    rc = process.returncode
     logger.info(stdoutdata)
     logger.info(stderrdata)
     return rc
