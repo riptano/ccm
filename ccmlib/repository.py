@@ -228,8 +228,8 @@ def clone_development(git_repo, version, verbose=False, alias=False):
                 cwd=target_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             out = log_info(process, logger)
             assert out == 0, "Could not do a git fetch"
-            status = subprocess.Popen(['git', 'status', '-sb'], cwd=target_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[0]
-            log_info(status, logger)
+            process = subprocess.Popen(['git', 'status', '-sb'], cwd=target_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            status = log_info(process, logger)
             if str(status).find('[behind') > -1: # If `status` looks like '## cassandra-2.2...origin/cassandra-2.2 [behind 9]\n'
                 common.info("Branch is behind, recompiling")
                 process = subprocess.Popen(['git', 'pull'], cwd=target_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
