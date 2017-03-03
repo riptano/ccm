@@ -13,7 +13,7 @@ import sys
 import tarfile
 import tempfile
 import time
-from distutils.version import LooseVersion  #pylint: disable=import-error, no-name-in-module
+from distutils.version import LooseVersion  # pylint: disable=import-error, no-name-in-module
 
 from six import next, print_
 
@@ -206,8 +206,8 @@ def clone_development(git_repo, version, verbose=False, alias=False):
                 # otherwise, you get errors on branch names that are also valid SHAs or SHA shortcuts, like 10360
                 # we use -B instead of -b so we reset branches that already exist and create a new one otherwise
                 process = subprocess.Popen(['git', 'checkout', '-B', git_branch,
-                                       '--track', 'origin/{git_branch}'.format(git_branch=git_branch)],
-                                      cwd=target_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                                            '--track', 'origin/{git_branch}'.format(git_branch=git_branch)],
+                                           cwd=target_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 out, _, _ = log_info(process, logger)
             else:
                 process = subprocess.Popen(
@@ -230,7 +230,7 @@ def clone_development(git_repo, version, verbose=False, alias=False):
             assert out == 0, "Could not do a git fetch"
             process = subprocess.Popen(['git', 'status', '-sb'], cwd=target_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             _, status, _ = log_info(process, logger)
-            if str(status).find('[behind') > -1: # If `status` looks like '## cassandra-2.2...origin/cassandra-2.2 [behind 9]\n'
+            if str(status).find('[behind') > -1:  # If `status` looks like '## cassandra-2.2...origin/cassandra-2.2 [behind 9]\n'
                 common.info("Branch is behind, recompiling")
                 process = subprocess.Popen(['git', 'pull'], cwd=target_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 out, _, _ = log_info(process, logger)
@@ -241,11 +241,11 @@ def clone_development(git_repo, version, verbose=False, alias=False):
 
                 # now compile
                 compile_version(git_branch, target_dir, verbose)
-            elif re.search('\[.*?(ahead|behind).*?\]', status) is not None: # status looks like  '## trunk...origin/trunk [ahead 1, behind 29]\n'
+            elif re.search('\[.*?(ahead|behind).*?\]', status) is not None:  # status looks like  '## trunk...origin/trunk [ahead 1, behind 29]\n'
                  # If we have diverged in a way that fast-forward merging cannot solve, raise an exception so the cache is wiped
                 common.error("Could not ascertain branch status, please resolve manually.")
                 raise Exception
-            else: # status looks like '## cassandra-2.2...origin/cassandra-2.2\n'
+            else:  # status looks like '## cassandra-2.2...origin/cassandra-2.2\n'
                 common.debug("Branch up to date, not pulling.")
     except Exception as e:
         # wipe out the directory if anything goes wrong. Otherwise we will assume it has been compiled the next time it runs.
@@ -488,7 +488,7 @@ def __download(url, target, username=None, password=None, show_progress=False):
         password_mgr.add_password(None, url, username, password)
         handler = urllib.request.HTTPBasicAuthHandler(password_mgr)
         opener = urllib.request.build_opener(handler)
-        urllib.request.install_opener(opener) # pylint: disable=E1121
+        urllib.request.install_opener(opener)  # pylint: disable=E1121
 
     u = urllib.request.urlopen(url)
     f = open(target, 'wb')
@@ -535,7 +535,7 @@ def lastlogfilename():
 
 def get_logger(log_file):
     logger = logging.getLogger('repository')
-    logger.addHandler(handlers.RotatingFileHandler(log_file, maxBytes=1024*1024*5, backupCount=5))
+    logger.addHandler(handlers.RotatingFileHandler(log_file, maxBytes=1024 * 1024 * 5, backupCount=5))
     return logger
 
 
