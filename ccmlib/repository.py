@@ -158,14 +158,14 @@ def clone_development(git_repo, version, verbose=False, alias=False):
             process = subprocess.Popen(
                 ['git', 'clone', '--mirror', git_repo, local_git_cache],
                 cwd=__get_dir(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            out = log_info(process, logger)
+            out = log_info(process, logger)[0]
             assert out == 0, "Could not do a git clone"
         else:
             common.info("Fetching Cassandra updates...")
             process = subprocess.Popen(
                 ['git', 'fetch', '-fup', 'origin', '+refs/*:refs/*'],
                 cwd=local_git_cache, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            out = log_info(process, logger)
+            out = log_info(process, logger)[0]
             assert out == 0, "Could not update git"
 
         # Checkout the version we want from the local cache:
@@ -180,13 +180,13 @@ def clone_development(git_repo, version, verbose=False, alias=False):
                 process = subprocess.Popen(
                     ['git', 'clone', local_split[-1], target_split[-1]],
                     cwd=__get_dir(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                out = log_info(process, logger)
+                out = log_info(process, logger)[0]
                 assert out == 0, "Could not do a git clone"
             else:
                 process = subprocess.Popen(
                     ['git', 'clone', local_git_cache, target_dir],
                     cwd=__get_dir(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                out = log_info(process, logger)
+                out = log_info(process, logger)[0]
                 assert out == 0, "Could not do a git clone"
 
             # determine if the request is for a branch
@@ -208,12 +208,12 @@ def clone_development(git_repo, version, verbose=False, alias=False):
                 process = subprocess.Popen(['git', 'checkout', '-B', git_branch,
                                        '--track', 'origin/{git_branch}'.format(git_branch=git_branch)],
                                       cwd=target_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                out = log_info(process, logger)
+                out = log_info(process, logger)[0]
             else:
                 process = subprocess.Popen(
                     ['git', 'checkout', git_branch],
                     cwd=target_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                out = log_info(process, logger)
+                out = log_info(process, logger)[0]
             if int(out) != 0:
                 raise CCMError('Could not check out git branch {branch}. '
                                'Is this a valid branch name? (see {lastlog} or run '
@@ -226,18 +226,17 @@ def clone_development(git_repo, version, verbose=False, alias=False):
             process = subprocess.Popen(
                 ['git', 'fetch', 'origin'],
                 cwd=target_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            out = log_info(process, logger)
+            out = log_info(process, logger)[0]
             assert out == 0, "Could not do a git fetch"
             process = subprocess.Popen(['git', 'status', '-sb'], cwd=target_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            log_info(process, logger)
-            status = process.communicate()[0]
+            status = log_info(process, logger)[1]
             if str(status).find('[behind') > -1: # If `status` looks like '## cassandra-2.2...origin/cassandra-2.2 [behind 9]\n'
                 common.info("Branch is behind, recompiling")
                 process = subprocess.Popen(['git', 'pull'], cwd=target_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                out = log_info(process, logger)
+                out = log_info(process, logger)[0]
                 assert out == 0, "Could not do a git pull"
                 process = subprocess.Popen([platform_binary('ant'), 'realclean'], cwd=target_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                out = log_info(process, logger)
+                out = log_info(process, logger)[0]
                 assert out == 0, "Could not run 'ant realclean'"
 
                 # now compile
@@ -378,7 +377,7 @@ def compile_version(version, target_dir, verbose=False):
             if attempt > 0:
                 logger.info("\n\n`ant jar` failed. Retry #%s...\n\n" % attempt)
             process = subprocess.Popen([platform_binary('ant'), 'jar'], cwd=target_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            ret_val = log_info(process, logger)
+            ret_val = log_info(process, logger)[0]
             attempt += 1
         if ret_val is not 0:
             raise CCMError('Error compiling Cassandra. See {logfile} or run '
@@ -401,10 +400,10 @@ def compile_version(version, target_dir, verbose=False):
                 os.chmod(full_path, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
 
             process = subprocess.Popen([platform_binary('ant'), 'build'], cwd=stress_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            ret_val = log_info(process, logger)
+            ret_val = log_info(process, logger)[0]
             if ret_val is not 0:
                 process = subprocess.Popen([platform_binary('ant'), 'stress-build'], cwd=target_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                ret_val = log_info(process, logger)
+                ret_val = log_info(process, logger)[0]
                 if ret_val is not 0:
                     raise CCMError("Error compiling Cassandra stress tool.  "
                                    "See %s for details (you will still be able to use ccm "
@@ -545,4 +544,4 @@ def log_info(process, logger):
     rc = process.returncode
     logger.info(stdoutdata)
     logger.info(stderrdata)
-    return rc
+    return rc, stdoutdata, stderrdata
