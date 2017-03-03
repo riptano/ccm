@@ -13,7 +13,7 @@ import sys
 import tarfile
 import tempfile
 import time
-from distutils.version import LooseVersion  #pylint: disable=import-error, no-name-in-module
+from distutils.version import LooseVersion  # pylint: disable=import-error, no-name-in-module
 
 from six import next, print_
 
@@ -148,101 +148,118 @@ def clone_development(git_repo, version, verbose=False, alias=False):
     local_git_cache = os.path.join(__get_dir(), '_git_cache_' + git_repo_name)
 
     logfile = lastlogfilename()
-    rotate_log(logfile)
+    logger = get_logger(logfile)
 
-    with open(logfile, 'a') as lf:
-        try:
-            # Checkout/fetch a local repository cache to reduce the number of
-            # remote fetches we need to perform:
-            if not os.path.exists(local_git_cache):
-                common.info("Cloning Cassandra...")
-                out = subprocess.call(
-                    ['git', 'clone', '--mirror', git_repo, local_git_cache],
-                    cwd=__get_dir(), stdout=lf, stderr=lf)
+    try:
+        # Checkout/fetch a local repository cache to reduce the number of
+        # remote fetches we need to perform:
+        if not os.path.exists(local_git_cache):
+            common.info("Cloning Cassandra...")
+            process = subprocess.Popen(
+                ['git', 'clone', '--mirror', git_repo, local_git_cache],
+                cwd=__get_dir(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            out, _, _ = log_info(process, logger)
+            assert out == 0, "Could not do a git clone"
+        else:
+            common.info("Fetching Cassandra updates...")
+            process = subprocess.Popen(
+                ['git', 'fetch', '-fup', 'origin', '+refs/*:refs/*'],
+                cwd=local_git_cache, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            out, _, _ = log_info(process, logger)
+            assert out == 0, "Could not update git"
+
+        # Checkout the version we want from the local cache:
+        if not os.path.exists(target_dir):
+            # development branch doesn't exist. Check it out.
+            common.info("Cloning Cassandra (from local cache)")
+
+            # git on cygwin appears to be adding `cwd` to the commands which is breaking clone
+            if sys.platform == "cygwin":
+                local_split = local_git_cache.split(os.sep)
+                target_split = target_dir.split(os.sep)
+                process = subprocess.Popen(
+                    ['git', 'clone', local_split[-1], target_split[-1]],
+                    cwd=__get_dir(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                out, _, _ = log_info(process, logger)
                 assert out == 0, "Could not do a git clone"
             else:
-                common.info("Fetching Cassandra updates...")
-                out = subprocess.call(
-                    ['git', 'fetch', '-fup', 'origin', '+refs/*:refs/*'],
-                    cwd=local_git_cache, stdout=lf, stderr=lf)
-                assert out == 0, "Could not update git"
+                process = subprocess.Popen(
+                    ['git', 'clone', local_git_cache, target_dir],
+                    cwd=__get_dir(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                out, _, _ = log_info(process, logger)
+                assert out == 0, "Could not do a git clone"
 
-            # Checkout the version we want from the local cache:
-            if not os.path.exists(target_dir):
-                # development branch doesn't exist. Check it out.
-                common.info("Cloning Cassandra (from local cache)")
+            # determine if the request is for a branch
+            is_branch = False
+            try:
+                branch_listing = subprocess.check_output(['git', 'branch', '--all'], cwd=target_dir).decode('utf-8')
+                branches = [b.strip() for b in branch_listing.replace('remotes/origin/', '').split()]
+                is_branch = git_branch in branches
+            except subprocess.CalledProcessError as cpe:
+                common.error("Error Running Branch Filter: {}\nAssumming request is not for a branch".format(cpe.output))
 
-                # git on cygwin appears to be adding `cwd` to the commands which is breaking clone
-                if sys.platform == "cygwin":
-                    local_split = local_git_cache.split(os.sep)
-                    target_split = target_dir.split(os.sep)
-                    out = subprocess.call(['git', 'clone', local_split[-1], target_split[-1]], cwd=__get_dir(), stdout=lf, stderr=lf)
-                    assert out == 0, "Could not do a git clone"
-                else:
-                    out = subprocess.call(['git', 'clone', local_git_cache, target_dir], cwd=__get_dir(), stdout=lf, stderr=lf)
-                    assert out == 0, "Could not do a git clone"
+            # now check out the right version
+            branch_or_sha_tag = 'branch' if is_branch else 'SHA/tag'
+            common.info("Checking out requested {} ({})".format(branch_or_sha_tag, git_branch))
+            if is_branch:
+                # we use checkout -B with --track so we can specify that we want to track a specific branch
+                # otherwise, you get errors on branch names that are also valid SHAs or SHA shortcuts, like 10360
+                # we use -B instead of -b so we reset branches that already exist and create a new one otherwise
+                process = subprocess.Popen(['git', 'checkout', '-B', git_branch,
+                                            '--track', 'origin/{git_branch}'.format(git_branch=git_branch)],
+                                           cwd=target_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                out, _, _ = log_info(process, logger)
+            else:
+                process = subprocess.Popen(
+                    ['git', 'checkout', git_branch],
+                    cwd=target_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                out, _, _ = log_info(process, logger)
+            if int(out) != 0:
+                raise CCMError('Could not check out git branch {branch}. '
+                               'Is this a valid branch name? (see {lastlog} or run '
+                               '"ccm showlastlog" for details)'.format(
+                                   branch=git_branch, lastlog=logfile
+                               ))
+            # now compile
+            compile_version(git_branch, target_dir, verbose)
+        else:  # branch is already checked out. See if it is behind and recompile if needed.
+            process = subprocess.Popen(
+                ['git', 'fetch', 'origin'],
+                cwd=target_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            out, _, _ = log_info(process, logger)
+            assert out == 0, "Could not do a git fetch"
+            process = subprocess.Popen(['git', 'status', '-sb'], cwd=target_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            _, status, _ = log_info(process, logger)
+            if str(status).find('[behind') > -1:  # If `status` looks like '## cassandra-2.2...origin/cassandra-2.2 [behind 9]\n'
+                common.info("Branch is behind, recompiling")
+                process = subprocess.Popen(['git', 'pull'], cwd=target_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                out, _, _ = log_info(process, logger)
+                assert out == 0, "Could not do a git pull"
+                process = subprocess.Popen([platform_binary('ant'), 'realclean'], cwd=target_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                out, _, _ = log_info(process, logger)
+                assert out == 0, "Could not run 'ant realclean'"
 
-                # determine if the request is for a branch
-                is_branch = False
-                try:
-                    branch_listing = subprocess.check_output(['git', 'branch', '--all'], cwd=target_dir).decode('utf-8')
-                    branches = [b.strip() for b in branch_listing.replace('remotes/origin/', '').split()]
-                    is_branch = git_branch in branches
-                except subprocess.CalledProcessError as cpe:
-                    common.error("Error Running Branch Filter: {}\nAssumming request is not for a branch".format(cpe.output))
-
-                # now check out the right version
-                branch_or_sha_tag = 'branch' if is_branch else 'SHA/tag'
-                common.info("Checking out requested {} ({})".format(branch_or_sha_tag, git_branch))
-                if is_branch:
-                    # we use checkout -B with --track so we can specify that we want to track a specific branch
-                    # otherwise, you get errors on branch names that are also valid SHAs or SHA shortcuts, like 10360
-                    # we use -B instead of -b so we reset branches that already exist and create a new one otherwise
-                    out = subprocess.call(['git', 'checkout', '-B', git_branch,
-                                           '--track', 'origin/{git_branch}'.format(git_branch=git_branch)],
-                                          cwd=target_dir, stdout=lf, stderr=lf)
-                else:
-                    out = subprocess.call(['git', 'checkout', git_branch], cwd=target_dir, stdout=lf, stderr=lf)
-                if int(out) != 0:
-                    raise CCMError('Could not check out git branch {branch}. '
-                                   'Is this a valid branch name? (see {lastlog} or run '
-                                   '"ccm showlastlog" for details)'.format(
-                                       branch=git_branch, lastlog=logfile
-                                   ))
                 # now compile
                 compile_version(git_branch, target_dir, verbose)
-            else:  # branch is already checked out. See if it is behind and recompile if needed.
-                out = subprocess.call(['git', 'fetch', 'origin'], cwd=target_dir, stdout=lf, stderr=lf)
-                assert out == 0, "Could not do a git fetch"
-                status = subprocess.Popen(['git', 'status', '-sb'], cwd=target_dir, stdout=subprocess.PIPE, stderr=lf).communicate()[0]
-                if str(status).find('[behind') > -1: # If `status` looks like '## cassandra-2.2...origin/cassandra-2.2 [behind 9]\n'
-                    common.info("Branch is behind, recompiling")
-                    out = subprocess.call(['git', 'pull'], cwd=target_dir, stdout=lf, stderr=lf)
-                    assert out == 0, "Could not do a git pull"
-                    out = subprocess.call([platform_binary('ant'), 'realclean'], cwd=target_dir, stdout=lf, stderr=lf)
-                    assert out == 0, "Could not run 'ant realclean'"
-
-                    # now compile
-                    compile_version(git_branch, target_dir, verbose)
-                elif re.search('\[.*?(ahead|behind).*?\]', status) is not None: # status looks like  '## trunk...origin/trunk [ahead 1, behind 29]\n'
-                     # If we have diverged in a way that fast-forward merging cannot solve, raise an exception so the cache is wiped
-                    common.error("Could not ascertain branch status, please resolve manually.")
-                    raise Exception
-                else: # status looks like '## cassandra-2.2...origin/cassandra-2.2\n'
-                    common.debug("Branch up to date, not pulling.")
-        except Exception as e:
-            # wipe out the directory if anything goes wrong. Otherwise we will assume it has been compiled the next time it runs.
-            try:
-                rmdirs(target_dir)
-                common.error("Deleted {} due to error".format(target_dir))
-            except:
-                print_('Building C* version {version} failed. Attempted to delete {target_dir}'
-                       'but failed. This will need to be manually deleted'.format(
-                           version=version,
-                           target_dir=target_dir
-                       ))
-            finally:
-                raise e
+            elif re.search('\[.*?(ahead|behind).*?\]', status) is not None:  # status looks like  '## trunk...origin/trunk [ahead 1, behind 29]\n'
+                 # If we have diverged in a way that fast-forward merging cannot solve, raise an exception so the cache is wiped
+                common.error("Could not ascertain branch status, please resolve manually.")
+                raise Exception
+            else:  # status looks like '## cassandra-2.2...origin/cassandra-2.2\n'
+                common.debug("Branch up to date, not pulling.")
+    except Exception as e:
+        # wipe out the directory if anything goes wrong. Otherwise we will assume it has been compiled the next time it runs.
+        try:
+            rmdirs(target_dir)
+            common.error("Deleted {} due to error".format(target_dir))
+        except:
+            print_('Building C* version {version} failed. Attempted to delete {target_dir}'
+                   'but failed. This will need to be manually deleted'.format(
+                       version=version,
+                       target_dir=target_dir
+                   ))
+        finally:
+            raise e
 
 
 def download_dse_version(version, username, password, verbose=False):
@@ -347,49 +364,53 @@ def compile_version(version, target_dir, verbose=False):
 
     # compiling cassandra and the stress tool
     logfile = lastlogfilename()
-    rotate_log(logfile)
+    logger = get_logger(logfile)
 
     common.info("Compiling Cassandra {} ...".format(version))
-    with open(logfile, 'a') as lf:
-        lf.write("--- Cassandra Build -------------------\n")
+    logger.info("--- Cassandra Build -------------------\n")
+    try:
+        # Patch for pending Cassandra issue: https://issues.apache.org/jira/browse/CASSANDRA-5543
+        # Similar patch seen with buildbot
+        attempt = 0
+        ret_val = 1
+        while attempt < 3 and ret_val is not 0:
+            if attempt > 0:
+                logger.info("\n\n`ant jar` failed. Retry #%s...\n\n" % attempt)
+            process = subprocess.Popen([platform_binary('ant'), 'jar'], cwd=target_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            ret_val, _, _ = log_info(process, logger)
+            attempt += 1
+        if ret_val is not 0:
+            raise CCMError('Error compiling Cassandra. See {logfile} or run '
+                           '"ccm showlastlog" for details'.format(logfile=logfile))
+    except OSError as e:
+        raise CCMError("Error compiling Cassandra. Is ant installed? See %s for details" % logfile)
+
+    logger.info("\n\n--- cassandra/stress build ------------\n")
+    stress_dir = os.path.join(target_dir, "tools", "stress") if (
+        version >= "0.8.0") else \
+        os.path.join(target_dir, "contrib", "stress")
+
+    build_xml = os.path.join(stress_dir, 'build.xml')
+    if os.path.exists(build_xml):  # building stress separately is only necessary pre-1.1
         try:
-            # Patch for pending Cassandra issue: https://issues.apache.org/jira/browse/CASSANDRA-5543
-            # Similar patch seen with buildbot
-            attempt = 0
-            ret_val = 1
-            while attempt < 3 and ret_val is not 0:
-                if attempt > 0:
-                    lf.write("\n\n`ant jar` failed. Retry #%s...\n\n" % attempt)
-                ret_val = subprocess.call([platform_binary('ant'), 'jar'], cwd=target_dir, stdout=lf, stderr=lf)
-                attempt += 1
+            # set permissions correctly, seems to not always be the case
+            stress_bin_dir = os.path.join(stress_dir, 'bin')
+            for f in os.listdir(stress_bin_dir):
+                full_path = os.path.join(stress_bin_dir, f)
+                os.chmod(full_path, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
+
+            process = subprocess.Popen([platform_binary('ant'), 'build'], cwd=stress_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            ret_val, _, _ = log_info(process, logger)
             if ret_val is not 0:
-                raise CCMError('Error compiling Cassandra. See {logfile} or run '
-                               '"ccm showlastlog" for details'.format(logfile=logfile))
-        except OSError as e:
-            raise CCMError("Error compiling Cassandra. Is ant installed? See %s for details" % logfile)
-
-        lf.write("\n\n--- cassandra/stress build ------------\n")
-        stress_dir = os.path.join(target_dir, "tools", "stress") if (
-            version >= "0.8.0") else \
-            os.path.join(target_dir, "contrib", "stress")
-
-        build_xml = os.path.join(stress_dir, 'build.xml')
-        if os.path.exists(build_xml):  # building stress separately is only necessary pre-1.1
-            try:
-                # set permissions correctly, seems to not always be the case
-                stress_bin_dir = os.path.join(stress_dir, 'bin')
-                for f in os.listdir(stress_bin_dir):
-                    full_path = os.path.join(stress_bin_dir, f)
-                    os.chmod(full_path, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
-
-                if subprocess.call([platform_binary('ant'), 'build'], cwd=stress_dir, stdout=lf, stderr=lf) is not 0:
-                    if subprocess.call([platform_binary('ant'), 'stress-build'], cwd=target_dir, stdout=lf, stderr=lf) is not 0:
-                        raise CCMError("Error compiling Cassandra stress tool.  "
-                                       "See %s for details (you will still be able to use ccm "
-                                       "but not the stress related commands)" % logfile)
-            except IOError as e:
-                raise CCMError("Error compiling Cassandra stress tool: %s (you will "
-                               "still be able to use ccm but not the stress related commands)" % str(e))
+                process = subprocess.Popen([platform_binary('ant'), 'stress-build'], cwd=target_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                ret_val, _, _ = log_info(process, logger)
+                if ret_val is not 0:
+                    raise CCMError("Error compiling Cassandra stress tool.  "
+                                   "See %s for details (you will still be able to use ccm "
+                                   "but not the stress related commands)" % logfile)
+        except IOError as e:
+            raise CCMError("Error compiling Cassandra stress tool: %s (you will "
+                           "still be able to use ccm but not the stress related commands)" % str(e))
 
 
 def directory_name(version):
@@ -467,7 +488,7 @@ def __download(url, target, username=None, password=None, show_progress=False):
         password_mgr.add_password(None, url, username, password)
         handler = urllib.request.HTTPBasicAuthHandler(password_mgr)
         opener = urllib.request.build_opener(handler)
-        urllib.request.install_opener(opener) # pylint: disable=E1121
+        urllib.request.install_opener(opener)  # pylint: disable=E1121
 
     u = urllib.request.urlopen(url)
     f = open(target, 'wb')
@@ -512,13 +533,15 @@ def lastlogfilename():
     return os.path.join(__get_dir(), "ccm-repository.log")
 
 
-def rotate_log(log_file):
-    """
-    This is a bad hack because I have not found an easy way
-    to re-write the logic that passes our log file around as a file
-    handle, and lets subprocess calls pipe right to it.
-    There might be a really easy way to do this. Please let me know.
-    """
+def get_logger(log_file):
     logger = logging.getLogger('repository')
-    logger.addHandler(handlers.RotatingFileHandler(log_file, maxBytes=1024*1024*5, backupCount=5))
-    logger.debug("Checking if we can rotate.")
+    logger.addHandler(handlers.RotatingFileHandler(log_file, maxBytes=1024 * 1024 * 5, backupCount=5))
+    return logger
+
+
+def log_info(process, logger):
+    stdoutdata, stderrdata = process.communicate()
+    rc = process.returncode
+    logger.info(stdoutdata)
+    logger.info(stderrdata)
+    return rc, stdoutdata, stderrdata
