@@ -175,7 +175,7 @@ class DseNode(Node):
     def dsetool(self, cmd):
         env = self.get_env()
         extension.append_to_client_env(self, env)
-        (node_ip, binary_port) = self.network_interfaces['binary']
+        node_ip, binary_port = self.network_interfaces['binary']
         dsetool = common.join_bin(self.get_install_dir(), 'bin', 'dsetool')
         args = [dsetool, '-h', node_ip, '-j', str(self.jmx_port), '-c', str(binary_port)]
         args += cmd.split()
