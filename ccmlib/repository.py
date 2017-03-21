@@ -241,7 +241,7 @@ def clone_development(git_repo, version, verbose=False, alias=False):
 
                 # now compile
                 compile_version(git_branch, target_dir, verbose)
-            elif re.search('\[.*?(ahead|behind).*?\]', status) is not None:  # status looks like  '## trunk...origin/trunk [ahead 1, behind 29]\n'
+            elif re.search('\[.*?(ahead|behind).*?\]', status.decode("utf-8")) is not None:  # status looks like  '## trunk...origin/trunk [ahead 1, behind 29]\n'
                  # If we have diverged in a way that fast-forward merging cannot solve, raise an exception so the cache is wiped
                 common.error("Could not ascertain branch status, please resolve manually.")
                 raise Exception
