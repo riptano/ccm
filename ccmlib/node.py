@@ -970,7 +970,6 @@ class Node(object):
                 os.mkdir(dir)
 
     def run_sstable2json(self, out_file=None, keyspace=None, datafiles=None, column_families=None, keys=None, enumerate_keys=False):
-        print_("running")
         if out_file is None:
             out_file = sys.stdout
         sstable2json = self._find_cmd('sstable2json')
@@ -1050,17 +1049,16 @@ class Node(object):
         p = self.run_sstablemetadata_process(datafiles, keyspace, column_families)
         return handle_external_tool_process(p, "sstablemetadata on keyspace: {}, column_family: {}".format(keyspace, column_families))
 
-    def run_sstabledump_process(self, datafiles=None, keyspace=None, column_families=None, keys=None, enumerate_keys=False):
-        cdir = self.get_install_dir()
-        sstabledump = common.join_bin(cdir, os.path.join('tools', 'bin'), 'sstabledump')
+    def run_sstabledump_process(self, datafiles=None, keyspace=None, column_families=None, keys=None, enumerate_keys=False, command=False):
+        sstabledump = self._find_cmd('sstabledump')
+
         env = self.get_env()
         sstablefiles = self.__gather_sstables(datafiles=datafiles, keyspace=keyspace, columnfamilies=column_families)
         processes = []
 
-        print_(sstablefiles)
-
         def do_dump(sstable):
-            print_("-- {0} -----".format(os.path.basename(sstable)))
+            if command:
+                print_("-- {0} -----".format(os.path.basename(sstable)))
             cmd = [sstabledump, sstable]
             if enumerate_keys:
                 cmd.append('-e')
@@ -1068,15 +1066,20 @@ class Node(object):
                 for key in keys:
                     cmd = cmd + ["-k", key]
             p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=env)
-            processes.append(p)
+            if command:
+                out, err, rc = handle_external_tool_process(p, "sstabledump")
+                print_(out)
+                print_('\n')
+            else:
+                processes.append(p)
 
         for sstable in sstablefiles:
             do_dump(sstable)
 
         return processes
 
-    def run_sstabledump(self, datafiles=None, keyspace=None, column_families=None, keys=None, enumerate_keys=False):
-        processes = self.run_sstabledump_process(datafiles, keyspace, column_families, keys, enumerate_keys)
+    def run_sstabledump(self, datafiles=None, keyspace=None, column_families=None, keys=None, enumerate_keys=False, command=False):
+        processes = self.run_sstabledump_process(datafiles, keyspace, column_families, keys, enumerate_keys, command)
         results = []
 
         for p in processes:
