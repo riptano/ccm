@@ -291,11 +291,15 @@ class DseNode(Node):
             shutil.copytree(src_lib, dst_lib)
 
     def import_bin_files(self):
+        common.copy_directory(os.path.join(self.get_install_dir(), 'bin'), self.get_bin_dir())
         cassandra_bin_dir = os.path.join(self.get_path(), 'resources', 'cassandra', 'bin')
         shutil.rmtree(cassandra_bin_dir, ignore_errors=True)
         os.makedirs(cassandra_bin_dir)
-        common.copy_directory(os.path.join(self.get_install_dir(), 'bin'), self.get_bin_dir())
         common.copy_directory(os.path.join(self.get_install_dir(), 'resources', 'cassandra', 'bin'), cassandra_bin_dir)
+        if os.path.exists(os.path.join(self.get_install_dir(), 'resources', 'cassandra', 'tools')):
+            cassandra_tools_dir = os.path.join(self.get_path(), 'resources', 'cassandra', 'tools')
+            shutil.rmtree(cassandra_tools_dir, ignore_errors=True)
+            shutil.copytree(os.path.join(self.get_install_dir(), 'resources', 'cassandra', 'tools'), cassandra_tools_dir)
         self.export_dse_home_in_dse_env_sh()
 
     def export_dse_home_in_dse_env_sh(self):
