@@ -525,9 +525,10 @@ class NodeJsonCmd(Cmd):
                                            enumerate_keys=self.options.enumerate_keys)
             elif self.node.has_cmd('sstabledump'):
                 self.node.run_sstabledump(keyspace=self.keyspace,
-                                           column_families=self.column_families,
-                                           keys=self.options.keys,
-                                           enumerate_keys=self.options.enumerate_keys)
+                                          column_families=self.column_families,
+                                          keys=self.options.keys,
+                                          enumerate_keys=self.options.enumerate_keys,
+                                          command=True)
         except common.ArgumentError as e:
             print_(e, file=sys.stderr)
 
