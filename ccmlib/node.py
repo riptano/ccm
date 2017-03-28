@@ -1986,12 +1986,22 @@ def _grep_log_for_errors(log):
     loglines = log.splitlines()
 
     for line_num, line in enumerate(loglines):
-        if log_line_category(line) == 'ERROR':
+        found_exception = False
+        line_category = log_line_category(line)
+        if line_category == 'ERROR':
             matches.append([line])
+            found_exception = True
 
+        elif line_category == 'WARN':
+            match = re.search(r'exception', line)
+            if match is not None:
+                matches.append([line])
+                found_exception = True
+
+        if found_exception:
             for next_line_num in range(line_num + 1, len(loglines)):
                 next_line = loglines[next_line_num]
-                # if a log line can't be identified, assume continuation of an ERROR message
+                # if a log line can't be identified, assume continuation of an ERROR/WARN exception
                 if log_line_category(next_line) is None:
                     matches[-1].append(next_line)
                 else:
