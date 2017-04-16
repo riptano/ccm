@@ -33,6 +33,7 @@ class Cluster(object):
         self.__log_level = "INFO"
         self.__path = path
         self.__version = None
+        self._version_slug = version
         self.use_vnodes = False
         # Classes that are to follow the respective logging level
         self._debug = []
@@ -588,6 +589,7 @@ class Cluster(object):
         config_map = {
             'name': self.name,
             'nodes': node_list,
+            'version_slug': self._version_slug,
             'seeds': seed_list,
             'partitioner': self.partitioner,
             'install_dir': self.__install_dir,

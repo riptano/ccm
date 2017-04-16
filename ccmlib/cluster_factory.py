@@ -21,12 +21,13 @@ class ClusterFactory():
             data = yaml.load(f)
         try:
             install_dir = None
+            version_slug = data.get('version_slug', data.get('install_dir'))
             if 'install_dir' in data:
                 install_dir = data['install_dir']
-                repository.validate(install_dir)
+                repository.validate(install_dir, version_slug)
             if install_dir is None and 'cassandra_dir' in data:
                 install_dir = data['cassandra_dir']
-                repository.validate(install_dir)
+                repository.validate(install_dir, version_slug)
 
             if common.isDse(install_dir):
                 cluster = DseCluster(path, data['name'], install_dir=install_dir, create_directory=False)

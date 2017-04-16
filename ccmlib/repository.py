@@ -124,10 +124,9 @@ def setup_opscenter(opscenter, verbose=False):
     return odir
 
 
-def validate(path):
+def validate(path, version_slug):
     if path.startswith(__get_dir()):
-        _, version = os.path.split(os.path.normpath(path))
-        setup(version)
+        setup(version_slug)
 
 
 def clone_development(git_repo, version, verbose=False, alias=False):
