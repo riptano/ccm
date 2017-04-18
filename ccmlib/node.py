@@ -1297,8 +1297,8 @@ class Node(object):
         output = self.nodetool('info')[0]
         return _get_load_from_info_output(output)
 
-    def flush(self):
-        self.nodetool("flush")
+    def flush(self, wait=False):
+        self.nodetool("flush", wait=wait)
 
     def compact(self):
         self.nodetool("compact")
