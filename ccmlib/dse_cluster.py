@@ -36,7 +36,7 @@ class DseCluster(Cluster):
 
     def load_from_repository(self, version, verbose):
         if self.opscenter is not None:
-            odir = repository.setup_opscenter(self.opscenter, verbose)
+            odir = repository.setup_opscenter(self.opscenter, self.dse_username, self.dse_password, verbose)
             target_dir = os.path.join(self.get_path(), 'opscenter')
             shutil.copytree(odir, target_dir)
         return repository.setup_dse(version, self.dse_username, self.dse_password, verbose)
