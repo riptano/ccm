@@ -30,7 +30,7 @@ from ccmlib.common import (ArgumentError, CCMError,
 from six.moves import urllib
 
 DSE_ARCHIVE = "http://downloads.datastax.com/enterprise/dse-%s-bin.tar.gz"
-OPSC_ARCHIVE = "http://downloads.datastax.com/community/opscenter-%s.tar.gz"
+OPSC_ARCHIVE = "http://downloads.datastax.com/enterprise/opscenter-%s.tar.gz"
 ARCHIVE = "http://archive.apache.org/dist/cassandra"
 GIT_REPO = "http://git-wip-us.apache.org/repos/asf/cassandra.git"
 GITHUB_TAGS = "https://api.github.com/repos/apache/cassandra/git/refs/tags"
@@ -115,11 +115,11 @@ def setup_dse(version, username, password, verbose=False):
     return (cdir, version)
 
 
-def setup_opscenter(opscenter, verbose=False):
+def setup_opscenter(opscenter, username, password, verbose=False):
     ops_version = 'opsc' + opscenter
     odir = version_directory(ops_version)
     if odir is None:
-        download_opscenter_version(opscenter, ops_version, verbose=verbose)
+        download_opscenter_version(opscenter, username, password, ops_version, verbose=verbose)
         odir = version_directory(ops_version)
     return odir
 
@@ -288,11 +288,15 @@ def download_dse_version(version, username, password, verbose=False):
         raise ArgumentError("Unable to uncompress downloaded file: %s" % str(e))
 
 
-def download_opscenter_version(version, target_version, verbose=False):
+def download_opscenter_version(version, username, password, target_version, verbose=False):
     url = OPSC_ARCHIVE % version
     _, target = tempfile.mkstemp(suffix=".tar.gz", prefix="ccm-")
     try:
-        __download(url, target, show_progress=verbose)
+        if username is None:
+            common.warning("No dse username detected, specify one using --dse-username or passing in a credentials file using --dse-credentials.")
+        if password is None:
+            common.warning("No dse password detected, specify one using --dse-password or passing in a credentials file using --dse-credentials.")
+        __download(url, target, username=username, password=password, show_progress=verbose)
         common.info("Extracting {} as version {} ...".format(target, target_version))
         tar = tarfile.open(target)
         dir = tar.next().name.split("/")[0]  # pylint: disable=all
