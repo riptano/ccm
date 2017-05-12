@@ -85,6 +85,7 @@ class Cluster(object):
 
     def set_datadir_count(self, n):
         self.data_dir_count = int(n)
+        self._update_config()
         return self
 
     def set_install_dir(self, install_dir=None, version=None, verbose=False):
