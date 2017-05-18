@@ -32,7 +32,7 @@ from six.moves import urllib
 DSE_ARCHIVE = "http://downloads.datastax.com/enterprise/dse-%s-bin.tar.gz"
 OPSC_ARCHIVE = "http://downloads.datastax.com/enterprise/opscenter-%s.tar.gz"
 ARCHIVE = "http://archive.apache.org/dist/cassandra"
-GIT_REPO = "http://git-wip-us.apache.org/repos/asf/cassandra.git"
+GIT_REPO = "http://git.apache.org/cassandra.git"
 GITHUB_TAGS = "https://api.github.com/repos/apache/cassandra/git/refs/tags"
 CCM_CONFIG = ConfigParser.ConfigParser()
 CCM_CONFIG.read(os.path.join(os.path.expanduser("~"), ".ccm", "config"))
