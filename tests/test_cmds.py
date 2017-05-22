@@ -45,13 +45,6 @@ class TestCCMCreate(TestCCMCmd):
     def cluster_create_version_test(self):
         self.validate_output(self.create_cmd())
 
-    def cluster_create_cassandra_dir_test(self):
-        c_dir = common.get_default_path()
-        c_dir = os.path.join(c_dir, 'repository')
-        c_dir = os.path.join(c_dir, os.listdir(c_dir)[0])
-        args = ['--install-dir', c_dir]
-        self.validate_output(self.create_cmd(args, version=None))
-
     def cluster_create_populate_test(self):
         args = ['-n', '3']
         self.validate_output(self.create_cmd(args))
@@ -77,15 +70,6 @@ class TestCCMCreate(TestCCMCmd):
         with open(pidfile, 'r') as f:
             pid = int(f.readline().strip())
         os.kill(pid, 0)
-
-    def cluster_create_debug_start_test(self):
-        args = ['-n', '1', '-s', '-d']
-        p = self.create_cmd(args)
-        stdout, stderr = p.communicate()
-
-        print_("[OUT] {}".format(stdout))
-        self.assertGreater(len(stdout), 18000)
-        self.assertEqual(len(stderr), 0)
 
     def cluster_create_vnodes_test(self):
         args = ['-n', '1', '--vnodes']
