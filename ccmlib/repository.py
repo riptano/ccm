@@ -372,6 +372,13 @@ def compile_version(version, target_dir, verbose=False):
 
     common.info("Compiling Cassandra {} ...".format(version))
     logger.info("--- Cassandra Build -------------------\n")
+
+    default_build_properties = os.path.join(common.get_default_path(), 'build.properties.default')
+    if os.path.exists(default_build_properties):
+        target_build_properties = os.path.join(target_dir, 'build.properties')
+        logger.info("Copying %s to %s\n" % (default_build_properties, target_build_properties))
+        shutil.copyfile(default_build_properties, target_build_properties)
+
     try:
         # Patch for pending Cassandra issue: https://issues.apache.org/jira/browse/CASSANDRA-5543
         # Similar patch seen with buildbot
