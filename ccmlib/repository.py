@@ -98,7 +98,8 @@ def setup(version, verbose=False):
             # We don't do this if binary: or source: were
             # explicitly specified.
             if fallback:
-                common.warning("Downloading {} failed, due to {}. Trying to build from git instead.".format(version, e))
+                common.warning("Downloading {} failed, trying to build from git instead.\n"
+                               "The error was: {}".format(version, e))
                 version = 'git:cassandra-{}'.format(version)
                 clone_development(GIT_REPO, version, verbose=verbose)
                 return (version_directory(version), None)
@@ -253,7 +254,7 @@ def clone_development(git_repo, version, verbose=False, alias=False):
             rmdirs(target_dir)
             common.error("Deleted {} due to error".format(target_dir))
         except:
-            print_('Building C* version {version} failed. Attempted to delete {target_dir}'
+            print_('Building C* version {version} failed. Attempted to delete {target_dir} '
                    'but failed. This will need to be manually deleted'.format(
                        version=version,
                        target_dir=target_dir
@@ -348,7 +349,7 @@ def download_version(version, url=None, verbose=False, binary=False):
             compile_version(version, target_dir, verbose=verbose)
 
     except urllib.error.URLError as e:
-        msg = "Invalid version {}" % version if url is None else "Invalid url {}".format(url)
+        msg = "Invalid version {}".format(version) if url is None else "Invalid url {}".format(url)
         msg = msg + " (underlying error is: {})".format(str(e))
         raise ArgumentError(msg)
     except tarfile.ReadError as e:
