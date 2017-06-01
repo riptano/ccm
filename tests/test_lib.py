@@ -311,3 +311,22 @@ class TestErrorLogGrepping(ccmtest.Tester):
         err = ('ERROR: You have made a terrible mistake\n'
                '  2015-05-12 14:12:12,720 INFO: why would you ever do that\n')
         self.assertGreppedLog(err, [['ERROR: You have made a terrible mistake']])
+
+    def test_finds_exceptions_logged_as_warn(self):
+        line1 = ('WARN  [ReadStage-2] 2017-03-20 13:29:39,165  AbstractLocalAwareExecutorService.java:167 - '
+                 'Uncaught exception on thread Thread[ReadStage-2,5,main]: {} java.lang.AssertionError: Lower bound '
+                 '[INCL_START_BOUND(HistLoss, -9223372036854775808, -9223372036854775808) ]is bigger than '
+                 'first returned value')
+
+        line2 = ('WARN  [MessagingService-Incoming-/IP] 2017-05-26 19:27:11,523 IncomingTcpConnection.java:101 - '
+                 'UnknownColumnFamilyException reading from socket; closing org.apache.cassandra.db.'
+                 'UnknownColumnFamilyException: Couldnt find table for cfId 922b7940-3a65-11e7-adf3-a3ff55d9bcf1. '
+                 'If a table was just created, this is likely due to the schema not being fully propagated.  '
+                 'Please wait for schema agreement on table creation.')
+
+        line3 = 'WARN oh no there was an error, it failed, with a failure'  # dont care for this one
+
+        line4 = 'WARN there was an exception!!!'
+
+        err = '\n'.join([line1, line2, line3, line4])
+        self.assertGreppedLog(err, [[line1], [line2], [line4]])
