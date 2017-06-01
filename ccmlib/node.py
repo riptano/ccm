@@ -1977,8 +1977,11 @@ def _get_load_from_info_output(info):
 
 
 def _grep_log_for_errors(log):
+    except_re = re.compile(r'[Ee]xception|AssertionError')
+    log_cat_re = re.compile(r'(INFO|DEBUG|WARN|ERROR)')
+
     def log_line_category(line):
-        match = re.search(r'(INFO|DEBUG|WARN|ERROR)', line)
+        match = log_cat_re.search(line)
         return match.group(0) if match else None
 
     matches = []
@@ -1993,7 +1996,7 @@ def _grep_log_for_errors(log):
             found_exception = True
 
         elif line_category == 'WARN':
-            match = re.search(r'exception', line)
+            match = except_re.search(line)
             if match is not None:
                 matches.append([line])
                 found_exception = True
