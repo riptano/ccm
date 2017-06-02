@@ -15,29 +15,6 @@ CLUSTER_PATH = TEST_DIR
 
 
 class TestCCMLib(ccmtest.Tester):
-
-    def simple_test(self, version='2.0.9'):
-        self.cluster = Cluster(CLUSTER_PATH, "simple", cassandra_version=version)
-        self.cluster.populate(3)
-        self.cluster.start()
-        node1, node2, node3 = self.cluster.nodelist()
-
-        if version < '2.1':
-            node1.stress()
-        else:
-            node1.stress(['write', 'n=1000000'])
-
-        self.cluster.flush()
-
-    def simple_test_across_versions(self):
-        self.simple_test(version='1.2.18')
-        self.cluster.remove()
-
-        self.simple_test(version='2.0.9')
-        self.cluster.remove()
-
-        self.simple_test(version='2.1.0-rc5')
-
     def restart_test(self):
         self.cluster = Cluster(CLUSTER_PATH, "restart", cassandra_version='2.0.9')
         self.cluster.populate(3)
@@ -47,34 +24,6 @@ class TestCCMLib(ccmtest.Tester):
         self.cluster.start()
 
         self.cluster.show(True)
-
-    def multi_dc_test(self):
-        self.cluster = Cluster(CLUSTER_PATH, "multi_dc", cassandra_version='2.0.9')
-        self.cluster.populate([1, 2])
-        self.cluster.start()
-        dcs = [node.data_center for node in self.cluster.nodelist()]
-        self.cluster.set_configuration_options(None, None)
-
-        self.cluster.stop()
-        self.cluster.start()
-
-        dcs_2 = [node.data_center for node in self.cluster.nodelist()]
-        self.assertListEqual(dcs, dcs_2)
-
-    def test1(self):
-        self.cluster = Cluster(CLUSTER_PATH, "test1", cassandra_version='2.0.3')
-        self.cluster.show(False)
-        self.cluster.populate(2)
-        self.cluster.set_partitioner("Murmur3")
-        self.cluster.start()
-        self.cluster.set_configuration_options(None, None)
-        self.cluster.set_configuration_options({}, True)
-        self.cluster.set_configuration_options({"a": "b"}, False)
-
-        [node1, node2] = self.cluster.nodelist()
-        node2.compact()
-        self.cluster.flush()
-        self.cluster.stop()
 
     def test2(self):
         self.cluster = Cluster(CLUSTER_PATH, "test2", cassandra_version='2.0.3')
@@ -117,20 +66,6 @@ class TestRunCqlsh(ccmtest.Tester):
         self.cluster.populate(1).start(wait_for_binary_proto=True)
         [self.node] = self.cluster.nodelist()
 
-    def test_run_cqlsh(self):
-        '''run_cqlsh works with a simple example input'''
-        self.node.run_cqlsh(
-            '''
-            CREATE KEYSPACE ks WITH replication = { 'class' :'SimpleStrategy', 'replication_factor': 1};
-            USE ks;
-            CREATE TABLE test (key int PRIMARY KEY);
-            INSERT INTO test (key) VALUES (1);
-            ''')
-        rv = self.node.run_cqlsh('SELECT * from ks.test', return_output=True)
-        for s in ['(1 rows)', 'key', '1']:
-            self.assertIn(s, rv[0])
-        self.assertEqual(rv[1], '')
-
     def run_cqlsh_printing(self, return_output, show_output):
         '''Parameterized test. Runs run_cqlsh with options to print the output
         and to return it as a string, or with these options combined, depending
@@ -162,20 +97,7 @@ class TestRunCqlsh(ccmtest.Tester):
 
         if return_output and show_output:
             self.assertEqual(printed_output, rv[0])
-
-    def test_no_output(self):
-        self.run_cqlsh_printing(return_output=False, show_output=False)
-
-    def test_print_output(self):
-        self.run_cqlsh_printing(return_output=True, show_output=False)
-
-    def test_return_output(self):
-        self.run_cqlsh_printing(return_output=False, show_output=True)
-
-    def test_print_and_return_output(self):
-        self.run_cqlsh_printing(return_output=True, show_output=True)
-
-
+    
 class TestNodeLoad(ccmtest.Tester):
 
     def test_rejects_multiple_load_lines(self):
