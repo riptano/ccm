@@ -1297,11 +1297,29 @@ class Node(object):
         output = self.nodetool('info')[0]
         return _get_load_from_info_output(output)
 
-    def flush(self):
+    def flush(self, delay=True):
+        # The "delay" argument allows one to determine whether to delay the test until the flush command is finished. 
+        mark = self.mark_log()
         self.nodetool("flush")
+        if delay and self.cluster.version() >= '1.2':
+            try:
+                self.watch_log_for("Completed flushing", from_mark=mark, timeout=10)
+            except TimeoutError as e:
+                pass
 
     def compact(self):
         self.nodetool("compact")
+        self._compact_delay()
+
+    def _compact_delay(self, check_interval=2):
+        # Delays the test until compact has finished running.
+        pattern = re.compile("(^|\n)pending tasks: 0\n")
+        running = True
+        while running:
+            output = self.nodetool('compactionstats')
+            if pattern.search(output[0]):
+                running = False
+            time.sleep(check_interval)
 
     def drain(self, block_on_log=False):
         mark = self.mark_log()
