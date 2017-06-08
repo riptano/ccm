@@ -4,7 +4,8 @@ python:
   - "3.4.5"
   - "3.5.2"
 install:
-  - pip install pylint six
+  - pip install pylint six pyyaml
 script:
   - pylint --py3k --disable=W1633,W1648 ccmlib
   - pylint --disable=all --enable=E,F ccmlib
+  - nosetests
