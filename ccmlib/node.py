@@ -351,7 +351,7 @@ class Node(object):
             common.CASSANDRA_WIN_ENV if common.is_win() else common.CASSANDRA_ENV
         )
 
-    def grep_log(self, expr, filename='system.log'):
+    def grep_log(self, expr, filename='system.log', from_mark=None):
         """
         Returns a list of lines matching the regular expression in parameter
         in the Cassandra log of this node
@@ -359,6 +359,8 @@ class Node(object):
         matchings = []
         pattern = re.compile(expr)
         with open(os.path.join(self.get_path(), 'logs', filename)) as f:
+            if from_mark:
+                f.seek(from_mark)
             for line in f:
                 m = pattern.search(line)
                 if m:
