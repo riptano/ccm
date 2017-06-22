@@ -13,7 +13,8 @@ import yaml
 from six import iteritems, print_
 
 from ccmlib import common, extension, repository
-from ccmlib.node import Node, NodeError, ToolError
+from ccmlib.node import (Node, NodeError, ToolError,
+                         handle_external_tool_process)
 
 
 class DseNode(Node):
@@ -180,7 +181,7 @@ class DseNode(Node):
         args = [dsetool, '-h', node_ip, '-j', str(self.jmx_port), '-c', str(binary_port)]
         args += cmd.split()
         p = subprocess.Popen(args, env=env)
-        p.wait()
+        return handle_external_tool_process(p, args)
 
     def dse(self, dse_options=None):
         if dse_options is None:
@@ -192,7 +193,7 @@ class DseNode(Node):
         args = [dse]
         args += dse_options
         p = subprocess.Popen(args, env=env)
-        p.wait()
+        return handle_external_tool_process(p, args)
 
     def hadoop(self, hadoop_options=None):
         if hadoop_options is None:
@@ -203,7 +204,7 @@ class DseNode(Node):
         args = [dse, 'hadoop']
         args += hadoop_options
         p = subprocess.Popen(args, env=env)
-        p.wait()
+        return handle_external_tool_process(p, args)
 
     def hive(self, hive_options=None):
         if hive_options is None:
@@ -214,7 +215,7 @@ class DseNode(Node):
         args = [dse, 'hive']
         args += hive_options
         p = subprocess.Popen(args, env=env)
-        p.wait()
+        return handle_external_tool_process(p, args)
 
     def pig(self, pig_options=None):
         if pig_options is None:
@@ -225,7 +226,7 @@ class DseNode(Node):
         args = [dse, 'pig']
         args += pig_options
         p = subprocess.Popen(args, env=env)
-        p.wait()
+        return handle_external_tool_process(p, args)
 
     def sqoop(self, sqoop_options=None):
         if sqoop_options is None:
@@ -236,7 +237,7 @@ class DseNode(Node):
         args = [dse, 'sqoop']
         args += sqoop_options
         p = subprocess.Popen(args, env=env)
-        p.wait()
+        return handle_external_tool_process(p, args)
 
     def spark(self, spark_options=None):
         if spark_options is None:
@@ -247,7 +248,7 @@ class DseNode(Node):
         args = [dse, 'spark']
         args += spark_options
         p = subprocess.Popen(args, env=env)
-        p.wait()
+        return handle_external_tool_process(p, args)
 
     def import_dse_config_files(self):
         self._update_config()
