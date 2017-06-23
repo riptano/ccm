@@ -74,7 +74,7 @@ class Node(object):
     Provides interactions to a Cassandra node.
     """
 
-    def __init__(self, name, cluster, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save=True, binary_interface=None, byteman_port='0', environment_variables=None):
+    def __init__(self, name, cluster, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save=True, binary_interface=None, byteman_port='0', environment_variables=None, byteman_startup_script=None):
         """
         Create a new Node.
           - name: the name for that node
@@ -98,6 +98,7 @@ class Node(object):
         self.jmx_port = jmx_port
         self.remote_debug_port = remote_debug_port
         self.byteman_port = byteman_port
+        self.byteman_startup_script = byteman_startup_script
         self.initial_token = initial_token
         self.pid = None
         self.data_center = None
@@ -1610,6 +1611,8 @@ class Node(object):
         if self.byteman_port != '0':
             byteman_jar = glob.glob(os.path.join(self.get_install_dir(), 'build', 'lib', 'jars', 'byteman-[0-9]*.jar'))[0]
             agent_string = "-javaagent:{}=listener:true,boot:{},port:{}".format(byteman_jar, byteman_jar, str(self.byteman_port))
+            if (self.byteman_startup_script is not None): 
+                agent_string = agent_string + ",script:{}".format(self.byteman_startup_script)
             if common.is_modern_windows_install(self.get_base_cassandra_version()):
                 with open(conf_file, "r+") as conf_rewrite:
                     conf_lines = conf_rewrite.readlines()
