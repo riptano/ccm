@@ -493,15 +493,16 @@ class Cluster(object):
             if '-node' not in stress_options:
                 nodes_options = ['-node', ','.join(livenodes)]
             args = [stress] + stress_options + nodes_options
+        rc = None
         try:
             # need to set working directory for env on Windows
             if common.is_win():
-                subprocess.call(args, cwd=common.parse_path(stress))
+                rc = subprocess.call(args, cwd=common.parse_path(stress))
             else:
-                subprocess.call(args)
+                rc = subprocess.call(args)
         except KeyboardInterrupt:
             pass
-        return self
+        return rc
 
     def run_cli(self, cmds=None, show_output=False, cli_options=None):
         if cli_options is None:
