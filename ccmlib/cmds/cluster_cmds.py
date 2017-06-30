@@ -704,9 +704,11 @@ class ClusterStressCmd(Cmd):
 
     def run(self):
         try:
-            self.cluster.stress(self.stress_options)
+            rc = self.cluster.stress(self.stress_options)
+            exit(rc)
         except Exception as e:
             print_(e, file=sys.stderr)
+            exit(1)
 
 
 class ClusterUpdateconfCmd(Cmd):
