@@ -484,10 +484,15 @@ class Cluster(object):
         if len(livenodes) == 0:
             print_("No live node")
             return
+        nodes_options = []
         if self.cassandra_version() <= '2.1':
-            args = [stress, '-d', ",".join(livenodes)] + stress_options
+            if '-d' not in stress_options:
+                nodes_options = ['-d', ",".join(livenodes)]
+            args = [stress] + nodes_options + stress_options
         else:
-            args = [stress] + stress_options + ['-node', ','.join(livenodes)]
+            if '-node' not in stress_options:
+                nodes_options = ['-node', ','.join(livenodes)]
+            args = [stress] + stress_options + nodes_options
         try:
             # need to set working directory for env on Windows
             if common.is_win():
