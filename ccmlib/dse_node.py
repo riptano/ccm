@@ -464,3 +464,9 @@ class DseNode(Node):
             with open(defaults_file, 'a') as f:
                 port_num = 7737 + int(node_num)
                 f.write("\nspark.shuffle.service.port %s\n" % port_num)
+
+        # create Spark working dirs; starting with DSE 5.0.10/5.1.3 these are no longer automatically created
+        for e in ["SPARK_WORKER_DIR", "SPARK_LOCAL_DIRS"]:
+            dir = env[e]
+            if not os.path.exists(dir):
+                os.makedirs(dir)
