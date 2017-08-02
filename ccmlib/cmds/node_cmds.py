@@ -370,7 +370,9 @@ class _DseToolCmd(Cmd):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
 
     def run(self):
-        self.node.dsetool(self.dsetool_cmd)
+        stdout, stderr, rc = self.node.dsetool(self.dsetool_cmd + " " + " ".join((self.args[1:])))
+        print_(stderr)
+        print_(stdout)
 
 
 class NodeDsetoolCmd(_DseToolCmd):
@@ -378,7 +380,9 @@ class NodeDsetoolCmd(_DseToolCmd):
     descr_text = "Run dsetool (connecting to node name)"
 
     def run(self):
-        self.node.dsetool(" ".join(self.args[1:]))
+        stdout, stderr, rc = self.node.dsetool(" ".join(self.args[1:]))
+        print_(stderr)
+        print_(stdout)
 
 
 class NodeCliCmd(Cmd):

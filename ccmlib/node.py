@@ -1611,7 +1611,7 @@ class Node(object):
         if self.byteman_port != '0':
             byteman_jar = glob.glob(os.path.join(self.get_install_dir(), 'build', 'lib', 'jars', 'byteman-[0-9]*.jar'))[0]
             agent_string = "-javaagent:{}=listener:true,boot:{},port:{}".format(byteman_jar, byteman_jar, str(self.byteman_port))
-            if (self.byteman_startup_script is not None): 
+            if self.byteman_startup_script is not None:
                 agent_string = agent_string + ",script:{}".format(self.byteman_startup_script)
             if common.is_modern_windows_install(self.get_base_cassandra_version()):
                 with open(conf_file, "r+") as conf_rewrite:
