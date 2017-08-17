@@ -105,14 +105,7 @@ Once the cluster is created, you can populate it with 3 nodes with:
 
     ccm populate -n 3
 
-Note: If you’re running on Mac OSX, create a new interface for every node besides the first, for example if you populated your cluster with 3 nodes, create interfaces for 127.0.0.2 and 127.0.0.3 like so:
-
-    sudo ifconfig lo0 alias 127.0.0.2
-    sudo ifconfig lo0 alias 127.0.0.3
-
-Otherwise you will get the following error message:
-
-    (...) Inet address 127.0.0.1:9042 is not available: [Errno 48] Address already in use
+For Mac OSX, see ![Network Aliases](./NETWORK_ALIASES.md) for detailed instructions to create network aliases on OSX.
 
 After that execute:
 
@@ -262,7 +255,6 @@ how to use ccmlib follows:
     # after the test, you can leave the cluster running, you can stop all nodes
     # using cluster.stop() but keep the data around (in CLUSTER_PATH/test), or
     # you can remove everything with cluster.remove()
-
 
 --
 Sylvain Lebresne <sylvain@datastax.com>
