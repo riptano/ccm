@@ -105,7 +105,12 @@ Once the cluster is created, you can populate it with 3 nodes with:
 
     ccm populate -n 3
 
-For Mac OSX, see ![Network Aliases](./NETWORK_ALIASES.md) for detailed instructions to create network aliases on OSX.
+For Mac OSX, create a new interface for every node besides the first, for example if you populated your cluster with 3 nodes, create interfaces for 127.0.0.2 and 127.0.0.3 like so:
+
+    sudo ifconfig lo0 alias 127.0.0.2
+    sudo ifconfig lo0 alias 127.0.0.3
+
+Note these aliases will disappear on reboot. For permanent network aliases on Mac OSX see ![Network Aliases](./NETWORK_ALIASES.md).
 
 After that execute:
 
