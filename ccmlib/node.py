@@ -1300,11 +1300,19 @@ class Node(object):
         output = self.nodetool('info')[0]
         return _get_load_from_info_output(output)
 
-    def flush(self):
-        self.nodetool("flush")
+    def flush(self, options=None):
+        if options is None:
+            options = []
+        args = ["flush"] + options
+        cmd = ' '.join(args)
+        self.nodetool(cmd)
 
-    def compact(self):
-        self.nodetool("compact")
+    def compact(self, options=None):
+        if options is None:
+            options = []
+        args = ["compact"] + options
+        cmd = ' '.join(args)
+        self.nodetool(cmd)
 
     def drain(self, block_on_log=False):
         mark = self.mark_log()
@@ -1322,8 +1330,12 @@ class Node(object):
     def move(self, new_token):
         self.nodetool("move " + str(new_token))
 
-    def cleanup(self):
-        self.nodetool("cleanup")
+    def cleanup(self, options=None):
+        if options is None:
+            options = []
+        args = ["cleanup"] + options
+        cmd = ' '.join(args)
+        self.nodetool(cmd)
 
     def decommission(self, force=False):
         cmd = 'decommission'
