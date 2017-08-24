@@ -79,6 +79,11 @@ class DseNode(Node):
                                                'data_directories': [{'dir': os.path.join(self.get_path(), 'dsefs', 'data')}]}}
             self.set_dse_configuration_options(dsefs_options)
         if 'spark' in self.workloads:
+            dsefs_options = {'dsefs_options': {'enabled': False,
+                                               'work_dir': os.path.join(self.get_path(), 'dsefs'),
+                                               'data_directories': [
+                                                   {'dir': os.path.join(self.get_path(), 'dsefs', 'data')}]}}
+            self.set_dse_configuration_options(dsefs_options)
             self._update_spark_env()
 
     def set_dse_configuration_options(self, values=None):
