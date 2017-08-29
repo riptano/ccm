@@ -3,6 +3,7 @@ from __future__ import absolute_import
 
 import sys
 from optparse import BadOptionError, Option, OptionParser
+import re
 
 from six import print_
 
@@ -58,6 +59,9 @@ class Cmd(object):
             if len(args) == 0:
                 print_('Missing cluster name', file=sys.stderr)
                 parser.print_help()
+                exit(1)
+            if not re.match('^[a-zA-Z0-9_-]+$', args[0]):
+                print_('Cluster name should only contain word characters or hyphen', file=sys.stderr)
                 exit(1)
             self.name = args[0]
         if node_name:
