@@ -1249,6 +1249,34 @@ class Node(object):
     def get_sstables(self, keyspace, column_family):
         return [f for sublist in self.get_sstables_per_data_directory(keyspace, column_family) for f in sublist]
 
+    def get_sstables_via_sstableutil(self, keyspace, table, sstabletype='all', oplogs=False, cleanup=False, match='-Data.db'):
+        env = common.make_cassandra_env(self.get_install_cassandra_root(), self.get_node_cassandra_root())
+        tool_bin = self.get_tool('sstableutil')
+
+        args = [tool_bin, '--type', sstabletype]
+
+        if oplogs:
+            args.extend(['--oplog'])
+        if cleanup:
+            args.extend(['--cleanup'])
+
+        args.extend([keyspace, table])
+
+        p = subprocess.Popen(args, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        stdout, stderr = p.communicate()
+
+        if p.returncode != 0:
+            common.error("""Error invoking sstableutil; returned {code}; args={args}; env={env}
+            stdout:
+            {stdout}
+            stderr:
+            {stderr}
+            """.format(code=p.returncode, args=args, env=env, stdout=stdout, stderr=stderr))
+            raise Exception("Error invoking sstableutil; returned {code}".format(code=p.returncode))
+
+        return sorted(filter(lambda s: match in s, stdout.splitlines()))
+
     def stress_process(self, stress_options=None, whitelist=False):
         if stress_options is None:
             stress_options = []
