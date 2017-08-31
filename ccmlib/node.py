@@ -563,7 +563,8 @@ class Node(object):
               use_jna=False,
               quiet_start=False,
               allow_root=False,
-              set_migration_task=True):
+              set_migration_task=True,
+              byteman_startup_script=None):
         """
         Start the node. Options includes:
           - join_ring: if false, start the node with -Dcassandra.join_ring=False
@@ -573,7 +574,32 @@ class Node(object):
             have marked this node UP. if an integer, sets the timeout for how long to wait
           - replace_token: start the node with the -Dcassandra.replace_token option.
           - replace_address: start the node with the -Dcassandra.replace_address option.
+          - byteman_startup_script: if specified, overrides the byteman startup script (requires byteman)
         """
+        if self.byteman_port != '0' and byteman_startup_script:
+            conf_file = os.path.join(self.get_conf_dir(), common.CASSANDRA_ENV)
+            byteman_jar = glob.glob(os.path.join(self.get_install_dir(), 'build', 'lib', 'jars', 'byteman-[0-9]*.jar'))[0]
+            agent_string = "-javaagent:{}=listener:true,boot:{},port:{},script:{}".format(
+                byteman_jar, byteman_jar, str(self.byteman_port), byteman_startup_script
+            )
+            if common.is_modern_windows_install(self.get_base_cassandra_version()):
+                with open(conf_file, "r+") as conf_rewrite:
+                    conf_lines = conf_rewrite.readlines()
+                    # Remove trailing brace, will be replaced
+                    conf_lines = conf_lines[:-1]
+                    conf_lines.append(
+                        "    $env:JVM_OPTS=\"$env:JVM_OPTS {}\"\n}}\n".format(agent_string)
+                    )
+                    conf_rewrite.seek(0)
+                    conf_rewrite.truncate()
+                    conf_rewrite.writelines(conf_lines)
+            else:
+                common.replaces_or_add_into_file_tail(
+                    conf_file,
+                    [('.*byteman.*', "JVM_OPTS=\"$JVM_OPTS {}\"".format(agent_string))],
+                    add_config_close=False
+                )
+
         if jvm_args is None:
             jvm_args = []
 
