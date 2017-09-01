@@ -947,6 +947,18 @@ class Node(object):
                                           'logback.xml')
         common.copy_file(new_logback_config, cassandra_conf_dir)
 
+    def update_startup_byteman_script(self, byteman_startup_script):
+        """
+        Update the byteman startup script, i.e., rule injected before the node starts.
+
+        :param byteman_startup_script: the relative path to the script
+        :raise common.LoadError: if the node does not have byteman installed
+        """
+        if self.byteman_port == '0':
+            raise common.LoadError('Byteman is not installed')
+        self.byteman_startup_script = byteman_startup_script
+        self.import_config_files()
+
     def clear(self, clear_all=False, only_data=False):
         data_dirs = ['data{0}'.format(x) for x in xrange(0, self.cluster.data_dir_count)]
         data_dirs.append("commitlogs")
