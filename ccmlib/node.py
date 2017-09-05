@@ -95,6 +95,7 @@ class Node(object):
         self.network_interfaces = {'thrift': common.normalize_interface(thrift_interface),
                                    'storage': common.normalize_interface(storage_interface),
                                    'binary': common.normalize_interface(binary_interface)}
+        (self.ip_addr, _) = self.network_interfaces['thrift'] if thrift_interface else self.network_interfaces['binary']
         self.jmx_port = jmx_port
         self.remote_debug_port = remote_debug_port
         self.byteman_port = byteman_port

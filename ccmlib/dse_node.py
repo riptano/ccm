@@ -49,8 +49,7 @@ class DseNode(Node):
         return [common.join_bin(os.path.join(self.get_install_dir(), 'resources', 'cassandra'), 'bin', 'dse'), toolname]
 
     def get_env(self):
-        (node_ip, _) = self.network_interfaces['binary']
-        return common.make_dse_env(self.get_install_dir(), self.get_path(), node_ip)
+        return common.make_dse_env(self.get_install_dir(), self.get_path(), self.ip_addr)
 
     def get_cassandra_version(self):
         return common.get_dse_cassandra_version(self.get_install_dir())
@@ -65,12 +64,11 @@ class DseNode(Node):
         if 'solr' in self.workloads:
             self.__generate_server_xml()
         if 'graph' in self.workloads:
-            (node_ip, _) = self.network_interfaces['binary']
             conf_file = os.path.join(self.get_path(), 'resources', 'dse', 'conf', 'dse.yaml')
             with open(conf_file, 'r') as f:
                 data = yaml.load(f)
             graph_options = data['graph']
-            graph_options['gremlin_server']['host'] = node_ip
+            graph_options['gremlin_server']['host'] = self.ip_addr
             self.set_dse_configuration_options({'graph': graph_options})
             self.__update_gremlin_config_yaml()
         if 'dsefs' in self.workloads:
@@ -377,7 +375,7 @@ class DseNode(Node):
         with open(server_xml, 'w+') as f:
             f.write('<Server port="8005" shutdown="SHUTDOWN">\n')
             f.write('  <Service name="Solr">\n')
-            f.write('    <Connector port="8983" address="%s" protocol="HTTP/1.1" connectionTimeout="20000" maxThreads = "200" URIEncoding="UTF-8"/>\n' % self.network_interfaces['thrift'][0])
+            f.write('    <Connector port="8983" address="%s" protocol="HTTP/1.1" connectionTimeout="20000" maxThreads = "200" URIEncoding="UTF-8"/>\n' % self.ip_addr)
             f.write('    <Engine name="Solr" defaultHost="localhost">\n')
             f.write('      <Host name="localhost"  appBase="../solr/web"\n')
             f.write('            unpackWARs="true" autoDeploy="true"\n')
@@ -389,13 +387,11 @@ class DseNode(Node):
             f.close()
 
     def __update_gremlin_config_yaml(self):
-        (node_ip, _) = self.network_interfaces['binary']
-
         conf_file = os.path.join(self.get_path(), 'resources', 'graph', 'gremlin-console', 'conf', 'remote.yaml')
         with open(conf_file, 'r') as f:
             data = yaml.load(f)
 
-        data['hosts'] = [node_ip]
+        data['hosts'] = [self.ip_addr]
 
         with open(conf_file, 'w') as f:
             yaml.safe_dump(data, f, default_flow_style=False)
@@ -416,7 +412,7 @@ class DseNode(Node):
         address_yaml = os.path.join(agent_dir, 'conf', 'address.yaml')
         if not os.path.exists(address_yaml):
             with open(address_yaml, 'w+') as f:
-                (ip, port) = self.network_interfaces['thrift']
+                ip = self.ip_addr
                 jmx = self.jmx_port
                 f.write('stomp_interface: 127.0.0.1\n')
                 f.write('local_interface: %s\n' % ip)
@@ -425,7 +421,10 @@ class DseNode(Node):
                 f.write('cassandra_conf: %s\n' % os.path.join(self.get_path(), 'resources', 'cassandra', 'conf', 'cassandra.yaml'))
                 f.write('cassandra_install: %s\n' % self.get_path())
                 f.write('cassandra_logs: %s\n' % os.path.join(self.get_path(), 'logs'))
-                f.write('thrift_port: %s\n' % port)
+                if 'thrift' in self.network_interfaces: 
+                    (_, port) = self.network_interfaces['thrift']
+                    f.write('thrift_port: %s\n' % port)
+
                 f.write('jmx_port: %s\n' % jmx)
                 f.close()
 
