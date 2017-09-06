@@ -424,7 +424,7 @@ class Node(object):
         timeouts (a TimeoutError is then raised). On successful completion,
         a list of pair (line matched, match object) is returned.
         """
-        elapsed = 0
+        start = time.time()
         tofind = [exprs] if isinstance(exprs, string_types) else exprs
         tofind = [re.compile(e) for e in tofind]
         matchings = []
@@ -436,6 +436,8 @@ class Node(object):
         output_read = False
         while not os.path.exists(log_file):
             time.sleep(.5)
+            if start + timeout < time.time():
+                raise TimeoutError(time.strftime("%d %b %Y %H:%M:%S", time.gmtime()) + " [" + self.name + "] Timed out waiting for {} to be created.".format(log_file))
             if process and not output_read:
                 process.poll()
                 if process.returncode is not None:
@@ -473,8 +475,7 @@ class Node(object):
                 else:
                     # yep, it's ugly
                     time.sleep(1)
-                    elapsed = elapsed + 1
-                    if elapsed > timeout:
+                    if start + timeout < time.time():
                         raise TimeoutError(time.strftime("%d %b %Y %H:%M:%S", time.gmtime()) + " [" + self.name + "] Missing: " + str([e.pattern for e in tofind]) + ":\n" + reads[:50] + ".....\nSee {} for remainder".format(filename))
 
                 if process:
