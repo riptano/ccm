@@ -11,6 +11,7 @@ import os
 import platform
 import re
 import shutil
+import signal
 import socket
 import stat
 import subprocess
@@ -78,10 +79,12 @@ class ArgumentError(CCMError):
 class UnavailableSocketError(CCMError):
     pass
 
+
 class TimeoutError(Exception):
 
     def __init__(self, data):
         Exception.__init__(self, str(data))
+
 
 class LogPatternToVersion(object):
 
@@ -742,3 +745,13 @@ def wait_for_any_log(nodes, pattern, timeout, filename='system.log'):
 
     raise TimeoutError(time.strftime("%d %b %Y %H:%M:%S", time.gmtime()) +
                        " Unable to find: " + repr(pattern) + " in any node log within " + str(timeout) + "s")
+
+
+def get_default_signals():
+    if is_win():
+        # Fill the dictionary with SIGTERM as the cluster is killed forcefully
+        # on Windows regardless of assigned signal (TASKKILL is used)
+        default_signal_events = {'1': signal.SIGTERM, '9': signal.SIGTERM}
+    else:
+        default_signal_events = {'1': signal.SIGHUP, '9': signal.SIGKILL}
+    return default_signal_events
