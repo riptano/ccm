@@ -19,27 +19,27 @@ def get_command(kind, cmd):
     return klass()
 
 
+def print_subcommand_usage(kind):
+    for cmd_name in (cluster_cmds if kind.lower() == 'cluster' else node_cmds).commands():
+        cmd = get_command(kind, cmd_name)
+        if not cmd:
+            print_("Internal error, unknown command {0}".format(cmd_name))
+            exit(1)
+        print_("  {0:14} {1}".format(cmd_name, cmd.description()))
+
+
 def print_global_usage():
     print_("Usage:")
     print_("  ccm <cluster_cmd> [options]")
     print_("  ccm <node_name> <node_cmd> [options]")
     print_("")
     print_("Where <cluster_cmd> is one of")
-    for cmd_name in cluster_cmds.cluster_cmds():
-        cmd = get_command("cluster", cmd_name)
-        if not cmd:
-            print_("Internal error, unknown command {0}".format(cmd_name))
-            exit(1)
-        print_("  {0:14} {1}".format(cmd_name, cmd.description()))
+    print_subcommand_usage('cluster')
     print_("")
     print_("or <node_name> is the name of a node of the current cluster and <node_cmd> is one of")
-    for cmd_name in node_cmds.node_cmds():
-        cmd = get_command("node", cmd_name)
-        if not cmd:
-            print_("Internal error, unknown command {0}".format(cmd_name))
-            exit(1)
-        print_("  {0:14} {1}".format(cmd_name, cmd.description()))
+    print_subcommand_usage('node')
     exit(1)
+
 
 for entry_point in pkg_resources.iter_entry_points(group='ccm_extension'):
     entry_point.load()()
@@ -55,16 +55,16 @@ arg1 = sys.argv[1].lower()
 # show-*-cmds are undocumented commands that emit a list of
 # the appropriate type of subcommand. This is used by the bash completion script.
 if arg1 == 'show-cluster-cmds':
-    for cmd_name in cluster_cmds.cluster_cmds():
+    for cmd_name in cluster_cmds.commands():
         print_(cmd_name)
     exit(1)
 
 if arg1 == 'show-node-cmds':
-    for cmd_name in node_cmds.node_cmds():
+    for cmd_name in node_cmds.commands():
         print_(cmd_name)
     exit(1)
 
-if arg1 in cluster_cmds.cluster_cmds():
+if arg1 in cluster_cmds.commands():
     kind = 'cluster'
     cmd = arg1
     cmd_args = sys.argv[2:]

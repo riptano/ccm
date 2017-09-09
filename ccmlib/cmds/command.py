@@ -43,9 +43,18 @@ class ForgivingParser(OptionParser):
 
 
 class Cmd(object):
+    options = []
+    usage = ""
+    descr_text = ""
+    ignore_unknown_options = False
 
     def get_parser(self):
-        pass
+        if self.usage == "":
+            pass
+        parser = self._get_default_parser(self.usage, self.description(), self.ignore_unknown_options)
+        for args, kwargs in self.options:
+            parser.add_option(*args, **kwargs)
+        return parser
 
     def validate(self, parser, options, args, cluster_name=False, node_name=False, load_cluster=False, load_node=True):
         self.options = options
@@ -93,7 +102,7 @@ class Cmd(object):
         return parser
 
     def description(self):
-        return ""
+        return self.descr_text
 
     def _load_current_cluster(self):
         name = common.current_cluster_name(self.path)
