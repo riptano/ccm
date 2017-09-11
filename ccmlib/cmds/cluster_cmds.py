@@ -65,7 +65,7 @@ def parse_populate_count(v):
 
 class ClusterCreateCmd(Cmd):
 
-    options = [
+    options_list = [
         (['--no-switch'], {'action': "store_true", 'dest': "no_switch", 'help': "Don't switch to the newly created cluster", 'default': False}),
         (['-p', '--partitioner'], {'type': "string", 'dest': "partitioner", 'help': "Set the cluster partitioner class"}),
         (['-v', "--version"], {'type': "string", 'dest': "version", 'help': "Download and use provided cassandra or dse version. If version is of the form 'git:<branch name>', then the specified cassandra branch will be downloaded from the git repo and compiled. (takes precedence over --install-dir)", 'default': None}),
@@ -191,7 +191,7 @@ class ClusterCreateCmd(Cmd):
 
 class ClusterAddCmd(Cmd):
 
-    options = [
+    options_list = [
         (['-b', '--auto-bootstrap'], {'action': "store_true", 'dest': "bootstrap", 'help': "Set auto bootstrap for the node", 'default': False}),
         (['-s', '--seeds'], {'action': "store_true", 'dest': "is_seed", 'help': "Configure this node as a seed", 'default': False}),
         (['-i', '--itf'], {'type': "string", 'dest': "itfs", 'help': "Set host and port for thrift, the binary protocol and storage (format: host[:port])"}),
@@ -259,7 +259,7 @@ class ClusterAddCmd(Cmd):
 
 class ClusterPopulateCmd(Cmd):
 
-    options = [
+    options_list = [
         (['-n', '--nodes'], {'type': "string", 'dest': "nodes", 'help': "Number of nodes to populate with (a single int or a colon-separate list of ints for multi-dc setups)"}),
         (['-d', '--debug'], {'action': "store_true", 'dest': "debug", 'help': "Enable remote debugging options", 'default': False}),
         (['--vnodes'], {'action': "store_true", 'dest': "vnodes", 'help': "Populate using vnodes", 'default': False}),
@@ -331,7 +331,7 @@ class ClusterSwitchCmd(Cmd):
 
 class ClusterStatusCmd(Cmd):
 
-    options = [
+    options_list = [
         (['-v', '--verbose'], {'action': "store_true", 'dest': "verbose", 'help': "Print full information on all nodes", 'default': False}),
     ]
     descr_text = "Display status on the current cluster"
@@ -406,7 +406,7 @@ class ClusterLivesetCmd(Cmd):
 
 class ClusterSetdirCmd(Cmd):
 
-    options = [
+    options_list = [
         (['-v', "--version"], {'type': "string", 'dest': "version", 'help': "Download and use provided cassandra or dse version. If version is of the form 'git:<branch name>', then the specified cassandra branch will be downloaded from the git repo and compiled. (takes precedence over --install-dir)", 'default': None}),
         (["--install-dir"], {'type': "string", 'dest': "install_dir", 'help': "Path to the cassandra or dse directory to use [default %default]", 'default': "./"}),
         (['-n', '--node'], {'type': "string", 'dest': "node", 'help': "Set directory only for the specified node"}),
@@ -445,7 +445,7 @@ class ClusterClearrepoCmd(Cmd):
 
 class ClusterStartCmd(Cmd):
 
-    options = [
+    options_list = [
         (['-v', '--verbose'], {'action': "store_true", 'dest': "verbose", 'help': "Print standard output of cassandra process", 'default': False}),
         (['--no-wait'], {'action': "store_true", 'dest': "no_wait", 'help': "Do not wait for cassandra node to be ready. Overrides all other wait options.", 'default': False}),
         # This option (wait-other-notice) is now deprecated, as it was never respected
@@ -504,7 +504,7 @@ class ClusterStartCmd(Cmd):
 
 class ClusterStopCmd(Cmd):
 
-    options = [
+    options_list = [
         (['-v', '--verbose'], {'action': "store_true", 'dest': "verbose", 'help': "Print nodes that were not running", 'default': False}),
         (['--no-wait'], {'action': "store_true", 'dest': "no_wait", 'help': "Do not wait for the node to be stopped", 'default': False}),
         (['-g', '--gently'], {'action': "store_const", 'dest': "signal_event", 'help': "Shut down gently (default)", 'const': signal.SIGTERM, 'default': signal.SIGTERM}),
@@ -581,7 +581,7 @@ class ClusterStressCmd(Cmd):
 
 class ClusterUpdateconfCmd(Cmd):
 
-    options = [
+    options_list = [
         (['--no-hh', '--no-hinted-handoff'], {'action': "store_false", 'dest': "hinted_handoff", 'default': True, 'help': "Disable hinted handoff"}),
         (['--batch-cl', '--batch-commit-log'], {'action': "store_true", 'dest': "cl_batch", 'default': None, 'help': "Set commit log to batch mode"}),
         (['--periodic-cl', '--periodic-commit-log'], {'action': "store_true", 'dest': "cl_periodic", 'default': None, 'help': "Set commit log to periodic mode"}),
@@ -625,7 +625,7 @@ class ClusterUpdateconfCmd(Cmd):
 
 class ClusterUpdatedseconfCmd(Cmd):
 
-    options = [
+    options_list = [
         (['-y', '--yaml'], {'action': "store_true", 'dest': "literal_yaml", 'default': False, 'help': "Pass in literal yaml string. Option syntax looks like ccm updatedseconf -y 'a: [b: [c,d]]'"}),
     ]
     descr_text = "Update the dse config files for all nodes"
@@ -651,7 +651,7 @@ class ClusterUpdatedseconfCmd(Cmd):
 
 class ClusterUpdatelog4jCmd(Cmd):
 
-    options = [
+    options_list = [
         (['-p', '--path'], {'type': "string", 'dest': "log4jpath", 'help': "Path to new Cassandra log4j configuration file"}),
     ]
     descr_text = "Update the Cassandra log4j-server.properties configuration file on all nodes"
@@ -681,7 +681,7 @@ class ClusterUpdatelog4jCmd(Cmd):
 
 class ClusterCliCmd(Cmd):
 
-    options = [
+    options_list = [
         (['-x', '--exec'], {'type': "string", 'dest': "cmds", 'default': None, 'help': "Execute the specified commands and exit"}),
         (['-v', '--verbose'], {'action': "store_true", 'dest': "verbose", 'help': "With --exec, show cli output after completion", 'default': False}),
     ]
@@ -746,7 +746,7 @@ class ClusterVerifyCmd(Cmd):
 
 class ClusterSetlogCmd(Cmd):
 
-    options = [
+    options_list = [
         (['-c', '--class'], {'type': "string", 'dest': "class_name", 'default': None, 'help': "Optional java class/package. Logging will be set for only this class/package if set"}),
     ]
     descr_text = "Set log level (INFO, DEBUG, ...) with/without Java class for all node of the cluster - require a node restart"
