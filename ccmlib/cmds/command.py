@@ -43,7 +43,7 @@ class ForgivingParser(OptionParser):
 
 
 class Cmd(object):
-    options = []
+    options_list = []
     usage = ""
     descr_text = ""
     ignore_unknown_options = False
@@ -52,7 +52,7 @@ class Cmd(object):
         if self.usage == "":
             pass
         parser = self._get_default_parser(self.usage, self.description(), self.ignore_unknown_options)
-        for args, kwargs in self.options:
+        for args, kwargs in self.options_list:
             parser.add_option(*args, **kwargs)
         return parser
 

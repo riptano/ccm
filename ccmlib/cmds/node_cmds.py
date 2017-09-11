@@ -104,7 +104,7 @@ class NodeShowlogCmd(Cmd):
 
 class NodeSetlogCmd(Cmd):
 
-    options = [
+    options_list = [
         (['-c', '--class'], {'type': "string", 'dest': "class_name", 'default': None, 'help': "Optional java class/package. Logging will be set for only this class/package if set"}),
     ]
     descr_text = "Set node name log level (INFO, DEBUG, ...) with/without Java class - require a node restart"
@@ -134,7 +134,7 @@ class NodeSetlogCmd(Cmd):
 
 class NodeClearCmd(Cmd):
 
-    options = [
+    options_list = [
         (['-a', '--all'], {'action': "store_true", 'dest': "all", 'help': "Also clear the saved cache and node log files", 'default': False}),
     ]
     descr_text = "Clear the node data & logs (and stop the node)"
@@ -150,7 +150,7 @@ class NodeClearCmd(Cmd):
 
 class NodeStartCmd(Cmd):
 
-    options = [
+    options_list = [
         (['-v', '--verbose'], {'action': "store_true", 'dest': "verbose", 'help': "Print standard output of cassandra process", 'default': False}),
         (['--no-wait'], {'action': "store_true", 'dest': "no_wait", 'help': "Do not wait for cassandra node to be ready", 'default': False}),
         (['--wait-other-notice'], {'action': "store_true", 'dest': "deprecate", 'help': "DEPRECATED/IGNORED: Use '--skip-wait-other-notice' instead. This is now on by default.", 'default': False}),
@@ -189,7 +189,7 @@ class NodeStartCmd(Cmd):
 
 class NodeStopCmd(Cmd):
 
-    options = [
+    options_list = [
         (['--no-wait'], {'action': "store_true", 'dest': "no_wait", 'help': "Do not wait for the node to be stopped", 'default': False}),
         (['-g', '--gently'], {'action': "store_const", 'dest': "signal_event", 'help': "Shut down gently (default)", 'const': signal.SIGTERM, 'default': signal.SIGTERM}),
         (['--hang-up'], {'action': "store_const", 'dest': "signal_event", 'help': "Shut down via hang up (kill -1)", 'const': common.get_default_signals()['1']}),
@@ -285,7 +285,7 @@ class NodeVersionCmd(_NodeToolCmd):
 
 class NodeDecommissionCmd(_NodeToolCmd):
     usage = "usage: ccm node_name decommission [options]"
-    options = [
+    options_list = [
         (['--force'], {'action': "store_true", 'dest': "force", 'help': "Force decommission of this node even when it reduces the number of replicas to below configured RF.  Note: This is only relevant for C* 3.12+.", 'default': False}),
     ]
     nodetool_cmd = 'decommission'
@@ -321,7 +321,7 @@ class NodeDsetoolCmd(_DseToolCmd):
 
 class NodeCliCmd(Cmd):
 
-    options = [
+    options_list = [
         (['-x', '--exec'], {'type': "string", 'dest': "cmds", 'default': None, 'help': "Execute the specified commands and exit"}),
         (['-v', '--verbose'], {'action': "store_true", 'dest': "verbose", 'help': "With --exec, show cli output after completion", 'default': False}),
     ]
@@ -344,7 +344,7 @@ class NodeCliCmd(Cmd):
 
 class NodeCqlshCmd(Cmd):
 
-    options = [
+    options_list = [
         (['-x', '--exec'], {'type': "string", 'dest': "cmds", 'default': None, 'help': "Execute the specified commands and exit"}),
         (['-v', '--verbose'], {'action': "store_true", 'dest': "verbose", 'help': "With --exec, show cli output after completion", 'default': False}),
     ]
@@ -404,7 +404,7 @@ class NodeVerifyCmd(Cmd):
 
 class NodeJsonCmd(Cmd):
 
-    options = [
+    options_list = [
         (['-k', '--keyspace'], {'type': "string", 'dest': "keyspace", 'default': None, 'help': "The keyspace to use [use all keyspaces by default]"}),
         (['-c', '--column-families'], {'type': "string", 'dest': "cfs", 'default': None, 'help': "Comma separated list of column families to use (requires -k to be set)"}),
         (['--key'], {'type': "string", 'action': "append", 'dest': "keys", 'default': None, 'help': "The key to include (you may specify multiple --key)"}),
@@ -446,7 +446,7 @@ class NodeJsonCmd(Cmd):
 
 class NodeSstablesplitCmd(Cmd):
 
-    options = [
+    options_list = [
         (['-k', '--keyspace'], {'type': "string", 'dest': "keyspace", 'default': None, 'help': "The keyspace to use [use all keyspaces by default]"}),
         (['-c', '--column-families'], {'type': "string", 'dest': 'cfs', 'default': None, 'help': "Comma separated list of column families to use (requires -k to be set)"}),
         (['-s', '--size'], {'type': 'int', 'dest': "size", 'default': None, 'help': "Maximum size in MB for the output sstables (default: 50 MB)"}),
@@ -482,7 +482,7 @@ class NodeSstablesplitCmd(Cmd):
 
 class NodeGetsstablesCmd(Cmd):
 
-    options = [
+    options_list = [
         (['-k', '--keyspace'], {'type': "string", 'dest': "keyspace", 'default': None, 'help': "The keyspace to use [use all keyspaces by default]"}),
         (['-t', '--tables'], {'type': "string", 'dest': 'tables', 'default': None, 'help': "Comma separated list of tables to use (requires -k to be set)"}),
     ]
@@ -514,7 +514,7 @@ class NodeGetsstablesCmd(Cmd):
 
 class NodeUpdateconfCmd(Cmd):
 
-    options = [
+    options_list = [
         (['--no-hh', '--no-hinted-handoff'], {'action': "store_false", 'dest': "hinted_handoff", 'default': True, 'help': "Disable hinted handoff"}),
         (['--batch-cl', '--batch-commit-log'], {'action': "store_true", 'dest': "cl_batch", 'default': None, 'help': "Set commit log to batch mode"}),
         (['--periodic-cl', '--periodic-commit-log'], {'action': "store_true", 'dest': "cl_periodic", 'default': None, 'help': "Set commit log to periodic mode"}),
@@ -557,7 +557,7 @@ class NodeUpdateconfCmd(Cmd):
 
 class NodeUpdatedseconfCmd(Cmd):
 
-    options = [
+    options_list = [
         (['-y', '--yaml'], {'action': "store_true", 'dest': "literal_yaml", 'default': False, 'help': "Pass in literal yaml string. Option syntax looks like ccm node_name updatedseconf -y 'a: [b: [c,d]]'"}),
     ]
     descr_text = "Update the dse config files for this node"
@@ -584,7 +584,7 @@ class NodeUpdatedseconfCmd(Cmd):
 
 class NodeUpdatelog4jCmd(Cmd):
 
-    options = [
+    options_list = [
         (['-p', '--path'], {'type': "string", 'dest': "log4jpath", 'help': "Path to new Cassandra log4j configuration file"}),
     ]
     descr_text = "Update the Cassandra log4j-server.properties configuration file under given node"
@@ -644,7 +644,7 @@ class NodeShuffleCmd(Cmd):
 
 class NodeSetdirCmd(Cmd):
 
-    options = [
+    options_list = [
         (['-v', "--version"], {'type': "string", 'dest': "version", 'help': "Download and use provided cassandra or dse version. If version is of the form 'git:<branch name>', then the specified branch will be downloaded from the git repo and compiled. (takes precedence over --install-dir)", 'default': None}),
         (["--install-dir"], {'type': "string", 'dest': "install_dir", 'help': "Path to the cassandra or dse directory to use [default %default]", 'default': "./"}),
     ]
