@@ -368,7 +368,7 @@ class Cluster(object):
 
     def start(self, no_wait=False, verbose=False, wait_for_binary_proto=True,
               wait_other_notice=True, jvm_args=None, profile_options=None,
-              quiet_start=False, allow_root=False):
+              quiet_start=False, allow_root=False, **kwargs):
         if jvm_args is None:
             jvm_args = []
 
@@ -407,7 +407,7 @@ class Cluster(object):
             for node, p, mark in started:
                 try:
                     start_message = "Listening for thrift clients..." if self.cassandra_version() < "2.2" else "Starting listening for CQL clients"
-                    node.watch_log_for(start_message, timeout=60, process=p, verbose=verbose, from_mark=mark)
+                    node.watch_log_for(start_message, timeout=kwargs.get('timeout',60), process=p, verbose=verbose, from_mark=mark)
                 except RuntimeError:
                     return None
 
