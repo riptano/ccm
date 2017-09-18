@@ -700,9 +700,19 @@ def invalidate_cache():
 
 
 def get_jdk_version():
+    """
+    Retrieve the Java version as reported in the quoted string returned
+    by invoking 'java -version'.
+
+    Works for Java 1.8, Java 9 and should also be fine for Java 10.
+    """
     version = subprocess.check_output(['java', '-version'], stderr=subprocess.STDOUT)
     ver_pattern = '\"(\d+\.\d+).*\"'
-    return re.search(ver_pattern, str(version)).groups()[0]
+    if re.search(ver_pattern, str(version)):
+        return re.search(ver_pattern, str(version)).groups()[0]
+    # like the output 'java version "9"' for 'java -version'
+    ver_pattern = '\"(\d+).*\"'
+    return re.search(ver_pattern, str(version)).groups()[0] + ".0"
 
 
 def assert_jdk_valid_for_cassandra_version(cassandra_version):
