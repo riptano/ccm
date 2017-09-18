@@ -15,16 +15,6 @@ CLUSTER_PATH = TEST_DIR
 
 
 class TestCCMLib(ccmtest.Tester):
-    def restart_test(self):
-        self.cluster = Cluster(CLUSTER_PATH, "restart", cassandra_version='2.0.9')
-        self.cluster.populate(3)
-        self.cluster.start()
-
-        self.cluster.stop()
-        self.cluster.start()
-
-        self.cluster.show(True)
-
     def test2(self):
         self.cluster = Cluster(CLUSTER_PATH, "test2", cassandra_version='2.0.3')
         self.cluster.populate(2)
