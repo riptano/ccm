@@ -18,10 +18,9 @@ Requirements
 - psutil (https://pypi.python.org/pypi/psutil)
 - Java (which version depends on the version of Cassandra you plan to use. If
   unsure, use Java 7 as it is known to work with current versions of Cassandra).
-- ccm only works on localhost for now. If you want to create multiple
-  node clusters, the simplest way is to use multiple loopback aliases. On
-  modern linux distributions you probably don't need to do anything, but
-  on Mac OS X, you will need to create the aliases with
+- If you want to create multiple node clusters, the simplest way is to use
+  multiple loopback aliases. On modern linux distributions you probably don't
+  need to do anything, but on Mac OS X, you will need to create the aliases with
 
       sudo ifconfig lo0 alias 127.0.0.2 up
       sudo ifconfig lo0 alias 127.0.0.3 up
@@ -29,6 +28,19 @@ Requirements
 
   Note that the usage section assumes that at least 127.0.0.1, 127.0.0.2 and
   127.0.0.3 are available.
+
+### Optional Requirements
+
+- Paramiko (http://www.paramiko.org/): Paramiko adds the ability to execute CCM
+                                       remotely; `pip install paramiko`
+
+__Note__: The remote machine must be configured with an SSH server and a working
+          CCM. When working with multiple nodes each exposed IP address must be
+          in sequential order. For example, the last number in the 4th octet of
+          a IPv4 address must start with `1` (e.g. 192.168.33.11). See
+          [Vagrantfile](misc/Vagrantfile) for help with configuration of remote
+          CCM machine.
+
 
 Known issues
 ------------
@@ -43,6 +55,16 @@ Windows only:
   - Ant installed via [chocolatey](https://chocolatey.org/) will not be found by ccm, so you must create a symbolic
     link in order to fix the issue (as administrator):
     - cmd /c mklink C:\ProgramData\chocolatey\bin\ant.bat C:\ProgramData\chocolatey\bin\ant.exe
+
+Remote Execution only:
+  - Using `--config-dir` and `--install-dir` with `create` may not work as
+    expected; since the configuration directory and the installation directory
+    contain lots of files they will not be copied over to the remote machine
+    like most other options for cluster and node operations
+  - cli and cqlsh started from ccm using remote execution will not start
+    properly (e.g.`ccm --ssh-host 192.168.33.11 node1 cqlsh`); however
+    `-x <CMDS>` or `--exec=CMDS` can still be used to execute a CQLSH command
+    on a remote node.
 
 Installation
 ------------
@@ -152,6 +174,39 @@ The list of other provided commands is available through
 
 Each command is then documented through the `-h` (or `--help`) flag. For
 instance `ccm add -h` describes the options for `ccm add`.
+
+### Remote Usage (SSH/Paramiko)
+
+All the usage examples above will work exactly the same for a remotely
+configured machine; however remote options are required in order to establish a
+connection to the remote machine before executing the CCM commands:
+
+| Argument | Value | Description |
+| :--- | :--- | :--- |
+| --ssh-host | string | Hostname or IP address to use for SSH connection |
+| --ssh-port | int | Port to use for SSH connection<br/>Default is 22 |
+| --ssh-username | string | Username to use for username/password or public key authentication |
+| --ssh-password | string | Password to use for username/password or private key passphrase using public key authentication |
+| --ssh-private-key | filename | Private key to use for SSH connection |
+
+#### Special Handling
+
+Some commands require files to be located on the remote server. Those commands
+are pre-processed, file transfers are initiated, and updates are made to the
+argument value for the remote execution of the CCM command:
+
+| Parameter | Description |
+| :--- | :--- |
+| `--dse-credentials` | Copy local DSE credentials file to remote server |
+| `--node-ssl` | Recursively copy node SSL directory to remote server |
+| `--ssl` | Recursively copy SSL directory to remote server |
+
+#### Short Version
+
+    ccm --ssh-host=192.168.33.11 --ssh-username=vagrant --ssh-password=vagrant create test -v 2.0.5 -n 3 -i 192.168.33.1 -s
+
+__Note__: `-i` is used to add an IP prefix during the create process to ensure
+          that the nodes communicate using the proper IP address for their node
 
 ### Source Distribution
 
