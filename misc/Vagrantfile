@@ -1,0 +1,110 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# Configure defaults and/or allow to be overridden
+if ENV.has_key?("CCM")
+  CCM = ENV["CCM"]
+else
+  CCM = "master"
+end
+if ENV.has_key?("QUIET")
+  QUIET = ENV["QUIET"]
+else
+  QUIET = "true"
+end
+
+# Vagrantfile API/syntax version. Don't touch unless you know what you're doing!
+VAGRANTFILE_API_VERSION = "2"
+
+# Inline provision script
+CCM_PROVISION_SCRIPT = <<EOF
+#!/bin/bash
+
+# Retrieve the version variables from the provisioning arguments
+CCM_VERSION=${1}
+
+echo CCM [${CCM_VERSION}]
+
+# Determine if output should be suppressed
+REDIRECT=/dev/null
+if [ "${2}" == "false" ]
+then
+  REDIRECT=/dev/stdout
+fi
+
+#Install package updates
+echo Installing System Packages ...
+apt-get install -qq python-software-properties > ${REDIRECT} 2>&1
+# Add JDK repository and update packages
+add-apt-repository ppa:webupd8team/java -y > ${REDIRECT} 2>&1
+apt-get update -y > ${REDIRECT} 2>&1
+apt-get upgrade -y > ${REDIRECT} 2>&1
+
+# Auto accept the the Java license aggreement
+echo debconf shared/accepted-oracle-license-v1-1 select true | sudo debconf-set-selections
+echo debconf shared/accepted-oracle-license-v1-1 seen true | sudo debconf-set-selections
+
+# Install the packages
+apt-get install -qq ant git libxml2-dev libxslt1-dev libyaml-dev maven oracle-java8-installer \\
+                    oracle-java8-unlimited-jce-policy python2.7-dev python-pip vim-gtk \\
+                    zlib1g-dev > ${REDIRECT} 2>&1
+
+# Upgrade pip
+pip install --upgrade pip > ${REDIRECT} 2>&1
+
+# Install CCM and its dependencies
+echo Installing CCM ...
+pip install git+https://github.com/pcmanus/ccm.git@${CCM_VERSION} > ${REDIRECT} 2>&1
+EOF
+
+##
+# Configure a 6 node Cassandra Cluster Manager (CCM) Virtual Machine (VM) with
+# the following settings:
+#
+#   - 4GB of RAM
+#   - 32MB of Video RAM
+#   - 4 cores (CPUs)
+#   - Hostname: ccm-cluster
+#   - Username: vagrant
+#   - Password: vagrant
+#   - 6 Network Interfaces Cards (NICs)
+#     - Node 1: 192.168.33.11
+#     - Node 2: 192.168.33.12
+#     - Node 3: 192.168.33.13
+#     - Node 4: 192.168.33.14
+#     - Node 5: 192.168.33.15
+#     - Node 6: 192.168.33.16
+##
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+  # Create Ubuntu 16.04 LTS VM
+  config.vm.box = "bento/ubuntu-16.04"
+
+  # Define the hostname and IP addresses (6 node cluster)
+  config.vm.define "ccm-cluster" do |ccm_cluster|
+    ccm_cluster.vm.hostname = "ccm-cluster"
+    ccm_cluster.vm.network "private_network", ip: "192.168.33.11"
+    ccm_cluster.vm.network "private_network", ip: "192.168.33.12"
+    ccm_cluster.vm.network "private_network", ip: "192.168.33.13"
+    ccm_cluster.vm.network "private_network", ip: "192.168.33.14"
+    ccm_cluster.vm.network "private_network", ip: "192.168.33.15"
+    ccm_cluster.vm.network "private_network", ip: "192.168.33.16"
+  end
+
+  # Prepare/Provision the VM
+  config.vm.provision :shell do |root_provision|
+    root_provision.privileged = true
+    root_provision.inline = CCM_PROVISION_SCRIPT
+    root_provision.args = [ "#{CCM}", "#{QUIET}" ]
+  end
+
+  # VM parameters for the CCM cluster
+  config.vm.provider :virtualbox do |provider|
+    provider.name = "ccm-cluster"
+    provider.customize ["modifyvm", :id, "--groups", "/Testing"]
+    provider.customize ["modifyvm", :id, "--memory", "4096"]
+    provider.customize ["modifyvm", :id, "--vram", "32"]
+    provider.customize ["modifyvm", :id, "--cpus", "4"]
+    provider.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
+    provider.customize ["modifyvm", :id, "--natdnsproxy1", "on"]
+  end
+end

@@ -1,6 +1,7 @@
 
 from __future__ import absolute_import
 
+import os
 import sys
 from optparse import BadOptionError, Option, OptionParser
 import re
@@ -9,6 +10,7 @@ from six import print_
 
 from ccmlib import common
 from ccmlib.cluster_factory import ClusterFactory
+from ccmlib.remote import PARAMIKO_IS_AVAILABLE, get_remote_usage
 
 
 # This is fairly fragile, but handy for now
@@ -51,6 +53,11 @@ class Cmd(object):
     def get_parser(self):
         if self.usage == "":
             pass
+        if PARAMIKO_IS_AVAILABLE:
+            self.usage = self.usage.replace("usage: ccm",
+                                            "usage: ccm [remote_options]") + \
+                         os.linesep + os.linesep + \
+                         get_remote_usage()
         parser = self._get_default_parser(self.usage, self.description(), self.ignore_unknown_options)
         for args, kwargs in self.options_list:
             parser.add_option(*args, **kwargs)
