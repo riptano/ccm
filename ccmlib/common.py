@@ -40,12 +40,27 @@ CASSANDRA_SH = "cassandra.in.sh"
 CONFIG_FILE = "config"
 CCM_CONFIG_DIR = "CCM_CONFIG_DIR"
 
-logging.basicConfig(format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
-                    datefmt='%H:%M:%S',
-                    level=logging.DEBUG
-                    )
+class InfoFilter(logging.Filter):
+    def filter(self, rec):
+        return rec.levelno in (logging.DEBUG, logging.INFO)
+
+LOG_FMT = '%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s'
+DATE_FMT = '%H:%M:%S'
+FORMATTER = logging.Formatter(LOG_FMT, DATE_FMT)
+
+INFO_HANDLER = logging.StreamHandler(sys.stdout)
+INFO_HANDLER.setLevel(logging.DEBUG)
+INFO_HANDLER.addFilter(InfoFilter())
+INFO_HANDLER.setFormatter(FORMATTER)
+
+ERROR_HANDLER = logging.StreamHandler(sys.stderr)
+ERROR_HANDLER.setLevel(logging.WARNING)
+ERROR_HANDLER.setFormatter(FORMATTER)
 
 LOG = logging.getLogger('ccm')
+LOG.setLevel(logging.DEBUG)
+LOG.addHandler(INFO_HANDLER)
+LOG.addHandler(ERROR_HANDLER)
 
 
 def error(msg):
