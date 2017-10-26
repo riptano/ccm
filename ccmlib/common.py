@@ -626,7 +626,7 @@ def copy_directory(src_dir, dst_dir):
             shutil.copy(filename, dst_dir)
 
 
-def get_version_from_build(install_dir=None, node_path=None):
+def get_version_from_build(install_dir=None, node_path=None, cassandra=False):
     if install_dir is None and node_path is not None:
         install_dir = get_install_dir_from_cluster_conf(node_path)
     if install_dir is not None:
@@ -638,7 +638,10 @@ def get_version_from_build(install_dir=None, node_path=None):
         # For DSE look for a dse*.jar and extract the version number
         dse_version = get_dse_version(install_dir)
         if (dse_version is not None):
-            return LooseVersion(dse_version)
+            if cassandra:
+                return get_dse_cassandra_version(install_dir)
+            else:
+                return LooseVersion(dse_version)
         # Source cassandra installs we can read from build.xml
         build = os.path.join(install_dir, 'build.xml')
         with open(build) as f:
@@ -659,14 +662,13 @@ def get_dse_version(install_dir):
 
 
 def get_dse_cassandra_version(install_dir):
-    clib = os.path.join(install_dir, 'resources', 'cassandra', 'lib')
-    for file in os.listdir(clib):
-        if fnmatch.fnmatch(file, 'cassandra-all*.jar'):
-            match = re.search('cassandra-all-([0-9.]+)(?:-.*)?\.jar', file)
-            if match:
-                return LooseVersion(match.group(1))
-    raise ArgumentError("Unable to determine Cassandra version in: " + install_dir)
+    dse_cmd = os.path.join(install_dir, 'bin', 'dse')
+    output = subprocess.Popen([dse_cmd, "cassandra", '-v'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()[0].rstrip()
+    match = re.search('([0-9.]+)(?:-.*)?', output)
+    if match:
+        return LooseVersion(match.group(1))
 
+    raise ArgumentError("Unable to determine Cassandra version in: " + install_dir)
 
 def get_install_dir_from_cluster_conf(node_path):
     file = os.path.join(os.path.dirname(node_path), "cluster.conf")
