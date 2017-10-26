@@ -22,7 +22,7 @@ except ImportError:
 
 class DseCluster(Cluster):
 
-    def __init__(self, path, name, partitioner=None, install_dir=None, create_directory=True, version=None, dse_username=None, dse_password=None, dse_credentials_file=None, opscenter=None, verbose=False, cassandra_version=None):
+    def __init__(self, path, name, partitioner=None, install_dir=None, create_directory=True, version=None, dse_username=None, dse_password=None, dse_credentials_file=None, opscenter=None, verbose=False, derived_cassandra_version=None):
         self.dse_username = None
         self.dse_password = None
         self.load_credentials_from_file(dse_credentials_file)
@@ -33,8 +33,8 @@ class DseCluster(Cluster):
 
         self.opscenter = opscenter
         self._cassandra_version = None
-        if cassandra_version:
-            self._cassandra_version = cassandra_version
+        if derived_cassandra_version:
+            self._cassandra_version = derived_cassandra_version
 
         super(DseCluster, self).__init__(path, name, partitioner, install_dir, create_directory, version, verbose)
 
@@ -66,8 +66,8 @@ class DseCluster(Cluster):
     def hasOpscenter(self):
         return os.path.exists(os.path.join(self.get_path(), 'opscenter'))
 
-    def create_node(self, name, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save=True, binary_interface=None, byteman_port='0', environment_variables=None,cassandra_version=None):
-        return DseNode(name, self, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save, binary_interface, byteman_port, environment_variables=environment_variables, cassandra_version=cassandra_version)
+    def create_node(self, name, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save=True, binary_interface=None, byteman_port='0', environment_variables=None,derived_cassandra_version=None):
+        return DseNode(name, self, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save, binary_interface, byteman_port, environment_variables=environment_variables, derived_cassandra_version=derived_cassandra_version)
 
     def start(self, no_wait=False, verbose=False, wait_for_binary_proto=False, wait_other_notice=True, jvm_args=None, profile_options=None, quiet_start=False, allow_root=False):
         if jvm_args is None:
