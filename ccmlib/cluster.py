@@ -284,8 +284,8 @@ class Cluster(object):
             self._update_config()
         return self
 
-    def create_node(self, name, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save=True, binary_interface=None, byteman_port='0', environment_variables=None):
-        return Node(name, self, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save, binary_interface, byteman_port, environment_variables)
+    def create_node(self, name, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save=True, binary_interface=None, byteman_port='0', environment_variables=None, cassandra_version=None):
+        return Node(name, self, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save, binary_interface, byteman_port, environment_variables, cassandra_version=cassandra_version)
 
     def balanced_tokens(self, node_count):
         if self.cassandra_version() >= '1.2' and (not self.partitioner or 'Murmur3' in self.partitioner):
@@ -603,7 +603,9 @@ class Cluster(object):
             'log_level': self.__log_level,
             'use_vnodes': self.use_vnodes,
             'datadirs': self.data_dir_count,
-            'environment_variables': self._environment_variables
+            'environment_variables': self._environment_variables,
+            'version': str(self.version()),
+            'cassandra_version': str(self.cassandra_version())
         }
         extension.append_to_cluster_config(self, config_map)
         with open(filename, 'w') as f:

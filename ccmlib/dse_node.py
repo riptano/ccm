@@ -23,9 +23,9 @@ class DseNode(Node):
     Provides interactions to a DSE node.
     """
 
-    def __init__(self, name, cluster, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save=True, binary_interface=None, byteman_port='0', environment_variables=None):
-        super(DseNode, self).__init__(name, cluster, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save, binary_interface, byteman_port, environment_variables=environment_variables)
-        self.get_cassandra_version()
+    def __init__(self, name, cluster, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save=True, binary_interface=None, byteman_port='0', environment_variables=None, cassandra_version=None):
+        super(DseNode, self).__init__(name, cluster, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save, binary_interface, byteman_port, environment_variables=environment_variables, cassandra_version=cassandra_version)
+       
         self._dse_config_options = {}
         if self.cluster.hasOpscenter():
             self._copy_agent()
@@ -50,9 +50,6 @@ class DseNode(Node):
 
     def get_env(self):
         return common.make_dse_env(self.get_install_dir(), self.get_path(), self.ip_addr)
-
-    def get_cassandra_version(self):
-        return common.get_dse_cassandra_version(self.get_install_dir())
 
     def node_setup(self, version, verbose):
         dir, v = repository.setup_dse(version, self.cluster.dse_username, self.cluster.dse_password, verbose=verbose)

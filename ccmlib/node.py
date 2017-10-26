@@ -74,7 +74,7 @@ class Node(object):
     Provides interactions to a Cassandra node.
     """
 
-    def __init__(self, name, cluster, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save=True, binary_interface=None, byteman_port='0', environment_variables=None, byteman_startup_script=None):
+    def __init__(self, name, cluster, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save=True, binary_interface=None, byteman_port='0', environment_variables=None, byteman_startup_script=None, cassandra_version=None):
         """
         Create a new Node.
           - name: the name for that node
@@ -111,6 +111,15 @@ class Node(object):
         self.__classes_log_level = {}
         self.__environment_variables = environment_variables or {}
         self.__conf_updated = False
+
+        if cassandra_version:
+            self._cassandra_version = cassandra_version
+        else:
+            try:
+                self._cassandra_version = common.get_version_from_build(self.get_install_dir(), cassandra=True)
+            except common.CCMError:
+                self._cassandra_version = self.cluster.cassandra_version()
+
         if save:
             self.import_config_files()
             self.import_bin_files()
@@ -132,6 +141,9 @@ class Node(object):
             initial_token = None
             if 'initial_token' in data:
                 initial_token = data['initial_token']
+            cassandra_version = None
+            if 'cassandra_version' in data:
+                cassandra_version = LooseVersion(data['cassandra_version'])
             remote_debug_port = 2000
             if 'remote_debug_port' in data:
                 remote_debug_port = data['remote_debug_port']
@@ -141,7 +153,7 @@ class Node(object):
             thrift_interface = None
             if 'thrift' in itf and itf['thrift'] is not None:
                 thrift_interface = tuple(itf['thrift'])
-            node = cluster.create_node(data['name'], data['auto_bootstrap'], thrift_interface, tuple(itf['storage']), data['jmx_port'], remote_debug_port, initial_token, save=False, binary_interface=binary_interface, byteman_port=data['byteman_port'])
+            node = cluster.create_node(data['name'], data['auto_bootstrap'], thrift_interface, tuple(itf['storage']), data['jmx_port'], remote_debug_port, initial_token, save=False, binary_interface=binary_interface, byteman_port=data['byteman_port'], cassandra_version=cassandra_version)
             node.status = data['status']
             if 'pid' in data:
                 node.pid = int(data['pid'])
@@ -243,10 +255,7 @@ class Node(object):
         raise common.ArgumentError("Cannot set workloads on a cassandra node")
 
     def get_cassandra_version(self):
-        try:
-            return common.get_version_from_build(self.get_install_dir())
-        except common.CCMError:
-            return self.cluster.cassandra_version()
+        return self._cassandra_version
 
     def get_base_cassandra_version(self):
         version = self.get_cassandra_version()
@@ -1492,7 +1501,8 @@ class Node(object):
             'jmx_port': self.jmx_port,
             'config_options': self.__config_options,
             'dse_config_options': self._dse_config_options,
-            'environment_variables': self.__environment_variables
+            'environment_variables': self.__environment_variables,
+            'cassandra_version': str(self.get_cassandra_version())
         }
         if self.pid:
             values['pid'] = self.pid
