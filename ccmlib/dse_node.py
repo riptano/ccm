@@ -465,7 +465,6 @@ class DseNode(Node):
 
         # create Spark working dirs; starting with DSE 5.0.10/5.1.3 these are no longer automatically created
         for e in ["SPARK_WORKER_DIR", "SPARK_LOCAL_DIRS", "SPARK_EXECUTOR_DIRS"]:
-            if e in env:
-                dir = env[e]
-                if not os.path.exists(dir):
-                    os.makedirs(dir)
+            dir = env[e]
+            if not os.path.exists(dir):
+                os.makedirs(dir)
