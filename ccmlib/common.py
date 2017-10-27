@@ -665,7 +665,7 @@ def get_dse_version(install_dir):
 def get_dse_cassandra_version(install_dir):
     dse_cmd = os.path.join(install_dir, 'bin', 'dse')
     output = subprocess.Popen([dse_cmd, "cassandra", '-v'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()[0].rstrip()
-    match = re.search('([0-9.]+)(?:-.*)?', output)
+    match = re.search('([0-9.]+)(?:-.*)?', str(output))
     if match:
         return LooseVersion(match.group(1))
 
