@@ -29,19 +29,14 @@ class ClusterFactory():
                 install_dir = data['cassandra_dir']
                 repository.validate(install_dir)
 
-            version = None
-            if 'version' in data:
-                # Note: version isn't wrapped in LooseVersion as constructors expect string version and convert later.
-                version = data['version']
-
             cassandra_version = None
             if 'cassandra_version' in data:
                 cassandra_version = LooseVersion(data['cassandra_version'])
 
             if common.isDse(install_dir):
-                cluster = DseCluster(path, data['name'], install_dir=install_dir, create_directory=False, version=version, cassandra_version=cassandra_version)
+                cluster = DseCluster(path, data['name'], install_dir=install_dir, create_directory=False, derived_cassandra_version=cassandra_version)
             else:
-                cluster = Cluster(path, data['name'], install_dir=install_dir, create_directory=False, version=version, cassandra_version=version)
+                cluster = Cluster(path, data['name'], install_dir=install_dir, create_directory=False, derived_cassandra_version=cassandra_version)
             node_list = data['nodes']
             seed_list = data['seeds']
             if 'partitioner' in data:

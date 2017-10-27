@@ -74,7 +74,7 @@ class Node(object):
     Provides interactions to a Cassandra node.
     """
 
-    def __init__(self, name, cluster, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save=True, binary_interface=None, byteman_port='0', environment_variables=None, byteman_startup_script=None, cassandra_version=None):
+    def __init__(self, name, cluster, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save=True, binary_interface=None, byteman_port='0', environment_variables=None, byteman_startup_script=None, derived_cassandra_version=None):
         """
         Create a new Node.
           - name: the name for that node
@@ -112,8 +112,8 @@ class Node(object):
         self.__environment_variables = environment_variables or {}
         self.__conf_updated = False
 
-        if cassandra_version:
-            self._cassandra_version = cassandra_version
+        if derived_cassandra_version:
+            self._cassandra_version = derived_cassandra_version
         else:
             try:
                 self._cassandra_version = common.get_version_from_build(self.get_install_dir(), cassandra=True)
@@ -153,7 +153,7 @@ class Node(object):
             thrift_interface = None
             if 'thrift' in itf and itf['thrift'] is not None:
                 thrift_interface = tuple(itf['thrift'])
-            node = cluster.create_node(data['name'], data['auto_bootstrap'], thrift_interface, tuple(itf['storage']), data['jmx_port'], remote_debug_port, initial_token, save=False, binary_interface=binary_interface, byteman_port=data['byteman_port'], cassandra_version=cassandra_version)
+            node = cluster.create_node(data['name'], data['auto_bootstrap'], thrift_interface, tuple(itf['storage']), data['jmx_port'], remote_debug_port, initial_token, save=False, binary_interface=binary_interface, byteman_port=data['byteman_port'], derived_cassandra_version=cassandra_version)
             node.status = data['status']
             if 'pid' in data:
                 node.pid = int(data['pid'])

@@ -22,7 +22,7 @@ from six.moves import xrange
 
 class Cluster(object):
 
-    def __init__(self, path, name, partitioner=None, install_dir=None, create_directory=True, version=None, verbose=False, **kwargs):
+    def __init__(self, path, name, partitioner=None, install_dir=None, create_directory=True, version=None, verbose=False, derived_cassandra_version=None, **kwargs):
         self.name = name
         self.nodes = {}
         self.seeds = []
@@ -61,11 +61,16 @@ class Cluster(object):
                         self.__install_dir = install_dir
                     else:
                         self.__install_dir = os.path.abspath(install_dir)
-                    self.__version = self.__get_version_from_build()
             else:
                 repo_dir, v = self.load_from_repository(version, verbose)
                 self.__install_dir = repo_dir
-                self.__version = v if v is not None else self.__get_version_from_build()
+                self.__version = v
+
+            if self.__version is None:
+                if derived_cassandra_version is not None:
+                    self.__version = derived_cassandra_version
+                else:
+                    self.__version = self.__get_version_from_build()
 
             if create_directory:
                 common.validate_install_dir(self.__install_dir)
@@ -284,8 +289,8 @@ class Cluster(object):
             self._update_config()
         return self
 
-    def create_node(self, name, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save=True, binary_interface=None, byteman_port='0', environment_variables=None, cassandra_version=None):
-        return Node(name, self, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save, binary_interface, byteman_port, environment_variables, cassandra_version=cassandra_version)
+    def create_node(self, name, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save=True, binary_interface=None, byteman_port='0', environment_variables=None, derived_cassandra_version=None):
+        return Node(name, self, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save, binary_interface, byteman_port, environment_variables, derived_cassandra_version=derived_cassandra_version)
 
     def balanced_tokens(self, node_count):
         if self.cassandra_version() >= '1.2' and (not self.partitioner or 'Murmur3' in self.partitioner):
@@ -604,7 +609,6 @@ class Cluster(object):
             'use_vnodes': self.use_vnodes,
             'datadirs': self.data_dir_count,
             'environment_variables': self._environment_variables,
-            'version': str(self.version()),
             'cassandra_version': str(self.cassandra_version())
         }
         extension.append_to_cluster_config(self, config_map)
