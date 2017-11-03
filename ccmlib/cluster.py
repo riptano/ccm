@@ -666,6 +666,9 @@ class Cluster(object):
             'truststore_password': 'cassandra'
         }
 
+        if self.cassandra_version() >= '4.0':
+            node_ssl_options['enabled'] = True
+
         self._config_options['server_encryption_options'] = node_ssl_options
         self._update_config()
 
