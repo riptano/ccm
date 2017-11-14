@@ -182,7 +182,7 @@ class NodeStartCmd(Cmd):
         except NodeError as e:
             print_(str(e), file=sys.stderr)
             print_("Standard error output is:", file=sys.stderr)
-            for line in e.process.stderr:
+            for line in e.process.stderr_file.readlines():
                 print_(line.rstrip('\n'), file=sys.stderr)
             exit(1)
 
