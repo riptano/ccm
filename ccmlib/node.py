@@ -243,6 +243,8 @@ class Node(object):
         else:
             self.__install_dir = self.node_setup(version, verbose=verbose)
 
+        self._cassandra_version = common.get_version_from_build(self.__install_dir, cassandra=True)
+
         if self.get_base_cassandra_version() >= 4.0:
             self.network_interfaces['thrift'] = None
 
