@@ -33,6 +33,7 @@ DSE_ARCHIVE = "http://downloads.datastax.com/enterprise/dse-%s-bin.tar.gz"
 OPSC_ARCHIVE = "http://downloads.datastax.com/enterprise/opscenter-%s.tar.gz"
 ARCHIVE = "http://archive.apache.org/dist/cassandra"
 GIT_REPO = "http://git.apache.org/cassandra.git"
+GITHUB_REPO = "https://github.com/apache/cassandra.git"
 GITHUB_TAGS = "https://api.github.com/repos/apache/cassandra/git/refs/tags"
 CCM_CONFIG = ConfigParser.ConfigParser()
 CCM_CONFIG.read(os.path.join(os.path.expanduser("~"), ".ccm", "config"))
@@ -65,7 +66,11 @@ def setup(version, verbose=False):
 
     elif version.startswith('github:'):
         user_name, _ = github_username_and_branch_name(version)
-        clone_development(github_repo_for_user(user_name), version, verbose=verbose)
+        # make sure to use http for cloning read-only repos such as 'github:apache/cassandra-2.1'
+        if user_name == "apache":
+            clone_development(GITHUB_REPO, version, verbose=verbose)
+        else:
+            clone_development(github_repo_for_user(user_name), version, verbose=verbose)
         return (directory_name(version), None)
 
     elif version.startswith('source:'):
