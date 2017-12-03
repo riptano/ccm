@@ -48,7 +48,6 @@ Windows only:
   - `node start` pops up a window, stealing focus.
   - cli and cqlsh started from ccm show incorrect prompts on command-prompt
   - non nodetool-based command-line options fail (sstablesplit, scrub, etc)
-  - cli_session does not accept commands.
   - To install psutil, you must use the .msi from pypi. pip install psutil will not work
   - You will need ant.bat in your PATH in order to build C* from source
   - You must run with an Unrestricted Powershell Execution-Policy if using Cassandra 2.1.0+

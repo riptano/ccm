@@ -21,7 +21,6 @@ import yaml
 from six import iteritems, print_, string_types
 
 from ccmlib import common, extension
-from ccmlib.cli_session import CliSession
 from ccmlib.repository import setup
 from six.moves import xrange
 
