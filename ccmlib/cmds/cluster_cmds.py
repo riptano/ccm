@@ -35,7 +35,6 @@ CLUSTER_CMDS = [
     "updateconf",
     "updatedseconf",
     "updatelog4j",
-    "cli",
     "setdir",
     "bulkload",
     "setlog",
@@ -677,29 +676,6 @@ class ClusterUpdatelog4jCmd(Cmd):
         except common.ArgumentError as e:
             print_(str(e), file=sys.stderr)
             exit(1)
-
-
-class ClusterCliCmd(Cmd):
-
-    options_list = [
-        (['-x', '--exec'], {'type': "string", 'dest': "cmds", 'default': None, 'help': "Execute the specified commands and exit"}),
-        (['-v', '--verbose'], {'action': "store_true", 'dest': "verbose", 'help': "With --exec, show cli output after completion", 'default': False}),
-    ]
-    descr_text = "Launch cassandra cli connected to some live node (if any)"
-    usage = "usage: ccm cli [options] [cli_options]"
-    ignore_unknown_options = True
-
-    def validate(self, parser, options, args):
-        Cmd.validate(self, parser, options, args, load_cluster=True)
-        self.cli_options = parser.get_ignored() + args[1:]
-
-    def run(self):
-        out, err, rc = self.cluster.run_cli(self.options.cmds, self.cli_options)
-        if self.options.verbose:
-            print_("CLI OUTPUT:\n-------------------------------")
-            print_(out)
-            print_("-------------------------------\nCLI ERROR:\n-------------------------------")
-            print_(err)
 
 
 class ClusterBulkloadCmd(Cmd):
