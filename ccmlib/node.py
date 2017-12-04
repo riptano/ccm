@@ -21,7 +21,6 @@ import yaml
 from six import iteritems, print_, string_types
 
 from ccmlib import common, extension
-from ccmlib.cli_session import CliSession
 from ccmlib.repository import setup
 from six.moves import xrange
 
@@ -856,29 +855,6 @@ class Node(object):
         p = self.verify_process(options=options)
         return handle_external_tool_process(p, ['sstableverify'] + options)
 
-    def run_cli_process(self, cmds=None, cli_options=None):
-        if cli_options is None:
-            cli_options = []
-        cli = self.get_tool('cassandra-cli')
-        env = self.get_env()
-        host = self.network_interfaces['thrift'][0]
-        port = self.network_interfaces['thrift'][1]
-        args = ['-h', host, '-p', str(port), '--jmxport', str(self.jmx_port)] + cli_options
-        sys.stdout.flush()
-
-        p = subprocess.Popen([cli] + args, env=env, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-
-        if cmds is not None:
-            for cmd in cmds.split(';'):
-                p.stdin.write(cmd + ';\n')
-            p.stdin.write("quit;\n")
-
-        return p
-
-    def run_cli(self, cmds=None, cli_options=None):
-        p = self.run_cli_process(cmds=cmds, cli_options=cli_options)
-        return handle_external_tool_process(p, ['cassandra-cli'] + [cli_options])
-
     def run_cqlsh_process(self, cmds=None, cqlsh_options=None):
         if cqlsh_options is None:
             cqlsh_options = []
@@ -916,15 +892,6 @@ class Node(object):
     def run_cqlsh(self, cmds=None, cqlsh_options=None):
         p = self.run_cqlsh_process(cmds, cqlsh_options)
         return handle_external_tool_process(p, ['cqlsh', cmds, cqlsh_options])
-
-    def cli(self):
-        cdir = self.get_install_dir()
-        cli = common.join_bin(cdir, 'bin', 'cassandra-cli')
-        env = self.get_env()
-        host = self.network_interfaces['thrift'][0]
-        port = self.network_interfaces['thrift'][1]
-        args = ['-h', host, '-p', str(port), '--jmxport', str(self.jmx_port)]
-        return CliSession(subprocess.Popen([cli] + args, env=env, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE))
 
     def set_log_level(self, new_level, class_name=None):
         known_level = ['TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR', 'OFF']

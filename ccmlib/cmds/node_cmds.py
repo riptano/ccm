@@ -35,7 +35,6 @@ NODE_CMDS = [
     "updateconf",
     "updatelog4j",
     "stress",
-    "cli",
     "cqlsh",
     "scrub",
     "verify",
@@ -317,29 +316,6 @@ class NodeDsetoolCmd(_DseToolCmd):
         stdout, stderr, rc = self.node.dsetool(" ".join(self.args[1:]))
         print_(stderr)
         print_(stdout)
-
-
-class NodeCliCmd(Cmd):
-
-    options_list = [
-        (['-x', '--exec'], {'type': "string", 'dest': "cmds", 'default': None, 'help': "Execute the specified commands and exit"}),
-        (['-v', '--verbose'], {'action': "store_true", 'dest': "verbose", 'help': "With --exec, show cli output after completion", 'default': False}),
-    ]
-    descr_text = "Launch a cassandra cli connected to this node"
-    usage = "usage: ccm node_name cli [options] [cli_options]"
-    ignore_unknown_options = True
-
-    def validate(self, parser, options, args):
-        Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
-        self.cli_options = parser.get_ignored() + args[1:]
-
-    def run(self):
-        out, err, rc = self.node.run_cli(self.options.cmds, self.cli_options)
-        if self.options.verbose:
-            print_("CLI OUTPUT:\n-------------------------------")
-            print_(out)
-            print_("-------------------------------\nCLI ERROR:\n-------------------------------")
-            print_(err)
 
 
 class NodeCqlshCmd(Cmd):
