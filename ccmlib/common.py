@@ -707,6 +707,10 @@ def get_jdk_version():
     Works for Java 1.8, Java 9 and should also be fine for Java 10.
     """
     version = subprocess.check_output(['java', '-version'], stderr=subprocess.STDOUT)
+    return _get_jdk_version(version)
+
+
+def _get_jdk_version(version):
     ver_pattern = '\"(\d+\.\d+).*\"'
     if re.search(ver_pattern, str(version)):
         return re.search(ver_pattern, str(version)).groups()[0]
