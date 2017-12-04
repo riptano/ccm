@@ -1672,6 +1672,15 @@ class Node(object):
 
             common.replace_in_file(conf_file, gc_log_pattern, gc_log_setting)
 
+            # Java 9
+            gc_log_pattern = "-Xlog[:]gc=info"
+            if common.is_win():
+                gc_log_setting = '    $env:JVM_OPTS="$env:JVM_OPTS -Xlog:gc=info,heap=trace,age=debug,safepoint=info,promotion=trace:file={}:time,uptime,pid,tid,level:filecount=10,filesize=10240"'.format(gc_log_path)
+            else:
+                gc_log_setting = 'JVM_OPTS="$JVM_OPTS -Xlog:gc=info,heap=trace,age=debug,safepoint=info,promotion=trace:file={}:time,uptime,pid,tid,level:filecount=10,filesize=10240"'.format(gc_log_path)
+
+            common.replace_in_file(conf_file, gc_log_pattern, gc_log_setting)
+
         for itf in list(self.network_interfaces.values()):
             if itf is not None and common.interface_is_ipv6(itf):
                 if self.get_cassandra_version() < '3.2':
