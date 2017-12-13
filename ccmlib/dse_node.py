@@ -252,7 +252,7 @@ class DseNode(Node):
         if not os.path.isdir(os.path.join(self.get_path(), 'resources', 'dse', 'conf')):
             os.makedirs(os.path.join(self.get_path(), 'resources', 'dse', 'conf'))
         common.copy_directory(os.path.join(self.get_install_dir(), 'resources', 'dse', 'conf'), os.path.join(self.get_path(), 'resources', 'dse', 'conf'))
-        self.__update_yaml()
+        self._update_yaml()
 
     def copy_config_files(self):
         for product in ['dse', 'cassandra', 'hadoop', 'hadoop2-client', 'sqoop', 'hive', 'tomcat', 'spark', 'shark', 'mahout', 'pig', 'solr', 'graph']:
@@ -343,7 +343,8 @@ class DseNode(Node):
             log_file = re.sub("\\\\", "/", log_file)
         common.replace_in_file(conf_file, append_pattern, append_pattern + log_file)
 
-    def __update_yaml(self):
+    def _update_yaml(self):
+        super(DseNode, self)._update_yaml()
         conf_file = os.path.join(self.get_path(), 'resources', 'dse', 'conf', 'dse.yaml')
         with open(conf_file, 'r') as f:
             data = yaml.load(f)
