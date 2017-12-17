@@ -1371,7 +1371,7 @@ class Node(object):
     def import_config_files(self):
         self._update_config()
         self.copy_config_files()
-        self.__update_yaml()
+        self._update_yaml()
         # loggers changed > 2.1
         if self.get_base_cassandra_version() < 2.1:
             self._update_log4j()
@@ -1445,7 +1445,7 @@ class Node(object):
         common.replace_in_file(bat_file, 'powershell /file .*', 'powershell /file "' + os.path.join(self.get_path(), 'bin', 'cassandra.ps1" %*'))
 
     def _save(self):
-        self.__update_yaml()
+        self._update_yaml()
         # loggers changed > 2.1
         if self.get_base_cassandra_version() < 2.1:
             self._update_log4j()
@@ -1490,7 +1490,7 @@ class Node(object):
         with open(filename, 'w') as f:
             yaml.safe_dump(values, f)
 
-    def __update_yaml(self):
+    def _update_yaml(self):
         conf_file = os.path.join(self.get_conf_dir(), common.CASSANDRA_CONF)
         with open(conf_file, 'r') as f:
             data = yaml.load(f)
