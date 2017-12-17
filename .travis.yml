@@ -2,7 +2,8 @@ language: python
 python:
   - "2.7.13"
   - "3.4.5"
-  - "3.5.2"
+  - "3.5.4"
+  - "3.6.3"
 install:
   - pip install pylint six pyyaml paramiko
 script:
