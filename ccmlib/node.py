@@ -1993,7 +1993,7 @@ class Node(object):
 
         if rc != 0:
             error = ToolError(cmd_args, rc, out, err)
-            print_(error.message)
+            print_(str(error))
 
             args = [self.get_tool(cmd_args[0]), 'help'] + cmd_args[-1]
             helper = subprocess.Popen(args, env=self.get_env(), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
