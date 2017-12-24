@@ -3,6 +3,7 @@ from __future__ import absolute_import, with_statement
 
 import errno
 import glob
+import locale
 import os
 import re
 import shutil
@@ -56,12 +57,17 @@ class ToolError(Exception):
         message = "Subprocess {} exited with non-zero status; exit status: {}".format(command, exit_status)
         if stdout:
             message += "; \nstdout: "
-            message += stdout
+            message += self.__decode(stdout)
         if stderr:
             message += "; \nstderr: "
-            message += stderr
+            message += self.__decode(stderr)
 
         Exception.__init__(self, message)
+
+    def __decode(self, value):
+        if isinstance(value, bytes):
+            return bytes.decode(value, locale.getpreferredencoding(False))
+        return value
 
 # Groups: 1 = cf, 2 = tmp or none, 3 = suffix (Compacted or Data.db)
 _sstable_regexp = re.compile('((?P<keyspace>[^\s-]+)-(?P<cf>[^\s-]+)-)?(?P<tmp>tmp(link)?-)?(?P<version>[^\s-]+)-(?P<number>\d+)-(?P<format>([a-z]+)-)?(?P<suffix>[a-zA-Z]+)\.[a-zA-Z0-9]+$')
@@ -804,7 +810,7 @@ class Node(object):
 
     def nodetool(self, cmd):
         p = self.nodetool_process(cmd)
-        return self.handle_external_tool_process(p, ['nodetool', '-h', 'localhost', '-p', str(self.jmx_port), cmd.split()])
+        return self.handle_external_tool_process(p, ['nodetool', '-h', 'localhost', '-p', str(self.jmx_port), cmd])
 
     def dsetool(self, cmd):
         raise common.ArgumentError('Cassandra nodes do not support dsetool')
@@ -1995,10 +2001,12 @@ class Node(object):
             error = ToolError(cmd_args, rc, out, err)
             print_(str(error))
 
-            args = [self.get_tool(cmd_args[0]), 'help'] + cmd_args[-1]
-            helper = subprocess.Popen(args, env=self.get_env(), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                      universal_newlines=True)
-            print_(helper.communicate()[0])
+            tool = self.get_tool(cmd_args[0])
+            if os.path.isfile(tool):
+                args = [tool, 'help'] + [cmd_args[-1]]
+                helper = subprocess.Popen(args, env=self.get_env(), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                          universal_newlines=True)
+                print_(helper.communicate()[0])
 
             sys.exit(error.exit_status)
 
