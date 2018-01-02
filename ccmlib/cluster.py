@@ -237,6 +237,13 @@ class Cluster(object):
         return self
 
     def populate(self, nodes, debug=False, tokens=None, use_vnodes=False, ipprefix='127.0.0.', ipformat=None, install_byteman=False, use_single_interface=False):
+        """Populate a cluster with nodes
+        @use_single_interface : Populate the cluster with nodes that all share a single network interface.
+        """
+
+        if self.cassandra_version() < '4' and use_single_interface:
+            raise common.ArgumentError('use_single_interface is not supported in versions < 4.0')
+
         node_count = nodes
         dcs = []
 
@@ -283,14 +290,11 @@ class Cluster(object):
                     binary = (ipformat % i, 9042)
             thrift = None
             if self.cassandra_version() < '4':
-                if use_single_interface:
-                    raise common.ArgumentError('use_single_interface is not supported in versions < 4.0')
-                else:
-                    thrift = (ipformat % i, 9160)
+                thrift = (ipformat % i, 9160)
 
             storage_interface = ((ipformat % i), 7000)
             if use_single_interface:
-                #Always leave 7000 and 70001 in case someone defaults to adding
+                #Always leave 7000 and 7001 in case someone defaults to adding
                 #with those port numbers
                 storage_interface = (ipformat % 1, 7000 + 2 + (i * 2))
 
