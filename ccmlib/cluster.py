@@ -18,8 +18,10 @@ from six import iteritems, print_
 from ccmlib import common, extension, repository
 from ccmlib.node import Node, NodeError, TimeoutError
 from six.moves import xrange
-from urlparse import urlparse
-
+try:
+    from urllib.parse import urlparse
+except ImportError:
+    from urlparse import urlparse
 
 class Cluster(object):
 
