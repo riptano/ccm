@@ -810,7 +810,7 @@ class Node(object):
 
     def nodetool(self, cmd):
         p = self.nodetool_process(cmd)
-        return self.handle_external_tool_process(p, ['nodetool', '-h', 'localhost', '-p', str(self.jmx_port), cmd])
+        return self.handle_external_tool_process(p, ['nodetool', '-h', 'localhost', '-p', str(self.jmx_port), cmd.split()])
 
     def dsetool(self, cmd):
         raise common.ArgumentError('Cassandra nodes do not support dsetool')
