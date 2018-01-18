@@ -509,14 +509,6 @@ class Cluster(object):
             pass
         return rc
 
-    def run_cli(self, cmds=None, show_output=False, cli_options=None):
-        if cli_options is None:
-            cli_options = []
-        livenodes = [node for node in list(self.nodes.values()) if node.is_live()]
-        if len(livenodes) == 0:
-            raise common.ArgumentError("No live node")
-        return livenodes[0].run_cli(cmds, cli_options)
-
     def set_configuration_options(self, values=None):
         if values is not None:
             self._config_options = common.merge_configuration(self._config_options, values)
