@@ -59,5 +59,42 @@ class TestCommon(ccmtest.Tester):
 
         self.assertEqual(common.merge_configuration(dict1, dict2), dict0)
 
+    def test_get_jdk_version(self):
+        v8u152 = """java version "1.8.0_152"
+                 Java(TM) SE Runtime Environment (build 1.8.0_152-b16)
+                 Java HotSpot(TM) 64-Bit Server VM (build 25.152-b16, mixed mode)
+                 """
+        # Since Java 9, the version string syntax changed.
+        # Most relevant change is that trailing .0's are omitted. I.e. Java "9.0.0"
+        # version string is not "9.0.0" but just "9".
+        v900 = """java version "9"
+               Java(TM) SE Runtime Environment (build 9+1)
+               Java HotSpot(TM) 64-Bit Server VM (build 9+1, mixed mode)
+               """
+        v901 = """java version "9.0.1"
+               Java(TM) SE Runtime Environment (build 9.0.1+11)
+               Java HotSpot(TM) 64-Bit Server VM (build 9.0.1+11, mixed mode)
+               """
+        # 10-internal, just to have an internal (local) build in here
+        v10_int = """openjdk version "10-internal"
+                  OpenJDK Runtime Environment (build 10-internal+0-adhoc.jenkins.openjdk-shenandoah-jdk10-release)
+                  OpenJDK 64-Bit Server VM (build 10-internal+0-adhoc.jenkins.openjdk-shenandoah-jdk10-release, mixed mode)
+                  """
+        v1000 = """java version "10"
+                Java(TM) SE Runtime Environment (build 9+1)
+                Java HotSpot(TM) 64-Bit Server VM (build 9+1, mixed mode)
+                """
+        v1001 = """java version "10.0.1"
+                Java(TM) SE Runtime Environment (build 10.0.1+11)
+                Java HotSpot(TM) 64-Bit Server VM (build 10.0.1+11, mixed mode)
+                """
+
+        self.assertEqual(common._get_jdk_version(v8u152), "1.8")
+        self.assertEqual(common._get_jdk_version(v900), "9.0")
+        self.assertEqual(common._get_jdk_version(v901), "9.0")
+        self.assertEqual(common._get_jdk_version(v10_int), "10.0")
+        self.assertEqual(common._get_jdk_version(v1000), "10.0")
+        self.assertEqual(common._get_jdk_version(v1001), "10.0")
+
 if __name__ == '__main__':
     unittest.main()
