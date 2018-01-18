@@ -46,9 +46,8 @@ Known issues
 ------------
 Windows only:
   - `node start` pops up a window, stealing focus.
-  - cli and cqlsh started from ccm show incorrect prompts on command-prompt
+  - cqlsh started from ccm show incorrect prompts on command-prompt
   - non nodetool-based command-line options fail (sstablesplit, scrub, etc)
-  - cli_session does not accept commands.
   - To install psutil, you must use the .msi from pypi. pip install psutil will not work
   - You will need ant.bat in your PATH in order to build C* from source
   - You must run with an Unrestricted Powershell Execution-Policy if using Cassandra 2.1.0+
@@ -61,7 +60,7 @@ Remote Execution only:
     expected; since the configuration directory and the installation directory
     contain lots of files they will not be copied over to the remote machine
     like most other options for cluster and node operations
-  - cli and cqlsh started from ccm using remote execution will not start
+  - cqlsh started from ccm using remote execution will not start
     properly (e.g.`ccm --ssh-host 192.168.33.11 node1 cqlsh`); however
     `-x <CMDS>` or `--exec=CMDS` can still be used to execute a CQLSH command
     on a remote node.
