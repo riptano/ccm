@@ -841,7 +841,7 @@ class Node(object):
 
     def bulkload(self, options):
         p = self.bulkload_process(options=options)
-        return self.handle_external_tool_process(p, ['sstable bulkload'] + options)
+        return handle_external_tool_process(p, ['sstable bulkload'] + options)
 
     def scrub_process(self, options):
         scrub_bin = self.get_tool('sstablescrub')
@@ -850,7 +850,7 @@ class Node(object):
 
     def scrub(self, options):
         p = self.scrub_process(options=options)
-        return self.handle_external_tool_process(p, ['sstablescrub'] + options)
+        return handle_external_tool_process(p, ['sstablescrub'] + options)
 
     def verify_process(self, options):
         verify_bin = self.get_tool('sstableverify')
