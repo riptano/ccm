@@ -18,7 +18,10 @@ from six import iteritems, print_
 from ccmlib import common, extension, repository
 from ccmlib.node import Node, NodeError, TimeoutError
 from six.moves import xrange
-
+try:
+    from urllib.parse import urlparse
+except ImportError:
+    from urlparse import urlparse
 
 class Cluster(object):
 
@@ -212,6 +215,9 @@ class Cluster(object):
     def cassandra_version(self):
         return self.version()
 
+    def address_regex(self):
+        return "([0-9.]+):7000" if self.cassandra_version() >= '4.0' else "/([0-9.]+)"
+
     def add(self, node, is_seed, data_center=None):
         if node.name in self.nodes:
             raise common.ArgumentError('Cannot create existing node %s' % node.name)
@@ -232,7 +238,14 @@ class Cluster(object):
         node._save()
         return self
 
-    def populate(self, nodes, debug=False, tokens=None, use_vnodes=False, ipprefix='127.0.0.', ipformat=None, install_byteman=False):
+    def populate(self, nodes, debug=False, tokens=None, use_vnodes=False, ipprefix='127.0.0.', ipformat=None, install_byteman=False, use_single_interface=False):
+        """Populate a cluster with nodes
+        @use_single_interface : Populate the cluster with nodes that all share a single network interface.
+        """
+
+        if self.cassandra_version() < '4' and use_single_interface:
+            raise common.ArgumentError('use_single_interface is not supported in versions < 4.0')
+
         node_count = nodes
         dcs = []
 
@@ -271,14 +284,26 @@ class Cluster(object):
 
             binary = None
             if self.cassandra_version() >= '1.2':
-                binary = (ipformat % i, 9042)
+                if use_single_interface:
+                    #Always leave 9042 and 9043 clear, in case someone defaults to adding
+                    # a node with those ports
+                    binary = (ipformat % 1, 9042 + 2 + (i * 2))
+                else:
+                    binary = (ipformat % i, 9042)
             thrift = None
             if self.cassandra_version() < '4':
                 thrift = (ipformat % i, 9160)
+
+            storage_interface = ((ipformat % i), 7000)
+            if use_single_interface:
+                #Always leave 7000 and 7001 in case someone defaults to adding
+                #with those port numbers
+                storage_interface = (ipformat % 1, 7000 + 2 + (i * 2))
+
             node = self.create_node(name='node%s' % i,
                                     auto_bootstrap=False,
                                     thrift_interface=thrift,
-                                    storage_interface=(ipformat % i, 7000),
+                                    storage_interface=storage_interface,
                                     jmx_port=str(7000 + i * 100),
                                     remote_debug_port=str(2000 + i * 100) if debug else str(0),
                                     byteman_port=str(4000 + i * 100) if install_byteman else str(0),
@@ -355,7 +380,31 @@ class Cluster(object):
         return os.path.join(self.__path, self.name)
 
     def get_seeds(self):
-        return [s.network_interfaces['storage'][0] if isinstance(s, Node) else s for s in self.seeds]
+        if self.cassandra_version() >= '4.0':
+            #They might be overriding the storage port config now
+            storage_port = self._config_options.get("storage_port")
+            storage_interfaces = [s.network_interfaces['storage'] for s in self.seeds if isinstance(s, Node)]
+            seeds = []
+
+            #Convert node storage interfaces to IP strings and maybe replace the port
+            for storage_interface in storage_interfaces:
+                port = storage_port if storage_port is not None else str(storage_interface[1])
+                if ":" in storage_interface[0]:
+                    seeds.append("[" + storage_interface[0] + "]:" + port)
+                else:
+                    seeds.append(storage_interface[0] + ":" + port)
+
+            #For seeds that are strings need to update the port in the string
+            for seed in [string for string in self.seeds if not isinstance(string, Node)]:
+                url = urlparse("http://" + seed)
+                if storage_port is not None:
+                    seeds.append(url.hostname + ":" + str(storage_port))
+                else:
+                    seeds.append(seed)
+
+            return seeds
+        else:
+            return [s.network_interfaces['storage'][0] if isinstance(s, Node) else s for s in self.seeds]
 
     def show(self, verbose):
         msg = "Cluster: '{}'".format(self.name)
@@ -483,9 +532,18 @@ class Cluster(object):
                 node.nodetool(nodetool_cmd)
         return self
 
+    def allNativePortsMatch(self):
+        current_port = None
+        for node in self.nodes.values():
+            if current_port is None:
+                current_port = node.network_interfaces['binary'][1]
+            elif current_port != node.network_interfaces['binary'][1]:
+                return False
+        return True
+
     def stress(self, stress_options):
         stress = common.get_stress_bin(self.get_install_dir())
-        livenodes = [node.network_interfaces['storage'][0] for node in list(self.nodes.values()) if node.is_live()]
+        livenodes = [node.network_interfaces['binary'] for node in list(self.nodes.values()) if node.is_live()]
         if len(livenodes) == 0:
             print_("No live node")
             return
@@ -494,6 +552,12 @@ class Cluster(object):
             if '-d' not in stress_options:
                 nodes_options = ['-d', ",".join(livenodes)]
             args = [stress] + nodes_options + stress_options
+        elif self.cassandra_version() >= '4.0':
+            if '-node' not in stress_options:
+                args = [stress] + stress_options + ['-node']
+                if not self.allNativePortsMatch():
+                    args += ['allow_server_port_discovery']
+                args += [",".join([node[0] + ":" + str(node[1]) for node in livenodes])]
         else:
             if '-node' not in stress_options:
                 nodes_options = ['-node', ','.join(livenodes)]

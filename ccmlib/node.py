@@ -217,11 +217,43 @@ class Node(object):
         """
         return os.path.join(self.get_path(), 'conf')
 
+    def address_for_current_version_slashy(self):
+        """
+        Returns the address formatted for the current version with
+        the Java slashy if necessary.
+        """
+        if self.get_cassandra_version() >= '4.0':
+            return self.address_and_port()
+        else:
+            return "/{}".format(str(self.address()));
+
+    def address_for_version(self, version):
+        """
+        Returns the address formatted for the specified
+        """
+        if version >= '4.0':
+            return self.address_and_port()
+        else:
+            return "{}".format(str(self.address()));
+
+    def address_for_current_version(self):
+        """
+        Returns the address formatted for the current version.
+        """
+        return self.address_for_version(self.get_cassandra_version())
+
     def address(self):
         """
         Returns the IP use by this node for internal communication
         """
         return self.network_interfaces['storage'][0]
+
+    def address_and_port(self):
+        """
+        Returns the IP used for internal communication along with ports
+        """
+        port = self.network_interfaces['storage'][1]
+        return self.network_interfaces['storage'][0] + ':' + str(port)
 
     def get_install_dir(self):
         """
@@ -514,7 +546,7 @@ class Node(object):
         the log is watched from the beginning.
         """
         tofind = nodes if isinstance(nodes, list) else [nodes]
-        tofind = ["%s is now [dead|DOWN]" % node.address() for node in tofind]
+        tofind = ["%s is now [dead|DOWN]" % node.address_for_version(self.get_cassandra_version()) for node in tofind]
         self.watch_log_for(tofind, from_mark=from_mark, timeout=timeout, filename=filename)
 
     def watch_log_for_alive(self, nodes, from_mark=None, timeout=120, filename='system.log'):
@@ -523,7 +555,7 @@ class Node(object):
         nodes are marked UP. This method works similarly to watch_log_for_death.
         """
         tofind = nodes if isinstance(nodes, list) else [nodes]
-        tofind = ["%s.* now UP" % node.address() for node in tofind]
+        tofind = ["%s.* now UP" % node.address_for_version(self.get_cassandra_version()) for node in tofind]
         self.watch_log_for(tofind, from_mark=from_mark, timeout=timeout, filename=filename)
 
     def wait_for_binary_interface(self, **kwargs):

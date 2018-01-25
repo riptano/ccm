@@ -93,6 +93,8 @@ class ClusterCreateCmd(Cmd):
         (['--byteman'], {'action': "store_true", 'dest': "install_byteman", 'help': "Start nodes with byteman agent running", 'default': False}),
         (['--root'], {'action': "store_true", 'dest': "allow_root", 'help': "Allow CCM to start cassandra as root", 'default': False}),
         (['--datadirs'], {'type': "int", 'dest': "datadirs", 'help': "Number of data directories to use", 'default': 1}),
+        (['-S', '--use-single-interface'], { 'action' : "store_true", 'dest' : "use_single_interface", 'default' : False,
+                          "help" : "Use multiple ports on a single interface instead of an interface per instance'"}),
     ]
     descr_text = "Create a new cluster"
     usage = "usage: ccm create [options] cluster_name"
@@ -171,7 +173,7 @@ class ClusterCreateCmd(Cmd):
                     cluster.set_log_level("DEBUG")
                 if self.options.trace_log:
                     cluster.set_log_level("TRACE")
-                cluster.populate(self.nodes, self.options.debug, use_vnodes=self.options.vnodes, ipprefix=self.options.ipprefix, ipformat=self.options.ipformat, install_byteman=self.options.install_byteman)
+                cluster.populate(self.nodes, self.options.debug, use_vnodes=self.options.vnodes, ipprefix=self.options.ipprefix, ipformat=self.options.ipformat, install_byteman=self.options.install_byteman, use_single_interface=self.options.use_single_interface)
                 if self.options.start_nodes:
                     profile_options = None
                     if self.options.profile:
