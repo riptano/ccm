@@ -670,7 +670,7 @@ class Node(object):
         FNULL = open(os.devnull, 'w')
         stdout_sink = subprocess.PIPE if verbose else FNULL
         # write stderr to a temporary file to prevent overwhelming pipe (> 65K data).
-        stderr = tempfile.SpooledTemporaryFile(max_size=0xFFFF)
+        stderr_sink = tempfile.SpooledTemporaryFile(max_size=0xFFFF)
 
         if common.is_win():
             # clean up any old dirty_pid files from prior runs
@@ -680,18 +680,17 @@ class Node(object):
             if quiet_start and self.cluster.version() >= '2.2.4':
                 args.append('-q')
 
-            process = subprocess.Popen(args, cwd=self.get_bin_dir(), env=env, stdout=stdout_sink, stderr=stderr)
+            process = subprocess.Popen(args, cwd=self.get_bin_dir(), env=env, stdout=stdout_sink, stderr=stderr_sink)
         else:
-            process = subprocess.Popen(args, env=env, stdout=stdout_sink, stderr=stderr)
+            process = subprocess.Popen(args, env=env, stdout=stdout_sink, stderr=stderr_sink)
 
-        process.stderr_file = stderr
+        process.stderr_file = stderr_sink
 
         # Our modified batch file writes a dirty output with more than just the pid - clean it to get in parity
         # with *nix operation here.
         if verbose:
-            stdout, stderr = process.communicate()
+            stdout = process.communicate()[0]
             print_(stdout)
-            print_(stderr)
 
         if common.is_win():
             self.__clean_win_pid()
