@@ -261,6 +261,7 @@ class ClusterPopulateCmd(Cmd):
     options_list = [
         (['-n', '--nodes'], {'type': "string", 'dest': "nodes", 'help': "Number of nodes to populate with (a single int or a colon-separate list of ints for multi-dc setups)"}),
         (['-d', '--debug'], {'action': "store_true", 'dest': "debug", 'help': "Enable remote debugging options", 'default': False}),
+        (['--byteman'], {'action': "store_true", 'dest': "install_byteman", 'help': "Start nodes with byteman agent running", 'default': False}),
         (['--vnodes'], {'action': "store_true", 'dest': "vnodes", 'help': "Populate using vnodes", 'default': False}),
         (['-i', '--ipprefix'], {'type': "string", 'dest': "ipprefix", 'help': "Ipprefix to use to create the ip of a node"}),
         (['-I', '--ip-format'], {'type': "string", 'dest': "ipformat", 'help': "Format to use when creating the ip of a node (supports enumerating ipv6-type addresses like fe80::%d%lo0)"}),
@@ -288,7 +289,7 @@ class ClusterPopulateCmd(Cmd):
             if not (self.options.ipprefix or self.options.ipformat):
                 self.options.ipformat = '127.0.0.%d'
 
-            self.cluster.populate(self.nodes, self.options.debug, use_vnodes=self.options.vnodes, ipprefix=self.options.ipprefix, ipformat=self.options.ipformat)
+            self.cluster.populate(self.nodes, self.options.debug, use_vnodes=self.options.vnodes, ipprefix=self.options.ipprefix, ipformat=self.options.ipformat, install_byteman=self.options.install_byteman)
         except common.ArgumentError as e:
             print_(str(e), file=sys.stderr)
             exit(1)
