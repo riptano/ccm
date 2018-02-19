@@ -2023,7 +2023,7 @@ class Node(object):
 
         out, _, _ = handle_external_tool_process(p, ["sstableutil", '--type', 'final', ks, table])
 
-        return sorted(filter(lambda s: s.endswith('-Data.db'), [str(s, 'utf-8') for s in out.splitlines()]))
+        return sorted(filter(lambda s: s.endswith('-Data.db'), out.splitlines()))
 
 def _get_load_from_info_output(info):
     load_lines = [s for s in info.split('\n')
