@@ -2101,6 +2101,8 @@ def handle_external_tool_process(process, cmd_args):
     out, err = process.communicate()
     if out and isinstance(out, bytes):
         out = out.decode()
+    if err and isinstance(err, bytes):
+        err = err.decode()
     rc = process.returncode
 
     if rc != 0:
