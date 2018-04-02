@@ -145,7 +145,7 @@ You can check that the cluster is correctly set up with
 
 You can then bootstrap a 4th node with
 
-    ccm add node4 -i 127.0.0.4 -j 7400 -b
+    ccm add node4 -i 127.0.0.4 -j 7400
 
 (populate is just a shortcut for adding multiple nodes initially)
 
