@@ -706,7 +706,12 @@ def get_jdk_version():
 
     Works for Java 1.8, Java 9 and should also be fine for Java 10.
     """
-    version = subprocess.check_output(['java', '-version'], stderr=subprocess.STDOUT)
+    try:
+        version = subprocess.check_output(['java', '-version'], stderr=subprocess.STDOUT)
+    except OSError:
+        print_("ERROR: Could not find java. Is it in your path?")
+        exit(1)
+
     return _get_jdk_version(version)
 
 
