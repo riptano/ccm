@@ -302,6 +302,8 @@ def make_dse_env(install_dir, node_path, node_ip):
     if version < '6.0':
         env['SPARK_WORKER_MEMORY'] = os.environ.get('SPARK_WORKER_MEMORY', '1024M')
         env['SPARK_WORKER_CORES'] = os.environ.get('SPARK_WORKER_CORES', '2')
+    else:
+        env['ALWAYSON_SQL_LOG_DIR'] = os.path.join(node_path, 'logs')
     env['DSE_HOME'] = os.path.join(install_dir)
     env['DSE_CONF'] = os.path.join(node_path, 'resources', 'dse', 'conf')
     env['CASSANDRA_HOME'] = os.path.join(install_dir, 'resources', 'cassandra')

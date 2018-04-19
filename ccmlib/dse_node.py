@@ -73,10 +73,26 @@ class DseNode(Node):
                                              'work_dir': os.path.join(self.get_path(), 'dsefs'),
                                              'data_directories': [{'dir': os.path.join(self.get_path(), 'dsefs', 'data')}]}}
             if self.cluster.version() >= '6.0':
-                dse_options['resource_manager_options'] = {'worker_options' : {'memory_total': '1g', 'cores_total': 2}}
+                # Don't overwrite aoss options
+                if not self._dse_config_options.has_key('resource_manager_options'):
+                    dse_options['resource_manager_options'] = {'worker_options': {'memory_total': '1g', 'cores_total': 2}}
 
             self.set_dse_configuration_options(dse_options)
             self._update_spark_env()
+
+    def enable_aoss(self, thrift_port=10000, web_ui_port=9077):
+        self._dse_config_options['alwayson_sql_options'] = {'enabled': True, 'thrift_port': thrift_port, 'web_ui_port': web_ui_port}
+        self._dse_config_options['resource_manager_options'] = {'worker_options':
+                                                                {'cores_total': 2,
+                                                                 'memory_total': '2g',
+                                                                 'workpools': [{
+                                                                     'name': 'alwayson_sql',
+                                                                     'cores': 0.5,
+                                                                     'memory': 0.5
+                                                                 }]}}
+        self._update_config()
+        self._update_spark_env()
+        self._update_yaml()
 
     def set_dse_configuration_options(self, values=None):
         if values is not None:
@@ -128,6 +144,7 @@ class DseNode(Node):
               quiet_start=False,
               allow_root=False,
               set_migration_task=True):
+        mark = self.mark_log()
         process = super(DseNode, self).start(join_ring, no_wait, verbose, update_pid, wait_other_notice, replace_token,
                                              replace_address, jvm_args, wait_for_binary_proto, profile_options, use_jna,
                                              quiet_start, allow_root, set_migration_task)

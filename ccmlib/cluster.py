@@ -29,6 +29,7 @@ class Cluster(object):
         self.partitioner = partitioner
         self._config_options = {}
         self._dse_config_options = {}
+        self._misc_config_options = {}
         self._environment_variables = {}
         self.__log_level = "INFO"
         self.__path = path
@@ -316,7 +317,7 @@ class Cluster(object):
         tokens.extend(new_tokens)
         return tokens
 
-    def remove(self, node=None):
+    def remove(self, node=None, gently=False):
         if node is not None:
             if node.name not in self.nodes:
                 return
@@ -325,10 +326,10 @@ class Cluster(object):
             if node in self.seeds:
                 self.seeds.remove(node)
             self._update_config()
-            node.stop(gently=False)
+            node.stop(gently=gently)
             self.remove_dir_with_retry(node.get_path())
         else:
-            self.stop(gently=False)
+            self.stop(gently=gently)
             self.remove_dir_with_retry(self.get_path())
 
     # We can race w/shutdown on Windows and get Access is denied attempting to delete node logs.
@@ -572,6 +573,10 @@ class Cluster(object):
         for node in list(self.nodes.values()):
             node.verify(options)
 
+    def enable_aoss(self):
+        common.error("Cannot enable AOSS in C* clusters")
+        exit(1)
+
     def update_log4j(self, new_log4j_config):
         # iterate over all nodes
         for node in self.nodelist():
@@ -597,6 +602,7 @@ class Cluster(object):
             'install_dir': self.__install_dir,
             'config_options': self._config_options,
             'dse_config_options': self._dse_config_options,
+            'misc_config_options' : self._misc_config_options,
             'log_level': self.__log_level,
             'use_vnodes': self.use_vnodes,
             'datadirs': self.data_dir_count,
