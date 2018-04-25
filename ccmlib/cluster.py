@@ -700,5 +700,5 @@ class Cluster(object):
                     return ret(node=node, matchings=matchings)
             time.sleep(1)
 
-    def wait_for_any_log(self, pattern, timeout, filename='system.log'):
-        return common.wait_for_any_log(self.nodelist(), pattern, timeout, filename=filename)
+    def wait_for_any_log(self, pattern, timeout, filename='system.log', marks=None):
+        return common.wait_for_any_log(self.nodelist(), pattern, timeout, filename=filename, marks=marks)

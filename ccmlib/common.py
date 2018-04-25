@@ -764,7 +764,7 @@ def is_intlike(obj):
     raise RuntimeError('Reached end of {}; should not be possible'.format(is_intlike.__name__))
 
 
-def wait_for_any_log(nodes, pattern, timeout, filename='system.log'):
+def wait_for_any_log(nodes, pattern, timeout, filename='system.log', marks=None):
     """
     Look for a pattern in the system.log of any in a given list
     of nodes.
@@ -775,11 +775,14 @@ def wait_for_any_log(nodes, pattern, timeout, filename='system.log'):
                     but a maximum number of attempts. This implies that
                     the all the grepping takes no time at all, so it is
                     somewhat inaccurate, but probably close enough.
+    @param marks A dict of nodes to marks in the file. Keys must match the first param list.
     @return The first node in whose log the pattern was found
     """
+    if marks is None:
+        marks = {}
     for _ in range(timeout):
         for node in nodes:
-            found = node.grep_log(pattern, filename=filename)
+            found = node.grep_log(pattern, filename=filename, from_mark=marks.get(node, None))
             if found:
                 return node
         time.sleep(1)
