@@ -269,7 +269,11 @@ def clone_development(git_repo, version, verbose=False, alias=False):
 
 
 def download_dse_version(version, username, password, verbose=False):
-    url = DSE_ARCHIVE % version
+    url = DSE_ARCHIVE
+    if CCM_CONFIG.has_option('repositories', 'dse'):
+        url = CCM_CONFIG.get('repositories', 'dse')
+
+    url = url % version
     _, target = tempfile.mkstemp(suffix=".tar.gz", prefix="ccm-")
     try:
         if username is None:
@@ -295,7 +299,11 @@ def download_dse_version(version, username, password, verbose=False):
 
 
 def download_opscenter_version(version, username, password, target_version, verbose=False):
-    url = OPSC_ARCHIVE % version
+    url = OPSC_ARCHIVE
+    if CCM_CONFIG.has_option('repositories', 'opscenter'):
+        url = CCM_CONFIG.get('repositories', 'opscenter')
+
+    url = url % version
     _, target = tempfile.mkstemp(suffix=".tar.gz", prefix="ccm-")
     try:
         if username is None:
@@ -327,10 +335,14 @@ def download_version(version, url=None, verbose=False, binary=False):
     """
     assert_jdk_valid_for_cassandra_version(version)
 
+    u = ARCHIVE
+    if CCM_CONFIG.has_option('repositories', 'cassandra'):
+        u = CCM_CONFIG.get('repositories', 'cassandra')
+
     if binary:
-        u = "%s/%s/apache-cassandra-%s-bin.tar.gz" % (ARCHIVE, version.split('-')[0], version) if url is None else url
+        u = "%s/%s/apache-cassandra-%s-bin.tar.gz" % (u, version.split('-')[0], version) if url is None else url
     else:
-        u = "%s/%s/apache-cassandra-%s-src.tar.gz" % (ARCHIVE, version.split('-')[0], version) if url is None else url
+        u = "%s/%s/apache-cassandra-%s-src.tar.gz" % (u, version.split('-')[0], version) if url is None else url
     _, target = tempfile.mkstemp(suffix=".tar.gz", prefix="ccm-")
     try:
         __download(u, target, show_progress=verbose)
