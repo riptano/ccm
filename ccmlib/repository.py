@@ -335,17 +335,17 @@ def download_version(version, url=None, verbose=False, binary=False):
     """
     assert_jdk_valid_for_cassandra_version(version)
 
-    u = ARCHIVE
+    archive_url = ARCHIVE
     if CCM_CONFIG.has_option('repositories', 'cassandra'):
-        u = CCM_CONFIG.get('repositories', 'cassandra')
+        archive_url = CCM_CONFIG.get('repositories', 'cassandra')
 
     if binary:
-        u = "%s/%s/apache-cassandra-%s-bin.tar.gz" % (u, version.split('-')[0], version) if url is None else url
+        archive_url = "%s/%s/apache-cassandra-%s-bin.tar.gz" % (archive_url, version.split('-')[0], version) if url is None else url
     else:
-        u = "%s/%s/apache-cassandra-%s-src.tar.gz" % (u, version.split('-')[0], version) if url is None else url
+        archive_url = "%s/%s/apache-cassandra-%s-src.tar.gz" % (archive_url, version.split('-')[0], version) if url is None else url
     _, target = tempfile.mkstemp(suffix=".tar.gz", prefix="ccm-")
     try:
-        __download(u, target, show_progress=verbose)
+        __download(archive_url, target, show_progress=verbose)
         common.info("Extracting {} as version {} ...".format(target, version))
         tar = tarfile.open(target)
         dir = tar.next().name.split("/")[0]  # pylint: disable=all
