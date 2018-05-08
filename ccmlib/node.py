@@ -79,7 +79,21 @@ class Node(object):
     Provides interactions to a Cassandra node.
     """
 
-    def __init__(self, name, cluster, auto_bootstrap, thrift_interface, storage_interface, jmx_port, remote_debug_port, initial_token, save=True, binary_interface=None, byteman_port='0', environment_variables=None, byteman_startup_script=None, derived_cassandra_version=None):
+    def __init__(self,
+                 name,
+                 cluster,
+                 auto_bootstrap,
+                 thrift_interface,
+                 storage_interface,
+                 jmx_port,
+                 remote_debug_port,
+                 initial_token,
+                 save=True,
+                 binary_interface=None,
+                 byteman_port='0',
+                 environment_variables=None,
+                 byteman_startup_script=None,
+                 derived_cassandra_version=None):
         """
         Create a new Node.
           - name: the name for that node
@@ -859,6 +873,9 @@ class Node(object):
     def verify(self, options):
         p = self.verify_process(options=options)
         return handle_external_tool_process(p, ['sstableverify'] + options)
+
+    def enable_aoss(self, thrift_port=10000, web_ui_port=9077):
+        pass
 
     def run_cqlsh_process(self, cmds=None, cqlsh_options=None):
         if cqlsh_options is None:

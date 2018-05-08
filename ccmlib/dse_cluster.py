@@ -72,8 +72,13 @@ class DseCluster(Cluster):
     def start(self, no_wait=False, verbose=False, wait_for_binary_proto=False, wait_other_notice=True, jvm_args=None, profile_options=None, quiet_start=False, allow_root=False):
         if jvm_args is None:
             jvm_args = []
+        marks = {}
+        for node in self.nodelist():
+            marks[node] = node.mark_log()
         started = super(DseCluster, self).start(no_wait, verbose, wait_for_binary_proto, wait_other_notice, jvm_args, profile_options, quiet_start=quiet_start, allow_root=allow_root, timeout=180)
         self.start_opscenter()
+        if self._misc_config_options.get('enable_aoss', False):
+            self.wait_for_any_log('AlwaysOn SQL started', 600, marks=marks)
         return started
 
     def stop(self, wait=True, signal_event=signal.SIGTERM, **kwargs):
@@ -81,10 +86,25 @@ class DseCluster(Cluster):
         self.stop_opscenter()
         return not_running
 
+
+    def remove(self, node=None):
+        # We _must_ gracefully stop if aoss is enabled, otherwise we will leak the spark workers
+        super(DseCluster, self).remove(node=node, gently=self._misc_config_options.get('enable_aoss', False))
+
     def cassandra_version(self):
         if self._cassandra_version is None:
             self._cassandra_version = common.get_dse_cassandra_version(self.get_install_dir())
         return self._cassandra_version
+
+    def enable_aoss(self):
+        if self.version() < '6.0':
+            common.error("Cannot enable AOSS in DSE clusters before 6.0")
+            exit(1)
+        self._misc_config_options['enable_aoss'] = True
+        for node in self.nodelist():
+            port_offset = int(node.name[4:])
+            node.enable_aoss(thrift_port=10000 + port_offset, web_ui_port=9077 + port_offset)
+        self._update_config()
 
     def set_dse_configuration_options(self, values=None):
         if values is not None:

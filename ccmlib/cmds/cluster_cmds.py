@@ -44,7 +44,8 @@ CLUSTER_CMDS = [
     "checklogerror",
     "showlastlog",
     "jconsole",
-    "setworkload"
+    "setworkload",
+    "enableaoss"
 ]
 
 
@@ -833,3 +834,19 @@ class ClusterSetworkloadCmd(Cmd):
         except common.ArgumentError as e:
             print_(str(e), file=sys.stderr)
             exit(1)
+
+class ClusterEnableaossCmd(Cmd):
+
+    descr_text = "Enable DSE's Always On SparkSQL Server"
+    usage = "usage: ccm enableaoss"
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, load_cluster=True)
+
+    def run(self):
+        try:
+            self.cluster.enable_aoss()
+        except Exception as e:
+            print_(str(e), file=sys.stderr)
+            exit(1)
+

@@ -45,6 +45,8 @@ class ClusterFactory():
                 cluster._config_options = data['config_options']
             if 'dse_config_options' in data:
                 cluster._dse_config_options = data['dse_config_options']
+            if 'misc_config_options' in data:
+                cluster._misc_config_options = data['misc_config_options']
             if 'log_level' in data:
                 cluster.__log_level = data['log_level']
             if 'use_vnodes' in data:
