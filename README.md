@@ -13,9 +13,9 @@ Requirements
 
 - A working python installation (tested to work with python 2.7).
 - pyYAML (http://pyyaml.org/ -- `sudo easy_install pyYaml`)
-- six (https://pypi.python.org/pypi/six -- `sudo easy_install six`)
+- six (https://pypi.org/project/six/ -- `sudo easy_install six`)
 - ant (http://ant.apache.org/, on Mac OS X, `brew install ant`)
-- psutil (https://pypi.python.org/pypi/psutil)
+- psutil (https://pypi.org/project/psutil/)
 - Java (which version depends on the version of Cassandra you plan to use. If
   unsure, use Java 7 as it is known to work with current versions of Cassandra).
 - If you want to create multiple node clusters, the simplest way is to use
@@ -80,7 +80,7 @@ There is also a [Homebrew package][brew] available:
 
     brew install ccm
 
-  [pip]: https://pypi.python.org/pypi/ccm
+  [pip]: https://pypi.org/project/ccm/
   [brew]: https://github.com/Homebrew/homebrew/blob/master/Library/Formula/ccm.rb
 
 Usage
