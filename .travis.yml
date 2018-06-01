@@ -7,6 +7,6 @@ python:
 install:
   - pip install pylint six pyyaml paramiko
 script:
-  - pylint --py3k --disable=W1633,W1648 ccmlib
+  - pylint --py3k --disable=W1633,W1648,W1662 ccmlib
   - pylint --disable=all --enable=E,F ccmlib
   - nosetests
