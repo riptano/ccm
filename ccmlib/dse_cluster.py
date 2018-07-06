@@ -53,7 +53,7 @@ class DseCluster(Cluster):
                 dse_credentials_file = creds_file
 
         if dse_credentials_file is not None:
-            parser = ConfigParser.ConfigParser()
+            parser = ConfigParser.RawConfigParser()
             parser.read(dse_credentials_file)
             if parser.has_section('dse_credentials'):
                 if parser.has_option('dse_credentials', 'dse_username'):
