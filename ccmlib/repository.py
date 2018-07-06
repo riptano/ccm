@@ -35,7 +35,7 @@ ARCHIVE = "http://archive.apache.org/dist/cassandra"
 GIT_REPO = "http://git.apache.org/cassandra.git"
 GITHUB_REPO = "https://github.com/apache/cassandra.git"
 GITHUB_TAGS = "https://api.github.com/repos/apache/cassandra/git/refs/tags"
-CCM_CONFIG = ConfigParser.ConfigParser()
+CCM_CONFIG = ConfigParser.RawConfigParser()
 CCM_CONFIG.read(os.path.join(os.path.expanduser("~"), ".ccm", "config"))
 
 
