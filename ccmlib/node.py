@@ -19,7 +19,7 @@ from datetime import datetime
 from distutils.version import LooseVersion  #pylint: disable=import-error, no-name-in-module
 
 import yaml
-from six import iteritems, print_, string_types
+from six import print_, string_types
 
 from ccmlib import common, extension
 from ccmlib.repository import setup
@@ -1632,14 +1632,12 @@ class Node(object):
         # The cassandra-env.ps1 file has been introduced in 2.1
         if common.is_modern_windows_install(self.get_base_cassandra_version()):
             conf_file = os.path.join(self.get_conf_dir(), common.CASSANDRA_WIN_ENV)
-            jvm_file = os.path.join(self.get_conf_dir(), common.JVM_OPTS)
             jmx_port_pattern = '^\s+\$JMX_PORT='
             jmx_port_setting = '    $JMX_PORT="' + self.jmx_port + '"'
             if self.get_cassandra_version() < '3.2':
                 remote_debug_options = '    $env:JVM_OPTS="$env:JVM_OPTS {}"'.format(agentlib_setting)
         else:
             conf_file = os.path.join(self.get_conf_dir(), common.CASSANDRA_ENV)
-            jvm_file = os.path.join(self.get_conf_dir(), common.JVM_OPTS)
             jmx_port_pattern = 'JMX_PORT='
             jmx_port_setting = 'JMX_PORT="' + self.jmx_port + '"'
             if self.get_cassandra_version() < '3.2':
@@ -1661,7 +1659,9 @@ class Node(object):
             if self.get_cassandra_version() < '3.2':
                 common.replace_in_file(conf_file, remote_debug_port_pattern, remote_debug_options)
             else:
-                common.replace_in_file(jvm_file, remote_debug_port_pattern, remote_debug_options)
+                for f in glob.glob(os.path.join(self.get_conf_dir(), common.JVM_OPTS_PATTERN)):
+                    if os.path.isfile(f):
+                        common.replace_in_file(f, remote_debug_port_pattern, remote_debug_options)
 
         if self.byteman_port != '0':
             byteman_jar = glob.glob(os.path.join(self.get_install_dir(), 'build', 'lib', 'jars', 'byteman-[0-9]*.jar'))[0]
@@ -1716,7 +1716,9 @@ class Node(object):
                                                'JVM_OPTS="$JVM_OPTS -Djava.net.preferIPv4Stack=false -Djava.net.preferIPv6Addresses=true"')
                     break
                 else:
-                    common.replace_in_file(jvm_file, '-Djava.net.preferIPv4Stack=true', '')
+                    for f in glob.glob(os.path.join(self.get_conf_dir(), common.JVM_OPTS_PATTERN)):
+                        if os.path.isfile(f):
+                            common.replace_in_file(f, '-Djava.net.preferIPv4Stack=true', '')
                     break
 
     def __update_status(self):
