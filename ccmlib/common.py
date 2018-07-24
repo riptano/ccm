@@ -28,7 +28,7 @@ DSE_CASSANDRA_CONF_DIR = "resources/cassandra/conf"
 OPSCENTER_CONF_DIR = "conf"
 
 CASSANDRA_CONF = "cassandra.yaml"
-JVM_OPTS = "jvm.options"
+JVM_OPTS_PATTERN = "jvm*.options"
 LOG4J_CONF = "log4j-server.properties"
 LOG4J_TOOL_CONF = "log4j-tools.properties"
 LOGBACK_CONF = "logback.xml"
