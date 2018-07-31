@@ -74,7 +74,7 @@ class DseNode(Node):
                                              'data_directories': [{'dir': os.path.join(self.get_path(), 'dsefs', 'data')}]}}
             if self.cluster.version() >= '6.0':
                 # Don't overwrite aoss options
-                if not self._dse_config_options.has_key('resource_manager_options'):
+                if 'resource_manager_options' not in self._dse_config_options:
                     dse_options['resource_manager_options'] = {'worker_options': {'memory_total': '1g', 'cores_total': 2}}
 
             self.set_dse_configuration_options(dse_options)
