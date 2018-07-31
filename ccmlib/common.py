@@ -666,12 +666,14 @@ def get_dse_version(install_dir):
 
 def get_dse_cassandra_version(install_dir):
     dse_cmd = os.path.join(install_dir, 'bin', 'dse')
-    output = subprocess.Popen([dse_cmd, "cassandra", '-v'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()[0].rstrip()
+    (output, stderr) = subprocess.Popen([dse_cmd, "cassandra", '-v'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
+    output = output.rstrip()
     match = re.search('([0-9.]+)(?:-.*)?', str(output))
     if match:
         return LooseVersion(match.group(1))
 
-    raise ArgumentError("Unable to determine Cassandra version in: " + install_dir)
+    raise ArgumentError("Unable to determine Cassandra version in: %s.\n\tstdout: '%s'\n\tstderr: '%s'" 
+      % (install_dir, output, stderr))
 
 def get_install_dir_from_cluster_conf(node_path):
     file = os.path.join(os.path.dirname(node_path), "cluster.conf")
