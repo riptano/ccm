@@ -702,3 +702,22 @@ class Cluster(object):
 
     def wait_for_any_log(self, pattern, timeout, filename='system.log', marks=None):
         return common.wait_for_any_log(self.nodelist(), pattern, timeout, filename=filename, marks=marks)
+
+    def show_logs(self, selected_nodes_names=()):
+        nodes = sorted(list(self.nodes.values()), key=lambda node: node.name)
+        nodes_names = [node.name for node in nodes]
+
+        if len(nodes) == 0:
+            print("No node in this cluster yet.")
+            return
+        else:
+            names_logs_dict = {node.name: node.logfilename() for node in nodes}
+            if len(selected_nodes_names) == 0:
+                return names_logs_dict.values()
+            else:
+                if set(selected_nodes_names).issubset(nodes_names):
+                    return [names_logs_dict[name] for name in selected_nodes_names]
+                else:
+                    raise ValueError("nodes in this cluster are {}. But nodes in argments are {}".format(
+                        nodes_names, selected_nodes_names
+                    ))

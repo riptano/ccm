@@ -45,7 +45,8 @@ CLUSTER_CMDS = [
     "showlastlog",
     "jconsole",
     "setworkload",
-    "enableaoss"
+    "enableaoss",
+    "showlogs"
 ]
 
 
@@ -343,6 +344,18 @@ class ClusterStatusCmd(Cmd):
 
     def run(self):
         self.cluster.show(self.options.verbose)
+
+
+class ClusterShowlogsCmd(Cmd):
+    descr_text = "Show logs of nodes in this claster. If not determined, all nodes will be showed up"
+    usage = "usage: ccm showlogs [args (node1 node2 ...)]"
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, load_cluster=True)
+
+    def run(self):
+        logs = self.cluster.show_logs(self.args)
+        os.execvp('multitail', ['multitail']+logs)
 
 
 class ClusterRemoveCmd(Cmd):
