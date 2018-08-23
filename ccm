@@ -8,6 +8,9 @@ from ccmlib import common
 from ccmlib.cmds import command, cluster_cmds, node_cmds
 from ccmlib.remote import PARAMIKO_IS_AVAILABLE, get_remote_usage, get_remote_options, execute_ccm_remotely
 
+import os
+import warnings
+
 
 def get_command(kind, cmd):
     cmd_name = kind.lower().capitalize() + cmd.lower().capitalize() + "Cmd"
@@ -91,6 +94,9 @@ else:
     node = arg1
     cmd = sys.argv[2]
     cmd_args = [node] + sys.argv[3:]
+
+if not os.getenv('CASSANDRA_HOME') is None:
+    warnings.warn("'CASSANDRA_HOME' is set to be {}".format(os.getenv('CASSANDRA_HOME')))
 
 cmd = get_command(kind, cmd)
 if not cmd:
