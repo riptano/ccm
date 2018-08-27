@@ -704,20 +704,28 @@ class Cluster(object):
         return common.wait_for_any_log(self.nodelist(), pattern, timeout, filename=filename, marks=marks)
 
     def show_logs(self, selected_nodes_names=()):
+        """
+        Shows logs of nodes in this cluster with multitail.
+        Params:
+        @selected_nodes_names : a list-like object that contains names of nodes to be shown. If empty, this will show all nodes in the cluster.
+
+        Triggers multitail to show logs. Detailed options for multitail are not configurable.
+        """
+
+        if len(self.nodes.values()) == 0:
+            print("The are no nodes in this cluster yet.")
+            return
+
         nodes = sorted(list(self.nodes.values()), key=lambda node: node.name)
         nodes_names = [node.name for node in nodes]
 
-        if len(nodes) == 0:
-            print("No node in this cluster yet.")
-            return
+        names_logs_dict = {node.name: node.logfilename() for node in nodes}
+        if len(selected_nodes_names) == 0: # Parameter selected_nodes_names is empty
+            return names_logs_dict.values()
         else:
-            names_logs_dict = {node.name: node.logfilename() for node in nodes}
-            if len(selected_nodes_names) == 0:
-                return names_logs_dict.values()
+            if set(selected_nodes_names).issubset(nodes_names):
+                return [names_logs_dict[name] for name in selected_nodes_names]
             else:
-                if set(selected_nodes_names).issubset(nodes_names):
-                    return [names_logs_dict[name] for name in selected_nodes_names]
-                else:
-                    raise ValueError("nodes in this cluster are {}. But nodes in argments are {}".format(
-                        nodes_names, selected_nodes_names
-                    ))
+                raise ValueError("nodes in this cluster are {}. But nodes in argments are {}".format(
+                    nodes_names, selected_nodes_names
+                ))
