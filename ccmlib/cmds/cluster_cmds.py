@@ -347,8 +347,8 @@ class ClusterStatusCmd(Cmd):
 
 
 class ClusterShowlogsCmd(Cmd):
-    descr_text = "Show logs of nodes in this claster. If not determined, all nodes will be showed up"
-    usage = "usage: ccm showlogs [args (node1 node2 ...)]"
+    descr_text = "Show logs of nodes in this claster. If no nodes are specified, logs of all nodes will be shown."
+    usage = "usage: ccm showlogs [node1 node2 ...]"
 
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, load_cluster=True)
