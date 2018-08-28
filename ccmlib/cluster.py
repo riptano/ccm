@@ -705,7 +705,8 @@ class Cluster(object):
 
     def show_logs(self, selected_nodes_names=()):
         """
-        Shows logs of nodes in this cluster with multitail.
+        Shows logs of nodes in this cluster, by default, with multitail.
+        If you need to alter the command or options, change CCM_MULTITAIL_CMD .
         Params:
         @selected_nodes_names : a list-like object that contains names of nodes to be shown. If empty, this will show all nodes in the cluster.
 
