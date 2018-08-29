@@ -347,7 +347,7 @@ class ClusterStatusCmd(Cmd):
 
 
 class ClusterShowlogsCmd(Cmd):
-    descr_text = "Show logs of nodes in this claster. If no nodes are specified, logs of all nodes will be shown.\
+    descr_text = "Show logs of nodes in this cluster. If no nodes are specified, logs of all nodes will be shown.\
                  By default multitail is used. If you need to alter the command or options, change CCM_MULTITAIL_CMD."
 
     usage = "usage: ccm showlogs [node1 node2 ...]"
