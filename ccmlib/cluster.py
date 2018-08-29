@@ -702,3 +702,32 @@ class Cluster(object):
 
     def wait_for_any_log(self, pattern, timeout, filename='system.log', marks=None):
         return common.wait_for_any_log(self.nodelist(), pattern, timeout, filename=filename, marks=marks)
+
+    def show_logs(self, selected_nodes_names=None):
+        """
+        Shows logs of nodes in this cluster, by default, with multitail.
+        If you need to alter the command or options, change CCM_MULTITAIL_CMD .
+        Params:
+        @selected_nodes_names : a list-like object that contains names of nodes to be shown. If empty, this will show all nodes in the cluster.
+        """
+
+        if selected_nodes_names is None:
+            selected_nodes_names = []
+
+        if len(self.nodes) == 0:
+            print_("There are no nodes in this cluster yet.")
+            return
+
+        nodes = sorted(list(self.nodes.values()), key=lambda node: node.name)
+        nodes_names = [node.name for node in nodes]
+
+        names_logs_dict = {node.name: node.logfilename() for node in nodes}
+        if len(selected_nodes_names) == 0: # Parameter selected_nodes_names is empty
+            return names_logs_dict.values()
+        else:
+            if set(selected_nodes_names).issubset(nodes_names):
+                return [names_logs_dict[name] for name in selected_nodes_names]
+            else:
+                raise ValueError("nodes in this cluster are {}. But nodes in argments are {}".format(
+                    nodes_names, selected_nodes_names
+                ))

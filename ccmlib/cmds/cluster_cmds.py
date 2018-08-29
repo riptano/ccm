@@ -45,7 +45,8 @@ CLUSTER_CMDS = [
     "showlastlog",
     "jconsole",
     "setworkload",
-    "enableaoss"
+    "enableaoss",
+    "showlogs"
 ]
 
 
@@ -343,6 +344,22 @@ class ClusterStatusCmd(Cmd):
 
     def run(self):
         self.cluster.show(self.options.verbose)
+
+
+class ClusterShowlogsCmd(Cmd):
+    descr_text = "Show logs of nodes in this cluster. If no nodes are specified, logs of all nodes will be shown.\
+                 By default multitail is used. If you need to alter the command or options, change CCM_MULTITAIL_CMD."
+
+    usage = "usage: ccm showlogs [node1 node2 ...]"
+
+    def validate(self, parser, options, args):
+        Cmd.validate(self, parser, options, args, load_cluster=True)
+
+    def run(self):
+        shower = os.getenv("CCM_MULTITAIL_CMD", 'multitail').split()[0]
+        shower_options = os.getenv("CCM_MULTITAIL_CMD", "").split()[1:]
+        logs = self.cluster.show_logs(self.args)
+        os.execvp(shower, [shower]+shower_options+logs)
 
 
 class ClusterRemoveCmd(Cmd):
