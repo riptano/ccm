@@ -96,7 +96,7 @@ else:
     cmd = sys.argv[2]
     cmd_args = [node] + sys.argv[3:]
 
-if not os.getenv('CASSANDRA_HOME') is None:
+if os.getenv('CASSANDRA_HOME') is not None:
     warnings.warn("'CASSANDRA_HOME' is set to be {}".format(os.getenv('CASSANDRA_HOME')))
 
 cmd = get_command(kind, cmd)
