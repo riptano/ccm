@@ -1,12 +1,16 @@
 #!/usr/bin/env python
 
+import os
 import sys
+import warnings
+
 import pkg_resources
 from six import print_
 
 from ccmlib import common
-from ccmlib.cmds import command, cluster_cmds, node_cmds
-from ccmlib.remote import PARAMIKO_IS_AVAILABLE, get_remote_usage, get_remote_options, execute_ccm_remotely
+from ccmlib.cmds import cluster_cmds, command, node_cmds
+from ccmlib.remote import (PARAMIKO_IS_AVAILABLE, execute_ccm_remotely,
+                           get_remote_options, get_remote_usage)
 
 
 def get_command(kind, cmd):
@@ -91,6 +95,9 @@ else:
     node = arg1
     cmd = sys.argv[2]
     cmd_args = [node] + sys.argv[3:]
+
+if os.getenv('CASSANDRA_HOME') is not None:
+    warnings.warn("'CASSANDRA_HOME' is set to be {}".format(os.getenv('CASSANDRA_HOME')))
 
 cmd = get_command(kind, cmd)
 if not cmd:
