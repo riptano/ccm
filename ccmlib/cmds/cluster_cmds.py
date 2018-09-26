@@ -95,6 +95,7 @@ class ClusterCreateCmd(Cmd):
         (['--byteman'], {'action': "store_true", 'dest': "install_byteman", 'help': "Start nodes with byteman agent running", 'default': False}),
         (['--root'], {'action': "store_true", 'dest': "allow_root", 'help': "Allow CCM to start cassandra as root", 'default': False}),
         (['--datadirs'], {'type': "int", 'dest': "datadirs", 'help': "Number of data directories to use", 'default': 1}),
+        (['--quiet'], {'action': "store_false", 'dest': "verbose", 'help': "Don't show percentage progress output when downloading DSE or C*", 'default': True}),
     ]
     descr_text = "Create a new cluster"
     usage = "usage: ccm create [options] cluster_name"
@@ -129,9 +130,9 @@ class ClusterCreateCmd(Cmd):
     def run(self):
         try:
             if self.options.dse or (not self.options.version and common.isDse(self.options.install_dir)):
-                cluster = DseCluster(self.path, self.name, install_dir=self.options.install_dir, version=self.options.version, dse_username=self.options.dse_username, dse_password=self.options.dse_password, dse_credentials_file=self.options.dse_credentials_file, opscenter=self.options.opscenter, verbose=True)
+                cluster = DseCluster(self.path, self.name, install_dir=self.options.install_dir, version=self.options.version, dse_username=self.options.dse_username, dse_password=self.options.dse_password, dse_credentials_file=self.options.dse_credentials_file, opscenter=self.options.opscenter, verbose=self.options.verbose)
             else:
-                cluster = Cluster(self.path, self.name, install_dir=self.options.install_dir, version=self.options.version, verbose=True)
+                cluster = Cluster(self.path, self.name, install_dir=self.options.install_dir, version=self.options.version, verbose=self.options.verbose)
         except OSError as e:
             import traceback
             print_('Cannot create cluster: %s\n%s' % (str(e), traceback.format_exc()), file=sys.stderr)
