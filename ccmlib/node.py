@@ -6,6 +6,7 @@ import glob
 import locale
 import os
 import re
+import shlex
 import shutil
 import signal
 import stat
@@ -817,13 +818,13 @@ class Node(object):
         env = self.get_env()
         nodetool = self.get_tool('nodetool')
         args = [nodetool, '-h', 'localhost', '-p', str(self.jmx_port)]
-        args += cmd.split()
+        args += shlex.split(cmd)
 
         return subprocess.Popen(args, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
 
     def nodetool(self, cmd):
         p = self.nodetool_process(cmd)
-        return handle_external_tool_process(p, ['nodetool', '-h', 'localhost', '-p', str(self.jmx_port)] + cmd.split())
+        return handle_external_tool_process(p, ['nodetool', '-h', 'localhost', '-p', str(self.jmx_port)] + shlex.split(cmd))
 
     def dsetool(self, cmd):
         raise common.ArgumentError('Cassandra nodes do not support dsetool')
