@@ -107,11 +107,15 @@ class Cluster(object):
             self.__version = v if v is not None else self.__get_version_from_build()
         self._update_config()
         for node in list(self.nodes.values()):
+            node._cassandra_version = self.__version
             node.import_config_files()
 
         # if any nodes have a data center, let's update the topology
         if any([node.data_center for node in self.nodes.values()]):
             self.__update_topology_files()
+
+        if self.cassandra_version() >= '4':
+            self.set_configuration_options({ 'start_rpc' : None}, delete_empty=True, delete_always=True)
 
         return self
 
@@ -573,9 +577,9 @@ class Cluster(object):
             pass
         return rc
 
-    def set_configuration_options(self, values=None):
+    def set_configuration_options(self, values=None, delete_empty=False, delete_always=False):
         if values is not None:
-            self._config_options = common.merge_configuration(self._config_options, values)
+            self._config_options = common.merge_configuration(self._config_options, values, delete_empty=delete_empty, delete_always=delete_always)
 
         self._persist_config()
         self.__update_topology_files()

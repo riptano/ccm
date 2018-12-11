@@ -289,6 +289,10 @@ class Node(object):
         self.import_config_files()
         self.import_bin_files()
         self.__conf_updated = False
+
+        if self.get_cassandra_version() >= '4':
+            self.set_configuration_options(values={'start_rpc': None}, delete_empty=True, delete_always=True)
+
         return self
 
     def set_workloads(self, workloads):
@@ -301,7 +305,7 @@ class Node(object):
         version = self.get_cassandra_version()
         return float('.'.join(version.vstring.split('.')[:2]))
 
-    def set_configuration_options(self, values=None):
+    def set_configuration_options(self, values=None, delete_empty=False, delete_always=False):
         """
         Set Cassandra configuration options.
         ex:
@@ -310,11 +314,11 @@ class Node(object):
                 'concurrent_writes' : 64,
             })
         """
-        if not hasattr(self,'_config_options') or self.__config_options is None:
+        if (not hasattr(self,'__config_options') and not hasattr(self,'_Node__config_options')) or self.__config_options is None:
             self.__config_options = {}
 
         if values is not None:
-            self.__config_options = common.merge_configuration(self.__config_options, values)
+            self.__config_options = common.merge_configuration(self.__config_options, values, delete_empty=delete_empty, delete_always=delete_always)
 
         self.import_config_files()
 

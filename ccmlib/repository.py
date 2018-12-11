@@ -394,11 +394,12 @@ def compile_version(version, target_dir, verbose=False):
             if attempt > 0:
                 logger.info("\n\n`ant jar` failed. Retry #%s...\n\n" % attempt)
             process = subprocess.Popen([platform_binary('ant'), 'jar'], cwd=target_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            ret_val, _, _ = log_info(process, logger)
+            ret_val, stdout, stderr = log_info(process, logger)
             attempt += 1
         if ret_val is not 0:
             raise CCMError('Error compiling Cassandra. See {logfile} or run '
-                           '"ccm showlastlog" for details'.format(logfile=logfile))
+                           '"ccm showlastlog" for details, stdout=\'{stdout}\' stderr=\'{stderr}\''.format(
+                logfile=logfile, stdout=stdout.decode(), stderr=stderr.decode()))
     except OSError as e:
         raise CCMError("Error compiling Cassandra. Is ant installed? See %s for details" % logfile)
 

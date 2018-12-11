@@ -725,7 +725,7 @@ def assert_jdk_valid_for_cassandra_version(cassandra_version):
         exit(1)
 
 
-def merge_configuration(original, changes, delete_empty=True):
+def merge_configuration(original, changes, delete_empty=True, delete_always=False):
     if not isinstance(original, dict):
         # if original is not a dictionary, assume changes override it.
         new = changes
@@ -738,7 +738,7 @@ def merge_configuration(original, changes, delete_empty=True):
             if delete_empty and k in new and new[k] is not None and \
                     (v is None or (isinstance(v, str) and len(v) == 0)):
                 del new[k]
-            else:
+            elif not delete_always:
                 new_value = v
                 # If key is in both dicts, update it with new values.
                 if k in new:
