@@ -40,6 +40,18 @@ CASSANDRA_SH = "cassandra.in.sh"
 CONFIG_FILE = "config"
 CCM_CONFIG_DIR = "CCM_CONFIG_DIR"
 
+def get_options_removal_dict(options):
+    dict = {}
+    for option in options:
+        dict[option] = None
+    return dict
+
+#Options introduced in 4.0
+CCM_40_YAML_OPTIONS = get_options_removal_dict(['repaired_data_tracking_for_range_reads_enabled',
+                  'corrupted_tombstone_strategy',
+                  'repaired_data_tracking_for_partition_reads_enabled',
+                  'report_unconfirmed_repaired_data_mismatches'])
+
 class InfoFilter(logging.Filter):
     def filter(self, rec):
         return rec.levelno in (logging.DEBUG, logging.INFO)

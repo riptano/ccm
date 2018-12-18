@@ -293,7 +293,8 @@ class Node(object):
         if self.get_cassandra_version() >= '4':
             self.set_configuration_options(values={'start_rpc': None}, delete_empty=True, delete_always=True)
             self.set_configuration_options(values={'rpc_port': None}, delete_empty=True, delete_always=True)
-
+        else:
+            self.set_configuration_options(common.CCM_40_YAML_OPTIONS, delete_empty=True, delete_always=True)
 
         return self
 

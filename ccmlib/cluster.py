@@ -11,6 +11,7 @@ import sys
 import threading
 import time
 from collections import OrderedDict, defaultdict, namedtuple
+from distutils.version import LooseVersion #pylint: disable=import-error, no-name-in-module
 
 import yaml
 from six import iteritems, print_
@@ -105,6 +106,8 @@ class Cluster(object):
             dir, v = repository.setup(version, verbose)
             self.__install_dir = dir
             self.__version = v if v is not None else self.__get_version_from_build()
+            if not isinstance(self.__version, LooseVersion):
+                self.__version = LooseVersion(self.__version)
         self._update_config()
         for node in list(self.nodes.values()):
             node._cassandra_version = self.__version
@@ -116,6 +119,8 @@ class Cluster(object):
 
         if self.cassandra_version() >= '4':
             self.set_configuration_options({ 'start_rpc' : None}, delete_empty=True, delete_always=True)
+        else:
+            self.set_configuration_options(common.CCM_40_YAML_OPTIONS, delete_empty=True, delete_always=True)
 
         return self
 
