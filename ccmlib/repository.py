@@ -560,6 +560,6 @@ def get_logger(log_file):
 def log_info(process, logger):
     stdoutdata, stderrdata = process.communicate()
     rc = process.returncode
-    logger.info(stdoutdata)
-    logger.info(stderrdata)
+    logger.info(stdoutdata.decode())
+    logger.info(stderrdata.decode())
     return rc, stdoutdata, stderrdata
