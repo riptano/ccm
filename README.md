@@ -221,7 +221,7 @@ If 'binary:' or 'source:' are not explicitly specified in your version string, t
 
 ### Git and GitHub
 
-To use the latest version from the [canonical Apache Git repository](https://git-wip-us.apache.org/repos/asf?p=cassandra.git), use the version name `git:branch-name`, e.g.:
+To use the latest version from the [canonical Apache Git repository](https://gitbox.apache.org/repos/asf?p=cassandra.git), use the version name `git:branch-name`, e.g.:
 
 ```
 ccm create trunk -v git:trunk -n 5
