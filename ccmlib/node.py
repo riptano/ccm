@@ -5,6 +5,7 @@ import errno
 import glob
 import locale
 import os
+import psutil
 import re
 import shlex
 import shutil
@@ -1759,6 +1760,10 @@ class Node(object):
         else:
             try:
                 os.kill(self.pid, 0)
+                proc = psutil.Process(self.pid)
+                if proc.status() == psutil.STATUS_ZOMBIE:
+                    time.sleep(2)
+                    raise OSError(errno.ESRCH, "process was zombie, ignoring")
             except OSError as err:
                 if err.errno == errno.ESRCH:
                     # not running
@@ -1771,6 +1776,9 @@ class Node(object):
                 else:
                     # some other error
                     raise err
+            except psutil.NoSuchProcess as err:
+                if self.status == Status.UP or self.status == Status.DECOMMISSIONED:
+                    self.status = Status.DOWN
             else:
                 if self.status == Status.DOWN or self.status == Status.UNINITIALIZED:
                     self.status = Status.UP
