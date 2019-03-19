@@ -347,7 +347,7 @@ class DseNode(Node):
         super(DseNode, self)._update_yaml()
         conf_file = os.path.join(self.get_path(), 'resources', 'dse', 'conf', 'dse.yaml')
         with open(conf_file, 'r') as f:
-            data = yaml.load(f)
+            data = yaml.safe_load(f)
 
         data['system_key_directory'] = os.path.join(self.get_path(), 'keys')
 
@@ -384,7 +384,7 @@ class DseNode(Node):
     def __update_gremlin_config_yaml(self):
         conf_file = os.path.join(self.get_path(), 'resources', 'graph', 'gremlin-console', 'conf', 'remote.yaml')
         with open(conf_file, 'r') as f:
-            data = yaml.load(f)
+            data = yaml.safe_load(f)
 
         data['hosts'] = [self.ip_addr]
 

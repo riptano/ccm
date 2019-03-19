@@ -142,7 +142,7 @@ class Node(object):
         node_path = os.path.join(path, name)
         filename = os.path.join(node_path, 'node.conf')
         with open(filename, 'r') as f:
-            data = yaml.load(f)
+            data = yaml.safe_load(f)
         try:
             itf = data['interfaces']
             initial_token = None
@@ -1540,7 +1540,7 @@ class Node(object):
     def _update_yaml(self):
         conf_file = os.path.join(self.get_conf_dir(), common.CASSANDRA_CONF)
         with open(conf_file, 'r') as f:
-            data = yaml.load(f)
+            data = yaml.safe_load(f)
 
         with open(conf_file, 'r') as f:
             yaml_text = f.read()
@@ -1963,7 +1963,7 @@ class Node(object):
     def get_conf_option(self, option):
         conf_file = os.path.join(self.get_conf_dir(), common.CASSANDRA_CONF)
         with open(conf_file, 'r') as f:
-            data = yaml.load(f)
+            data = yaml.safe_load(f)
 
         if option in data:
             return data[option]

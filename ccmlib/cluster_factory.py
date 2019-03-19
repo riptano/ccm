@@ -19,7 +19,7 @@ class ClusterFactory():
         cluster_path = os.path.join(path, name)
         filename = os.path.join(cluster_path, 'cluster.conf')
         with open(filename, 'r') as f:
-            data = yaml.load(f)
+            data = yaml.safe_load(f)
         try:
             install_dir = None
             if 'install_dir' in data:
