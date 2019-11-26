@@ -14,14 +14,18 @@ if system() == "Windows":
     copyfile('ccm', 'ccm.py')
     ccmscript = 'ccm.py'
 
+with open("README.md", "r") as fh:
+    long_description = fh.read()
+
 setup(
     name='ccm',
-    version='3.1.5',
+    version='3.1.6',
     description='Cassandra Cluster Manager',
-    long_description=open(abspath(join(dirname(__file__), 'README.md'))).read(),
     author='Sylvain Lebresne',
     author_email='sylvain@datastax.com',
-    url='https://github.com/pcmanus/ccm',
+    url='https://github.com/riptano/ccm',
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     packages=['ccmlib', 'ccmlib.cmds'],
     scripts=[ccmscript],
     install_requires=['pyYaml', 'six >=1.4.1'],
