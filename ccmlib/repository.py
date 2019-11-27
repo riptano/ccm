@@ -340,9 +340,9 @@ def download_version(version, url=None, verbose=False, binary=False):
         archive_url = CCM_CONFIG.get('repositories', 'cassandra')
 
     if binary:
-        archive_url = "%s/%s/apache-cassandra-%s-bin.tar.gz" % (archive_url, version.split('-')[0], version) if url is None else url
+        archive_url = "%s/%s/apache-cassandra-%s-bin.tar.gz" % (archive_url, version, version) if url is None else url
     else:
-        archive_url = "%s/%s/apache-cassandra-%s-src.tar.gz" % (archive_url, version.split('-')[0], version) if url is None else url
+        archive_url = "%s/%s/apache-cassandra-%s-src.tar.gz" % (archive_url, version, version) if url is None else url
     _, target = tempfile.mkstemp(suffix=".tar.gz", prefix="ccm-")
     try:
         __download(archive_url, target, show_progress=verbose)
