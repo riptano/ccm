@@ -281,7 +281,7 @@ class Node(object):
 
     def get_base_cassandra_version(self):
         version = self.get_cassandra_version()
-        return float('.'.join(version.vstring.split('.')[:2]))
+        return float('.'.join(re.split('\.|-',version.vstring)[:2]))
 
     def set_configuration_options(self, values=None):
         """
