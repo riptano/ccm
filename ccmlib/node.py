@@ -529,7 +529,7 @@ class Node(object):
         the log is watched from the beginning.
         """
         tofind = nodes if isinstance(nodes, list) else [nodes]
-        tofind = ["%s is now [dead|DOWN]" % node.address() for node in tofind]
+        tofind = ["%s.* now [dead|DOWN]" % node.address() for node in tofind]
         self.watch_log_for(tofind, from_mark=from_mark, timeout=timeout, filename=filename)
 
     def watch_log_for_alive(self, nodes, from_mark=None, timeout=120, filename='system.log'):
