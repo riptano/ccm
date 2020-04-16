@@ -390,13 +390,13 @@ def compile_version(version, target_dir, verbose=False):
         # Similar patch seen with buildbot
         attempt = 0
         ret_val = 1
-        while attempt < 3 and ret_val is not 0:
+        while attempt < 3 and ret_val != 0:
             if attempt > 0:
                 logger.info("\n\n`ant jar` failed. Retry #%s...\n\n" % attempt)
             process = subprocess.Popen([platform_binary('ant'), 'jar'], cwd=target_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             ret_val, stdout, stderr = log_info(process, logger)
             attempt += 1
-        if ret_val is not 0:
+        if ret_val != 0:
             raise CCMError('Error compiling Cassandra. See {logfile} or run '
                            '"ccm showlastlog" for details, stdout=\'{stdout}\' stderr=\'{stderr}\''.format(
                 logfile=logfile, stdout=stdout.decode(), stderr=stderr.decode()))
@@ -419,10 +419,10 @@ def compile_version(version, target_dir, verbose=False):
 
             process = subprocess.Popen([platform_binary('ant'), 'build'], cwd=stress_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             ret_val, _, _ = log_info(process, logger)
-            if ret_val is not 0:
+            if ret_val != 0:
                 process = subprocess.Popen([platform_binary('ant'), 'stress-build'], cwd=target_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 ret_val, _, _ = log_info(process, logger)
-                if ret_val is not 0:
+                if ret_val != 0:
                     raise CCMError("Error compiling Cassandra stress tool.  "
                                    "See %s for details (you will still be able to use ccm "
                                    "but not the stress related commands)" % logfile)
