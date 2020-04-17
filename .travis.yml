@@ -10,3 +10,6 @@ script:
   - pylint --py3k --disable=W1633,W1648 ccmlib
   - pylint --disable=all --enable=E,F ccmlib
   - nosetests
+
+jdk:
+  - openjdk8
