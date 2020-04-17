@@ -4,19 +4,16 @@ from six import StringIO
 
 import ccmlib
 from ccmlib.cluster import Cluster
-
 from . import TEST_DIR, ccmtest
 
 sys.path = [".."] + sys.path
-
-
 
 CLUSTER_PATH = TEST_DIR
 
 
 class TestCCMLib(ccmtest.Tester):
     def test2(self):
-        self.cluster = Cluster(CLUSTER_PATH, "test2", cassandra_version='2.0.3')
+        self.cluster = Cluster(CLUSTER_PATH, "test2", cassandra_version='git:trunk')
         self.cluster.populate(2)
         self.cluster.start()
 
@@ -37,7 +34,7 @@ class TestCCMLib(ccmtest.Tester):
         self.cluster.stop()
 
     def test3(self):
-        self.cluster = Cluster(CLUSTER_PATH, "test3", cassandra_version='2.0.3')
+        self.cluster = Cluster(CLUSTER_PATH, "test3", cassandra_version='git:trunk')
         self.cluster.populate(2)
         self.cluster.start()
         self.cluster.cleanup()
