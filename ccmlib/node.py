@@ -902,7 +902,7 @@ class Node(object):
         p = self.verify_process(options=options)
         return handle_external_tool_process(p, ['sstableverify'] + options)
 
-    def run_cqlsh_process(self, cmds=None, cqlsh_options=None):
+    def run_cqlsh_process(self, cmds=None, cqlsh_options=None, terminator=''):
         if cqlsh_options is None:
             cqlsh_options = []
         cqlsh = self.get_tool('cqlsh')
@@ -931,13 +931,13 @@ class Node(object):
             for cmd in cmds.split(';'):
                 cmd = cmd.strip()
                 if cmd:
-                    p.stdin.write(cmd + ';\n')
+                    p.stdin.write(cmd + terminator)
             p.stdin.write("quit;\n")
 
         return p
 
-    def run_cqlsh(self, cmds=None, cqlsh_options=None):
-        p = self.run_cqlsh_process(cmds, cqlsh_options)
+    def run_cqlsh(self, cmds=None, cqlsh_options=None, terminator=';\n'):
+        p = self.run_cqlsh_process(cmds, cqlsh_options, terminator)
         return handle_external_tool_process(p, ['cqlsh', cmds, cqlsh_options])
 
     def set_log_level(self, new_level, class_name=None):
