@@ -431,13 +431,11 @@ class Cluster(object):
 
     def start(self, no_wait=False, verbose=False, wait_for_binary_proto=True,
               wait_other_notice=True, jvm_args=None, profile_options=None,
-              quiet_start=False, allow_root=False, **kwargs):
+              quiet_start=False, allow_root=False, jvm_version=None, **kwargs):
         if jvm_args is None:
             jvm_args = []
 
         extension.pre_cluster_start(self)
-
-        common.assert_jdk_valid_for_cassandra_version(self.cassandra_version())
 
         # check whether all loopback aliases are available before starting any nodes
         for node in list(self.nodes.values()):
@@ -453,7 +451,9 @@ class Cluster(object):
                 if os.path.exists(node.logfilename()):
                     mark = node.mark_log()
 
-                p = node.start(update_pid=False, jvm_args=jvm_args, profile_options=profile_options, verbose=verbose, quiet_start=quiet_start, allow_root=allow_root)
+                p = node.start(update_pid=False, jvm_args=jvm_args, jvm_version=jvm_version,
+                               profile_options=profile_options, verbose=verbose, quiet_start=quiet_start,
+                               allow_root=allow_root)
 
                 # Prior to JDK8, starting every node at once could lead to a
                 # nanotime collision where the RNG that generates a node's tokens

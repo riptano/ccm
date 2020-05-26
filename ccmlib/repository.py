@@ -24,8 +24,7 @@ except ImportError:
 
 from ccmlib import common
 from ccmlib.common import (ArgumentError, CCMError,
-                           assert_jdk_valid_for_cassandra_version,
-                           get_default_path, get_version_from_build,
+                           update_java_version, get_default_path, get_jdk_version_int,
                            platform_binary, rmdirs, validate_install_dir)
 from six.moves import urllib
 
@@ -75,8 +74,11 @@ def setup(version, verbose=False):
 
     elif version.startswith('source:'):
         version = version.replace('source:', '')
-        binary = False
-        fallback = False
+
+    elif version.startswith('clone:'):
+        # locally present C* source tree
+        version = version.replace('clone:', '')
+        return (version, None)
 
     elif version.startswith('alias:'):
         alias = version.split(":")[1].split("/")[0]
@@ -325,7 +327,6 @@ def download_version(version, url=None, verbose=False, binary=False):
 
     if binary == True, download precompiled tarball, otherwise build from source tarball.
     """
-    assert_jdk_valid_for_cassandra_version(version)
 
     if binary:
         u = "%s/%s/apache-cassandra-%s-bin.tar.gz" % (ARCHIVE, version.split('-')[0], version) if url is None else url
@@ -370,14 +371,14 @@ def download_version(version, url=None, verbose=False, binary=False):
 
 
 def compile_version(version, target_dir, verbose=False):
-    assert_jdk_valid_for_cassandra_version(get_version_from_build(target_dir))
-
     # compiling cassandra and the stress tool
     logfile = lastlogfilename()
     logger = get_logger(logfile)
 
     common.info("Compiling Cassandra {} ...".format(version))
     logger.info("--- Cassandra Build -------------------\n")
+
+    env = update_java_version(install_dir=target_dir, for_build=True, info_message='Cassandra {} build'.format(version))
 
     default_build_properties = os.path.join(common.get_default_path(), 'build.properties.default')
     if os.path.exists(default_build_properties):
@@ -390,10 +391,19 @@ def compile_version(version, target_dir, verbose=False):
         # Similar patch seen with buildbot
         attempt = 0
         ret_val = 1
+        gradlew = os.path.join(target_dir, platform_binary('gradlew'))
+        if os.path.exists(gradlew):
+            cmd = [gradlew, 'jar']
+        else:
+            # No gradle, use ant
+            cmd = [platform_binary('ant'), 'jar']
+            if get_jdk_version_int() >= 11:
+                cmd.append('-Duse.jdk11=true')
         while attempt < 3 and ret_val != 0:
             if attempt > 0:
-                logger.info("\n\n`ant jar` failed. Retry #%s...\n\n" % attempt)
-            process = subprocess.Popen([platform_binary('ant'), 'jar'], cwd=target_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                logger.info("\n\n`{}` failed. Retry #{}...\n\n".format(' '.join(cmd), attempt))
+            process = subprocess.Popen(cmd, cwd=target_dir, env=env,
+                                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             ret_val, stdout, stderr = log_info(process, logger)
             attempt += 1
         if ret_val != 0:
@@ -403,13 +413,13 @@ def compile_version(version, target_dir, verbose=False):
     except OSError as e:
         raise CCMError("Error compiling Cassandra. Is ant installed? See %s for details" % logfile)
 
-    logger.info("\n\n--- cassandra/stress build ------------\n")
     stress_dir = os.path.join(target_dir, "tools", "stress") if (
         version >= "0.8.0") else \
         os.path.join(target_dir, "contrib", "stress")
 
     build_xml = os.path.join(stress_dir, 'build.xml')
     if os.path.exists(build_xml):  # building stress separately is only necessary pre-1.1
+        logger.info("\n\n--- cassandra/stress build ------------\n")
         try:
             # set permissions correctly, seems to not always be the case
             stress_bin_dir = os.path.join(stress_dir, 'bin')
@@ -417,10 +427,12 @@ def compile_version(version, target_dir, verbose=False):
                 full_path = os.path.join(stress_bin_dir, f)
                 os.chmod(full_path, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
 
-            process = subprocess.Popen([platform_binary('ant'), 'build'], cwd=stress_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            process = subprocess.Popen([platform_binary('ant'), 'build'], cwd=stress_dir, env=env,
+                                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             ret_val, _, _ = log_info(process, logger)
             if ret_val != 0:
-                process = subprocess.Popen([platform_binary('ant'), 'stress-build'], cwd=target_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                process = subprocess.Popen([platform_binary('ant'), 'stress-build'], cwd=target_dir, env=env,
+                                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 ret_val, _, _ = log_info(process, logger)
                 if ret_val != 0:
                     raise CCMError("Error compiling Cassandra stress tool.  "
