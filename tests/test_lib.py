@@ -4,11 +4,234 @@ from six import StringIO
 
 import ccmlib
 from ccmlib.cluster import Cluster
+from ccmlib.common import _update_java_version
 from . import TEST_DIR, ccmtest
+from distutils.version import LooseVersion  # pylint: disable=import-error, no-name-in-module
 
 sys.path = [".."] + sys.path
 
 CLUSTER_PATH = TEST_DIR
+
+
+class TestUpdateJavaVersion(ccmtest.Tester):
+    def test_update_java_version(self):
+        # Tests for C*-4.0 (Java 8 or 11 or newer)
+
+        result_env = _update_java_version(current_java_version=11, current_java_home_version=11, jvm_version=None,
+                                          install_dir=None, cassandra_version=LooseVersion('4.0'),
+                                          env={'JAVA_HOME': '/opt/foo/java_home',
+                                               'PATH': '/some/bin'},
+                                          for_build=True, info_message='test_update_java_version_4.0_1',
+                                          os_env={'CASSANDRA_USE_JDK11': 'true'})
+        self.assertEqual({'JAVA_HOME': '/opt/foo/java_home',
+                          'PATH': '/some/bin'},
+                         result_env)
+
+        result_env = _update_java_version(current_java_version=11, current_java_home_version=11, jvm_version=None,
+                                          install_dir=None, cassandra_version=LooseVersion('4.0'),
+                                          env={'PATH': '/some/bin'},
+                                          for_build=True, info_message='test_update_java_version_4.0_2',
+                                          os_env={'X': '1'})
+        self.assertEqual({'PATH': '/some/bin'},
+                         result_env)
+
+        result_env = _update_java_version(current_java_version=8, current_java_home_version=8, jvm_version=None,
+                                          install_dir=None, cassandra_version=LooseVersion('4.0'),
+                                          env={'JAVA_HOME': '/opt/foo/java_home',
+                                               'PATH': '/some/bin'},
+                                          for_build=True, info_message='test_update_java_version_4.0_3',
+                                          os_env={'X': '1'})
+        self.assertEqual({'JAVA_HOME': '/opt/foo/java_home',
+                          'PATH': '/some/bin'},
+                         result_env)
+
+        result_env = _update_java_version(current_java_version=8, current_java_home_version=8, jvm_version=None,
+                                          install_dir=None, cassandra_version=LooseVersion('4.0'),
+                                          env={'PATH': '/some/bin'},
+                                          for_build=True, info_message='test_update_java_version_4.0_4',
+                                          os_env={'X': '1'})
+        self.assertEqual({'PATH': '/some/bin'},
+                         result_env)
+
+        result_env = _update_java_version(current_java_version=8, current_java_home_version=8, jvm_version=None,
+                                          install_dir=None, cassandra_version=LooseVersion('4.0'),
+                                          env={'JAVA_HOME': '/opt/foo/java_home8',
+                                               'JAVA8_HOME': '/opt/foo/java_home8',
+                                               'JAVA11_HOME': '/opt/foo/java_home11',
+                                               'PATH': '/some/bin'},
+                                          for_build=True, info_message='test_update_java_version_4.0_5',
+                                          os_env={'X': '1'})
+        self.assertEqual({'JAVA_HOME': '/opt/foo/java_home8',
+                          'JAVA8_HOME': '/opt/foo/java_home8',
+                          'JAVA11_HOME': '/opt/foo/java_home11',
+                          'PATH': '/some/bin'},
+                         result_env)
+
+        result_env = _update_java_version(current_java_version=8, current_java_home_version=8, jvm_version=None,
+                                          install_dir=None, cassandra_version=LooseVersion('4.0'),
+                                          env={'JAVA_HOME': '/opt/foo/java_home8',
+                                               'JAVA8_HOME': '/opt/foo/java_home8',
+                                               'JAVA11_HOME': '/opt/foo/java_home11',
+                                               'PATH': '/some/bin'},
+                                          for_build=True, info_message='test_update_java_version_4.0_6',
+                                          os_env={'CASSANDRA_USE_JDK11': 'true'})
+        self.assertEqual({'JAVA_HOME': '/opt/foo/java_home11',
+                          'PATH': '/opt/foo/java_home11/bin:/some/bin',
+                          'JAVA8_HOME': '/opt/foo/java_home8',
+                          'JAVA11_HOME': '/opt/foo/java_home11'},
+                         result_env)
+
+        result_env = _update_java_version(current_java_version=8, current_java_home_version=8, jvm_version=11,
+                                          install_dir=None, cassandra_version=LooseVersion('4.0'),
+                                          env={'JAVA_HOME': '/opt/foo/java_home8',
+                                               'JAVA8_HOME': '/opt/foo/java_home8',
+                                               'JAVA11_HOME': '/opt/foo/java_home11',
+                                               'PATH': '/some/bin'},
+                                          for_build=True, info_message='test_update_java_version_4.0_7',
+                                          os_env={'X': '1'})
+        self.assertEqual({'JAVA_HOME': '/opt/foo/java_home11',
+                          'PATH': '/opt/foo/java_home11/bin:/some/bin',
+                          'JAVA8_HOME': '/opt/foo/java_home8',
+                          'JAVA11_HOME': '/opt/foo/java_home11'},
+                         result_env)
+
+        result_env = _update_java_version(current_java_version=11, current_java_home_version=11, jvm_version=None,
+                                          install_dir=None, cassandra_version=LooseVersion('4.0'),
+                                          env={'JAVA_HOME': '/opt/foo/java_home11',
+                                               'JAVA8_HOME': '/opt/foo/java_home8',
+                                               'JAVA11_HOME': '/opt/foo/java_home11',
+                                               'PATH': '/some/bin'},
+                                          for_build=True, info_message='test_update_java_version_4.0_8',
+                                          os_env={'X': '1'})
+        self.assertEqual({'JAVA_HOME': '/opt/foo/java_home11',
+                          'JAVA8_HOME': '/opt/foo/java_home8',
+                          'JAVA11_HOME': '/opt/foo/java_home11',
+                          'PATH': '/some/bin'},
+                         result_env)
+
+        result_env = _update_java_version(current_java_version=11, current_java_home_version=11, jvm_version=None,
+                                          install_dir=None, cassandra_version=LooseVersion('4.0'),
+                                          env={'JAVA_HOME': '/opt/foo/java_home11',
+                                               'JAVA8_HOME': '/opt/foo/java_home8',
+                                               'JAVA11_HOME': '/opt/foo/java_home11',
+                                               'PATH': '/some/bin'},
+                                          for_build=True, info_message='test_update_java_version_4.0_9',
+                                          os_env={'CASSANDRA_USE_JDK11': 'true'})
+        self.assertEqual({'JAVA_HOME': '/opt/foo/java_home11',
+                          'PATH': '/some/bin',
+                          'JAVA8_HOME': '/opt/foo/java_home8',
+                          'JAVA11_HOME': '/opt/foo/java_home11'},
+                         result_env)
+
+        result_env = _update_java_version(current_java_version=11, current_java_home_version=11, jvm_version=8,
+                                          install_dir=None, cassandra_version=LooseVersion('4.0'),
+                                          env={'JAVA_HOME': '/opt/foo/java_home11',
+                                               'JAVA8_HOME': '/opt/foo/java_home8',
+                                               'JAVA11_HOME': '/opt/foo/java_home11',
+                                               'PATH': '/some/bin'},
+                                          for_build=True, info_message='test_update_java_version_4.0_10',
+                                          os_env={'X': '1'})
+        self.assertEqual({'JAVA_HOME': '/opt/foo/java_home8',
+                          'PATH': '/opt/foo/java_home8/bin:/some/bin',
+                          'JAVA8_HOME': '/opt/foo/java_home8',
+                          'JAVA11_HOME': '/opt/foo/java_home11'},
+                         result_env)
+
+        result_env = _update_java_version(current_java_version=11, current_java_home_version=11, jvm_version=11,
+                                          install_dir=None, cassandra_version=LooseVersion('4.0'),
+                                          env={'JAVA_HOME': '/opt/foo/java_home11',
+                                               'JAVA8_HOME': '/opt/foo/java_home8',
+                                               'JAVA11_HOME': '/opt/foo/java_home11',
+                                               'PATH': '/some/bin'},
+                                          for_build=True, info_message='test_update_java_version_4.0_11',
+                                          os_env={'X': '1'})
+        self.assertEqual({'JAVA_HOME': '/opt/foo/java_home11',
+                          'PATH': '/some/bin',
+                          'JAVA8_HOME': '/opt/foo/java_home8',
+                          'JAVA11_HOME': '/opt/foo/java_home11'},
+                         result_env)
+
+        result_env = _update_java_version(current_java_version=11, current_java_home_version=8, jvm_version=None,
+                                          install_dir=None, cassandra_version=LooseVersion('4.0'),
+                                          env={'JAVA_HOME': '/opt/foo/java_home8',
+                                               'PATH': '/some/bin:/opt/foo/java_home11/bin',
+                                               'JAVA8_HOME': '/opt/foo/java_home8',
+                                               'JAVA11_HOME': '/opt/foo/java_home11'},
+                                          for_build=False, info_message='test_update_java_version_4.0_12',
+                                          os_env={'X': '1'})
+        self.assertEqual({'JAVA_HOME': '/opt/foo/java_home11',
+                          'PATH': '/opt/foo/java_home11/bin:/some/bin:/opt/foo/java_home11/bin',
+                          'JAVA8_HOME': '/opt/foo/java_home8',
+                          'JAVA11_HOME': '/opt/foo/java_home11'},
+                         result_env)
+
+        # Tests for pre-C*-4.0 (Java 8 only)
+
+        result_env = _update_java_version(current_java_version=11, current_java_home_version=11, jvm_version=None,
+                                          install_dir=None, cassandra_version=LooseVersion('3.11'),
+                                          env={'JAVA_HOME': '/opt/foo/java_home',
+                                               'PATH': '/some/bin'},
+                                          for_build=True, info_message='test_update_java_version_3.11_1',
+                                          os_env={'CASSANDRA_USE_JDK11': 'true'})
+        self.assertEqual({'JAVA_HOME': '/opt/foo/java_home',
+                          'PATH': '/some/bin'},
+                         result_env)
+
+        result_env = _update_java_version(current_java_version=8, current_java_home_version=8, jvm_version=None,
+                                          install_dir=None, cassandra_version=LooseVersion('3.11'),
+                                          env={'JAVA_HOME': '/opt/foo/java_home8',
+                                               'JAVA8_HOME': '/opt/foo/java_home8',
+                                               'JAVA11_HOME': '/opt/foo/java_home11',
+                                               'PATH': '/some/bin'},
+                                          for_build=True, info_message='test_update_java_version_3.11_2',
+                                          os_env={'X': '1'})
+        self.assertEqual({'JAVA_HOME': '/opt/foo/java_home8',
+                          'JAVA8_HOME': '/opt/foo/java_home8',
+                          'JAVA11_HOME': '/opt/foo/java_home11',
+                          'PATH': '/some/bin'},
+                         result_env)
+
+        result_env = _update_java_version(current_java_version=8, current_java_home_version=8, jvm_version=None,
+                                          install_dir=None, cassandra_version=LooseVersion('3.11'),
+                                          env={'JAVA_HOME': '/opt/foo/java_home8',
+                                               'JAVA8_HOME': '/opt/foo/java_home8',
+                                               'JAVA11_HOME': '/opt/foo/java_home11',
+                                               'PATH': '/some/bin'},
+                                          for_build=True, info_message='test_update_java_version_3.11_3',
+                                          os_env={'CASSANDRA_USE_JDK11': 'true'})
+        self.assertEqual({'JAVA_HOME': '/opt/foo/java_home8',
+                          'PATH': '/some/bin',
+                          'JAVA8_HOME': '/opt/foo/java_home8',
+                          'JAVA11_HOME': '/opt/foo/java_home11'},
+                         result_env)
+
+        result_env = _update_java_version(current_java_version=11, current_java_home_version=11, jvm_version=None,
+                                          install_dir=None, cassandra_version=LooseVersion('3.11'),
+                                          env={'JAVA_HOME': '/opt/foo/java_home11',
+                                               'JAVA8_HOME': '/opt/foo/java_home8',
+                                               'JAVA11_HOME': '/opt/foo/java_home11',
+                                               'PATH': '/some/bin'},
+                                          for_build=True, info_message='test_update_java_version_3.11_4',
+                                          os_env={'CASSANDRA_USE_JDK11': 'true'})
+        self.assertEqual({'JAVA_HOME': '/opt/foo/java_home8',
+                          'PATH': '/opt/foo/java_home8/bin:/some/bin',
+                          'JAVA8_HOME': '/opt/foo/java_home8',
+                          'JAVA11_HOME': '/opt/foo/java_home11'},
+                         result_env)
+
+        result_env = _update_java_version(current_java_version=8, current_java_home_version=8, jvm_version=11,
+                                          install_dir=None, cassandra_version=LooseVersion('3.11'),
+                                          env={'JAVA_HOME': '/opt/foo/java_home8',
+                                               'JAVA8_HOME': '/opt/foo/java_home8',
+                                               'JAVA11_HOME': '/opt/foo/java_home11',
+                                               'PATH': '/some/bin'},
+                                          for_build=True, info_message='test_update_java_version_3.11_5',
+                                          os_env={'X': '1'})
+        self.assertEqual({'JAVA_HOME': '/opt/foo/java_home11',
+                          'PATH': '/opt/foo/java_home11/bin:/some/bin',
+                          'JAVA8_HOME': '/opt/foo/java_home8',
+                          'JAVA11_HOME': '/opt/foo/java_home11'},
+                         result_env)
 
 
 class TestCCMLib(ccmtest.Tester):
@@ -28,7 +251,7 @@ class TestCCMLib(ccmtest.Tester):
         self.cluster.show(True)
         self.cluster.show(False)
 
-        #self.cluster.stress([])
+        # self.cluster.stress([])
         self.cluster.compact()
         self.cluster.drain()
         self.cluster.stop()
@@ -84,6 +307,7 @@ class TestRunCqlsh(ccmtest.Tester):
 
         if return_output and show_output:
             self.assertEqual(printed_output, rv[0])
+
 
 class TestNodeLoad(ccmtest.Tester):
 
