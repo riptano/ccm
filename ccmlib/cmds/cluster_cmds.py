@@ -642,7 +642,6 @@ class ClusterUpdateconfCmd(Cmd):
                 self.setting['write_request_timeout_in_ms'] = self.options.rpc_timeout
                 self.setting['truncate_request_timeout_in_ms'] = self.options.rpc_timeout
                 self.setting['request_timeout_in_ms'] = self.options.rpc_timeout
-
         self.cluster.set_configuration_options(values=self.setting)
         if self.options.cl_batch:
             self.cluster.set_batch_commitlog(True)

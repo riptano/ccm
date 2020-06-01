@@ -389,6 +389,7 @@ class Node(object):
                 "commitlog_sync_batch_window_in_ms": None,
                 "commitlog_sync_period_in_ms": 10000
             }
+
         self.set_configuration_options(values)
 
     def set_dse_configuration_options(self, values=None):
