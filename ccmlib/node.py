@@ -13,7 +13,6 @@ import stat
 import subprocess
 import sys
 import time
-import tempfile
 import warnings
 from collections import namedtuple
 from datetime import datetime
@@ -130,6 +129,7 @@ class Node(object):
         self.__global_log_level = None
         self.__classes_log_level = {}
         self.__environment_variables = environment_variables or {}
+        self.__original_java_home = None
         self.__conf_updated = False
 
         if derived_cassandra_version:
@@ -216,6 +216,11 @@ class Node(object):
         if update_conf:
             self.__conf_updated = True
         env = common.make_cassandra_env(self.get_install_dir(), self.get_path(), update_conf)
+        env = common.update_java_version(jvm_version=None,
+                                         install_dir=self.get_install_dir(),
+                                         cassandra_version=self.cluster.cassandra_version(),
+                                         env=env,
+                                         info_message=self.name)
         for (key, value) in self.__environment_variables.items():
             env[key] = value
         return env
@@ -363,20 +368,23 @@ class Node(object):
         self.__update_status()
         return self.status == Status.UP
 
+    def log_directory(self):
+        return os.path.join(self.get_path(), 'logs')
+
     def logfilename(self):
         """
         Return the path to the current Cassandra log of this node.
         """
-        return os.path.join(self.get_path(), 'logs', 'system.log')
+        return os.path.join(self.log_directory(), 'system.log')
 
     def debuglogfilename(self):
-        return os.path.join(self.get_path(), 'logs', 'debug.log')
+        return os.path.join(self.log_directory(), 'debug.log')
 
     def gclogfilename(self):
-        return os.path.join(self.get_path(), 'logs', 'gc.log.0.current')
+        return os.path.join(self.log_directory(), 'gc.log.0.current')
 
     def compactionlogfilename(self):
-        return os.path.join(self.get_path(), 'logs', 'compaction.log')
+        return os.path.join(self.log_directory(), 'compaction.log')
 
     def envfilename(self):
         return os.path.join(
@@ -391,7 +399,7 @@ class Node(object):
         """
         matchings = []
         pattern = re.compile(expr)
-        with open(os.path.join(self.get_path(), 'logs', filename)) as f:
+        with open(os.path.join(self.log_directory(), filename)) as f:
             if from_mark:
                 f.seek(from_mark)
             for line in f:
@@ -408,7 +416,7 @@ class Node(object):
         return self.grep_log_for_errors_from(seek_start=getattr(self, 'error_mark', 0))
 
     def grep_log_for_errors_from(self, filename='system.log', seek_start=0):
-        with open(os.path.join(self.get_path(), 'logs', filename)) as f:
+        with open(os.path.join(self.log_directory(), filename)) as f:
             f.seek(seek_start)
             return _grep_log_for_errors(f.read())
 
@@ -425,7 +433,7 @@ class Node(object):
         This is for use with the from_mark parameter of watch_log_for_* methods,
         allowing to watch the log from the position when this method was called.
         """
-        log_file = os.path.join(self.get_path(), 'logs', filename)
+        log_file = os.path.join(self.log_directory(), filename)
         if not os.path.exists(log_file):
             return 0
         with open(log_file) as f:
@@ -463,7 +471,7 @@ class Node(object):
         if len(tofind) == 0:
             return None
 
-        log_file = os.path.join(self.get_path(), 'logs', filename)
+        log_file = os.path.join(self.log_directory(), filename)
         output_read = False
         while not os.path.exists(log_file):
             time.sleep(.5)
@@ -596,7 +604,8 @@ class Node(object):
               use_jna=False,
               quiet_start=False,
               allow_root=False,
-              set_migration_task=True):
+              set_migration_task=True,
+              jvm_version=None):
         """
         Start the node. Options includes:
           - join_ring: if false, start the node with -Dcassandra.join_ring=False
@@ -677,15 +686,41 @@ class Node(object):
             args.append('-R')
         env['JVM_EXTRA_OPTS'] = env.get('JVM_EXTRA_OPTS', "") + " " + " ".join(jvm_args)
 
+        # Upgrade scenarios may want to test upgrades to a specific Java version. In case a prior C* version
+        # requires a lower Java version, we would keep its JAVA_HOME in self.__environment_variables and therefore
+        # prevent using the "intended" Java version for the C* version to upgrade to.
+        if not self.__original_java_home:
+            # Save the "original" JAVA_HOME + PATH to restore it.
+            self.__original_java_home = os.environ['JAVA_HOME']
+        else:
+            # Restore the "original" JAVA_HOME + PATH to restore it.
+            env['JAVA_HOME'] = self.__original_java_home
+        env = common.update_java_version(jvm_version=jvm_version,
+                                         install_dir=self.get_install_dir(),
+                                         cassandra_version=self.get_cassandra_version(),
+                                         env=env,
+                                         info_message=self.name)
+        # Need to update the node's environment for nodetool and other tools.
+        # (e.g. the host's JAVA_HOME points to Java 11, but the node's software is only for Java 8)
+        self.__environment_variables = {
+            'JAVA_HOME': env['JAVA_HOME'],
+            'PATH': env['PATH']
+        }
+
+        common.info("Starting {} with JAVA_HOME={} java_version={} cassandra_version={}, install_dir={}"
+                    .format(self.name, env['JAVA_HOME'], common.get_jdk_version_int(),
+                            self.get_cassandra_version(), self.get_install_dir()))
+
         # In case we are restarting a node
         # we risk reading the old cassandra.pid file
         self._delete_old_pid()
 
         process = None
-        FNULL = open(os.devnull, 'w')
-        stdout_sink = subprocess.PIPE if verbose else FNULL
+        start_time = time.time()
+        # Always write the stdout+stderr of the launched process to log files to make finding startup issues easier.
+        stdout_sink = open(os.path.join(self.log_directory(), 'startup-{}-stdout.log'.format(start_time)), "w+")
         # write stderr to a temporary file to prevent overwhelming pipe (> 65K data).
-        stderr_sink = tempfile.SpooledTemporaryFile(max_size=0xFFFF)
+        stderr_sink = open(os.path.join(self.log_directory(), 'startup-{}-stderr.log'.format(start_time)), "w+")
 
         if common.is_win():
             # clean up any old dirty_pid files from prior runs
@@ -701,12 +736,13 @@ class Node(object):
 
         process.stderr_file = stderr_sink
 
+        if verbose:
+            stdout, stderr = process.communicate()
+            print_(str(stdout))
+            print_(str(stderr))
+
         # Our modified batch file writes a dirty output with more than just the pid - clean it to get in parity
         # with *nix operation here.
-        if verbose:
-            stdout = process.communicate()[0]
-            print_(stdout)
-
         if common.is_win():
             self.__clean_win_pid()
             self._update_pid(process)
@@ -1566,7 +1602,7 @@ class Node(object):
     def _update_log4j(self):
         append_pattern = 'log4j.appender.R.File='
         conf_file = os.path.join(self.get_conf_dir(), common.LOG4J_CONF)
-        log_file = os.path.join(self.get_path(), 'logs', 'system.log')
+        log_file = os.path.join(self.log_directory(), 'system.log')
         # log4j isn't partial to Windows \.  I can't imagine why not.
         if common.is_win():
             log_file = re.sub("\\\\", "/", log_file)
@@ -1687,7 +1723,7 @@ class Node(object):
         # gc.log was turned on by default in 2.2.5/3.0.3/3.3
         if self.get_cassandra_version() >= '2.2.5':
             gc_log_pattern = "-Xloggc"
-            gc_log_path = os.path.join(self.get_path(), 'logs', 'gc.log')
+            gc_log_path = os.path.join(self.log_directory(), 'gc.log')
             if common.is_win():
                 gc_log_setting = '    $env:JVM_OPTS="$env:JVM_OPTS -Xloggc:{}"'.format(gc_log_path)
             else:
