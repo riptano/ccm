@@ -127,10 +127,11 @@ class DseNode(Node):
               use_jna=False,
               quiet_start=False,
               allow_root=False,
-              set_migration_task=True):
+              set_migration_task=True,
+              jvm_version=None):
         process = super(DseNode, self).start(join_ring, no_wait, verbose, update_pid, wait_other_notice, replace_token,
                                              replace_address, jvm_args, wait_for_binary_proto, profile_options, use_jna,
-                                             quiet_start, allow_root, set_migration_task)
+                                             quiet_start, allow_root, set_migration_task, jvm_version)
         if self.cluster.hasOpscenter():
             self._start_agent()
 
