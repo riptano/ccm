@@ -226,17 +226,17 @@ class Node(object):
 
     def address_for_current_version_slashy(self):
         """
-        Returns the address formatted for the current version with
-        the Java slashy if necessary.
+        Returns the address formatted for the current version (InetAddress/InetAddressAndPort.toString)
         """
         if self.get_cassandra_version() >= '4.0':
-            return self.address_and_port()
+            return "/{}".format(str(self.address_and_port()))
         else:
             return "/{}".format(str(self.address()));
 
     def address_for_version(self, version):
         """
-        Returns the address formatted for the specified
+        Returns the address formatted for the specified (InetAddress.getHostAddress or
+        InetAddressAndPort.getHostAddressAndPort)
         """
         if version >= '4.0':
             return self.address_and_port()
@@ -259,8 +259,12 @@ class Node(object):
         """
         Returns the IP used for internal communication along with ports
         """
+        address = self.network_interfaces['storage'][0]
         port = self.network_interfaces['storage'][1]
-        return self.network_interfaces['storage'][0] + ':' + str(port)
+        if address.find(":") != -1:
+            return "[{}]:{}".format(address, port)
+        else:
+            return str(address) + ':' + str(port)
 
     def get_install_dir(self):
         """

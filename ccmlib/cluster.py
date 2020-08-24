@@ -225,7 +225,7 @@ class Cluster(object):
         return self.version()
 
     def address_regex(self):
-        return "([0-9.]+):7000" if self.cassandra_version() >= '4.0' else "/([0-9.]+)"
+        return "/([0-9.]+):7000" if self.cassandra_version() >= '4.0' else "/([0-9.]+)"
 
     def add(self, node, is_seed, data_center=None):
         if node.name in self.nodes:
