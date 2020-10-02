@@ -412,10 +412,10 @@ class Cluster(object):
         else:
             for node, p, mark in started:
                 try:
+                    timeout=kwargs.get('timeout', int(os.environ.get('CCM_CLUSTER_START_DEFAULT_TIMEOUT', 60)))
+                    timeout=int(os.environ.get('CCM_CLUSTER_START_TIMEOUT_OVERRIDE', timeout))
                     start_message = "Listening for thrift clients..." if self.cassandra_version() < "2.2" else "Starting listening for CQL clients"
-                    node.watch_log_for(start_message,
-                                       timeout=kwargs.get('timeout', int(os.environ.get('CCM_CLUSTER_START_DEFAULT_TIMEOUT', 60))),
-                                       process=p, verbose=verbose, from_mark=mark)
+                    node.watch_log_for(start_message, timeout=timeout, process=p, verbose=verbose, from_mark=mark)
                 except RuntimeError:
                     return None
 
