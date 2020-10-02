@@ -1578,6 +1578,9 @@ class Node(object):
         data['commitlog_directory'] = os.path.join(self.get_path(), 'commitlogs')
         data['saved_caches_directory'] = os.path.join(self.get_path(), 'saved_caches')
 
+        if 'metadata_directory' in data:
+            data['metadata_directory'] = os.path.join(self.get_path(), 'metadata')
+
         if self.get_cassandra_version() > '3.0' and 'hints_directory' in yaml_text:
             data['hints_directory'] = os.path.join(self.get_path(), 'hints')
 
