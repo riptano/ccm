@@ -580,16 +580,16 @@ class Node(object):
                 raise TimeoutError(time.strftime("%d %b %Y %H:%M:%S", time.gmtime()) + " [" + self.name + "] Missing: " + str([e.pattern for e in tofind]) + ":\n.....\nSee {} for remainder".format(filename))
             try:
                 # process is bin/cassandra so choosing to ignore this argument to avoid early termination
-                return self.watch_log_for(to_watch, from_mark=from_mark, timeout=5, verbose=verbose, filename=filename)
+                return self.watch_log_for(tofind, from_mark=from_mark, timeout=5, verbose=verbose, filename=filename)
             except TimeoutError:
-                logger.debug("waited 5s watching for '{}' but was not found; checking for errors".format(to_watch))
+                logger.debug("waited 5s watching for '{}' but was not found; checking for errors".format(tofind))
                 # since the api doesn't return the mark read it isn't thread safe to use mark
                 # as the length of the file can change between calls which may mean we skip over
                 # errors; to avoid this keep reading the whole file over and over again...
                 # unless a explicit mark is given to the method, will read from that offset
                 errors = self.grep_log_for_errors_from(filename=filename, seek_start=seek_start)
                 if errors:
-                    msg = "Errors were found in the logs while watching for '{}'; attempting to fail the test".format(to_watch)
+                    msg = "Errors were found in the logs while watching for '{}'; attempting to fail the test".format(tofind)
                     logger.debug(msg)
                     raise AssertionError("{}:\n".format(msg) + '\n\n'.join(['\n'.join(msg) for msg in errors]))
 
