@@ -491,10 +491,9 @@ class Node(object):
     # This will return when exprs are found or it timeouts
     def watch_log_for(self, exprs, from_mark=None, timeout=600, process=None, verbose=False, filename='system.log'):
         """
-        Watch the log until one or more (regular) expression are found.
-        This methods when all the expressions have been found or the method
-        timeouts (a TimeoutError is then raised). On successful completion,
-        a list of pair (line matched, match object) is returned.
+        Watch the log until one or more (regular) expressions are found or timeouts (a
+        TimeoutError is then raised). On successful completion, a list of pair (line matched,
+        match object) is returned.
         """
         start = time.time()
         tofind = [exprs] if isinstance(exprs, string_types) else exprs
@@ -561,13 +560,12 @@ class Node(object):
 
     def watch_log_for_no_errors(self, exprs, from_mark=None, timeout=600, process=None, verbose=False, filename='system.log'):
         """
-        Watch the log until one or more (regular) expression are found.
-        This methods when all the expressions have been found or the method
-        timeouts (a TimeoutError is then raised). On successful completion,
-        a list of pair (line matched, match object) is returned.
+        Watch the log until one or more (regular) expressions are found or timeouts (a
+        TimeoutError is then raised). On successful completion, a list of pair (line matched,
+        match object) is returned.
 
-        This method is different from watch_log_for since it will fail if
-        any errors are found.
+        This method is different from watch_log_for as it will raise a AssertionError if the
+        log contain an error; this assertion will contain the errors found in the log.
         """
         start = time.time()
         tofind = [exprs] if isinstance(exprs, string_types) else exprs
