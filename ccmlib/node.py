@@ -29,6 +29,7 @@ from six.moves import xrange
 
 logger = logging.getLogger(__name__)
 
+NODE_WAIT_TIMEOUT_IN_SECS = 90
 
 class Status():
     UNINITIALIZED = "UNINITIALIZED"
@@ -115,6 +116,7 @@ class Node(object):
         self.workloads = []
         self._dse_config_options = {}
         self.__config_options = {}
+        self._topology = [('default', 'dc1')]
         self.__install_dir = None
         self.__global_log_level = None
         self.__classes_log_level = {}
@@ -620,21 +622,21 @@ class Node(object):
         log for 'Starting listening for CQL clients' before checking for the
         interface to be listening.
 
-        Emits a warning if not listening after 30 seconds.
+        Emits a warning if not listening after NODE_WAIT_TIMEOUT_IN_SECS seconds.
         """
         if self.cluster.version() >= '1.2':
             self.watch_log_for("Starting listening for CQL clients", **kwargs)
 
         binary_itf = self.network_interfaces['binary']
-        if not common.check_socket_listening(binary_itf, timeout=30):
-            warnings.warn("Binary interface %s:%s is not listening after 30 seconds, node may have failed to start."
-                          % (binary_itf[0], binary_itf[1]))
+        if not common.check_socket_listening(binary_itf, timeout=NODE_WAIT_TIMEOUT_IN_SECS):
+            warnings.warn("Binary interface %s:%s is not listening after %s seconds, node may have failed to start."
+                          % (binary_itf[0], binary_itf[1], NODE_WAIT_TIMEOUT_IN_SECS))
 
     def wait_for_thrift_interface(self, **kwargs):
         """
         Waits for the Thrift interface to be listening.
 
-        Emits a warning if not listening after 30 seconds.
+        Emits a warning if not listening after NODE_WAIT_TIMEOUT_IN_SECS seconds.
         """
         if self.cluster.version() >= '4':
             return;
@@ -642,8 +644,9 @@ class Node(object):
         self.watch_log_for("Listening for thrift clients...", **kwargs)
 
         thrift_itf = self.network_interfaces['thrift']
-        if not common.check_socket_listening(thrift_itf, timeout=30):
-            warnings.warn("Thrift interface {}:{} is not listening after 30 seconds, node may have failed to start.".format(thrift_itf[0], thrift_itf[1]))
+        if not common.check_socket_listening(thrift_itf, timeout=NODE_WAIT_TIMEOUT_IN_SECS):
+            warnings.warn(
+                "Thrift interface {}:{} is not listening after {} seconds, node may have failed to start.".format(thrift_itf[0], thrift_itf[1], NODE_WAIT_TIMEOUT_IN_SECS))
 
     def get_launch_bin(self):
         cdir = self.get_install_dir()
@@ -1493,6 +1496,7 @@ class Node(object):
         self._update_config()
         self.copy_config_files()
         self._update_yaml()
+        self._update_topology_file()
         # loggers changed > 2.1
         if self.get_base_cassandra_version() < 2.1:
             self._update_log4j()
@@ -1819,6 +1823,19 @@ class Node(object):
                         if os.path.isfile(f):
                             common.replace_in_file(f, '-Djava.net.preferIPv4Stack=true', '')
                     break
+
+    def update_topology(self, topology):
+        self._topology = topology
+        self._update_topology_file()
+
+    def _update_topology_file(self):
+        content = ""
+        for k, v in self._topology:
+            content = "%s%s=%s:r1\n" % (content, k, v)
+
+        topology_file = os.path.join(self.get_conf_dir(), 'cassandra-topology.properties')
+        with open(topology_file, 'w') as f:
+            f.write(content)
 
     def __update_status(self):
         if self.pid is None:
