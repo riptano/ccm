@@ -467,7 +467,7 @@ def github_username_and_branch_name(version):
 
 
 def github_repo_for_user(username):
-    return 'git@github.com:{username}/cassandra.git'.format(username=username)
+    return 'https://github.com/{username}/cassandra.git'.format(username=username)
 
 
 def version_directory(version):
