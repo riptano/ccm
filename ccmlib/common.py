@@ -40,6 +40,18 @@ CASSANDRA_SH = "cassandra.in.sh"
 CONFIG_FILE = "config"
 CCM_CONFIG_DIR = "CCM_CONFIG_DIR"
 
+def get_options_removal_dict(options):
+    dict = {}
+    for option in options:
+        dict[option] = None
+    return dict
+
+#Options introduced in 4.0
+CCM_40_YAML_OPTIONS = get_options_removal_dict(['repaired_data_tracking_for_range_reads_enabled',
+                  'corrupted_tombstone_strategy',
+                  'repaired_data_tracking_for_partition_reads_enabled',
+                  'report_unconfirmed_repaired_data_mismatches'])
+
 class InfoFilter(logging.Filter):
     def filter(self, rec):
         return rec.levelno in (logging.DEBUG, logging.INFO)
@@ -850,7 +862,7 @@ def assert_jdk_valid_for_cassandra_version(cassandra_version):
         exit(1)
 
 
-def merge_configuration(original, changes, delete_empty=True):
+def merge_configuration(original, changes, delete_empty=True, delete_always=False):
     if not isinstance(original, dict):
         # if original is not a dictionary, assume changes override it.
         new = changes
@@ -863,7 +875,7 @@ def merge_configuration(original, changes, delete_empty=True):
             if delete_empty and k in new and new[k] is not None and \
                     (v is None or (isinstance(v, str) and len(v) == 0)):
                 del new[k]
-            else:
+            elif not delete_always:
                 new_value = v
                 # If key is in both dicts, update it with new values.
                 if k in new:

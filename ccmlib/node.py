@@ -4,7 +4,9 @@ from __future__ import absolute_import, with_statement
 import errno
 import glob
 import locale
+import logging
 import os
+import psutil
 import re
 import shlex
 import shutil
@@ -25,6 +27,9 @@ from ccmlib import common, extension
 from ccmlib.repository import setup
 from six.moves import xrange
 
+logger = logging.getLogger(__name__)
+
+NODE_WAIT_TIMEOUT_IN_SECS = 90
 
 class Status():
     UNINITIALIZED = "UNINITIALIZED"
@@ -125,6 +130,7 @@ class Node(object):
         self.workloads = []
         self._dse_config_options = {}
         self.__config_options = {}
+        self._topology = [('default', 'dc1')]
         self.__install_dir = None
         self.__global_log_level = None
         self.__classes_log_level = {}
@@ -237,11 +243,47 @@ class Node(object):
         """
         return os.path.join(self.get_path(), 'conf')
 
+    def address_for_current_version_slashy(self):
+        """
+        Returns the address formatted for the current version (InetAddress/InetAddressAndPort.toString)
+        """
+        if self.get_cassandra_version() >= '4.0':
+            return "/{}".format(str(self.address_and_port()))
+        else:
+            return "/{}".format(str(self.address()));
+
+    def address_for_version(self, version):
+        """
+        Returns the address formatted for the specified (InetAddress.getHostAddress or
+        InetAddressAndPort.getHostAddressAndPort)
+        """
+        if version >= '4.0':
+            return self.address_and_port()
+        else:
+            return "{}".format(str(self.address()));
+
+    def address_for_current_version(self):
+        """
+        Returns the address formatted for the current version.
+        """
+        return self.address_for_version(self.get_cassandra_version())
+
     def address(self):
         """
         Returns the IP use by this node for internal communication
         """
         return self.network_interfaces['storage'][0]
+
+    def address_and_port(self):
+        """
+        Returns the IP used for internal communication along with ports
+        """
+        address = self.network_interfaces['storage'][0]
+        port = self.network_interfaces['storage'][1]
+        if address.find(":") != -1:
+            return "[{}]:{}".format(address, port)
+        else:
+            return str(address) + ':' + str(port)
 
     def get_install_dir(self):
         """
@@ -276,6 +318,13 @@ class Node(object):
         self.import_config_files()
         self.import_bin_files()
         self.__conf_updated = False
+
+        if self.get_cassandra_version() >= '4':
+            self.set_configuration_options(values={'start_rpc': None}, delete_empty=True, delete_always=True)
+            self.set_configuration_options(values={'rpc_port': None}, delete_empty=True, delete_always=True)
+        else:
+            self.set_configuration_options(common.CCM_40_YAML_OPTIONS, delete_empty=True, delete_always=True)
+
         return self
 
     def set_workloads(self, workloads):
@@ -288,7 +337,7 @@ class Node(object):
         version = self.get_cassandra_version()
         return float('.'.join(re.split('\.|-',version.vstring)[:2]))
 
-    def set_configuration_options(self, values=None):
+    def set_configuration_options(self, values=None, delete_empty=False, delete_always=False):
         """
         Set Cassandra configuration options.
         ex:
@@ -297,11 +346,11 @@ class Node(object):
                 'concurrent_writes' : 64,
             })
         """
-        if not hasattr(self,'_config_options') or self.__config_options is None:
+        if (not hasattr(self,'__config_options') and not hasattr(self,'_Node__config_options')) or self.__config_options is None:
             self.__config_options = {}
 
         if values is not None:
-            self.__config_options = common.merge_configuration(self.__config_options, values)
+            self.__config_options = common.merge_configuration(self.__config_options, values, delete_empty=delete_empty, delete_always=delete_always)
 
         self.import_config_files()
 
@@ -458,10 +507,9 @@ class Node(object):
     # This will return when exprs are found or it timeouts
     def watch_log_for(self, exprs, from_mark=None, timeout=600, process=None, verbose=False, filename='system.log'):
         """
-        Watch the log until one or more (regular) expression are found.
-        This methods when all the expressions have been found or the method
-        timeouts (a TimeoutError is then raised). On successful completion,
-        a list of pair (line matched, match object) is returned.
+        Watch the log until one or more (regular) expressions are found or timeouts (a
+        TimeoutError is then raised). On successful completion, a list of pair (line matched,
+        match object) is returned.
         """
         start = time.time()
         tofind = [exprs] if isinstance(exprs, string_types) else exprs
@@ -526,6 +574,39 @@ class Node(object):
                         if process.returncode == 0:
                             return None
 
+    def watch_log_for_no_errors(self, exprs, from_mark=None, timeout=600, process=None, verbose=False, filename='system.log'):
+        """
+        Watch the log until one or more (regular) expressions are found or timeouts (a
+        TimeoutError is then raised). On successful completion, a list of pair (line matched,
+        match object) is returned.
+
+        This method is different from watch_log_for as it will raise a AssertionError if the
+        log contain an error; this assertion will contain the errors found in the log.
+        """
+        start = time.time()
+        tofind = [exprs] if isinstance(exprs, string_types) else exprs
+        tofind = [re.compile(e) for e in tofind]
+        seek_start=0
+        if from_mark:
+            seek_start = from_mark
+        while True:
+            if start + timeout < time.time():
+                raise TimeoutError(time.strftime("%d %b %Y %H:%M:%S", time.gmtime()) + " [" + self.name + "] Missing: " + str([e.pattern for e in tofind]) + ":\n.....\nSee {} for remainder".format(filename))
+            try:
+                # process is bin/cassandra so choosing to ignore this argument to avoid early termination
+                return self.watch_log_for(tofind, from_mark=from_mark, timeout=5, verbose=verbose, filename=filename)
+            except TimeoutError:
+                logger.debug("waited 5s watching for '{}' but was not found; checking for errors".format(tofind))
+                # since the api doesn't return the mark read it isn't thread safe to use mark
+                # as the length of the file can change between calls which may mean we skip over
+                # errors; to avoid this keep reading the whole file over and over again...
+                # unless a explicit mark is given to the method, will read from that offset
+                errors = self.grep_log_for_errors_from(filename=filename, seek_start=seek_start)
+                if errors:
+                    msg = "Errors were found in the logs while watching for '{}'; attempting to fail the test".format(tofind)
+                    logger.debug(msg)
+                    raise AssertionError("{}:\n".format(msg) + '\n\n'.join(['\n'.join(msg) for msg in errors]))
+
     def watch_log_for_death(self, nodes, from_mark=None, timeout=600, filename='system.log'):
         """
         Watch the log of this node until it detects that the provided other
@@ -537,7 +618,7 @@ class Node(object):
         the log is watched from the beginning.
         """
         tofind = nodes if isinstance(nodes, list) else [nodes]
-        tofind = ["%s is now [dead|DOWN]" % node.address() for node in tofind]
+        tofind = ["%s is now [dead|DOWN]" % node.address_for_version(self.get_cassandra_version()) for node in tofind]
         self.watch_log_for(tofind, from_mark=from_mark, timeout=timeout, filename=filename)
 
     def watch_log_for_alive(self, nodes, from_mark=None, timeout=120, filename='system.log'):
@@ -546,7 +627,7 @@ class Node(object):
         nodes are marked UP. This method works similarly to watch_log_for_death.
         """
         tofind = nodes if isinstance(nodes, list) else [nodes]
-        tofind = ["%s.* now UP" % node.address() for node in tofind]
+        tofind = ["%s.* now UP" % node.address_for_version(self.get_cassandra_version()) for node in tofind]
         self.watch_log_for(tofind, from_mark=from_mark, timeout=timeout, filename=filename)
 
     def wait_for_binary_interface(self, **kwargs):
@@ -555,21 +636,21 @@ class Node(object):
         log for 'Starting listening for CQL clients' before checking for the
         interface to be listening.
 
-        Emits a warning if not listening after 30 seconds.
+        Emits a warning if not listening after NODE_WAIT_TIMEOUT_IN_SECS seconds.
         """
         if self.cluster.version() >= '1.2':
             self.watch_log_for("Starting listening for CQL clients", **kwargs)
 
         binary_itf = self.network_interfaces['binary']
-        if not common.check_socket_listening(binary_itf, timeout=30):
-            warnings.warn("Binary interface %s:%s is not listening after 30 seconds, node may have failed to start."
-                          % (binary_itf[0], binary_itf[1]))
+        if not common.check_socket_listening(binary_itf, timeout=NODE_WAIT_TIMEOUT_IN_SECS):
+            warnings.warn("Binary interface %s:%s is not listening after %s seconds, node may have failed to start."
+                          % (binary_itf[0], binary_itf[1], NODE_WAIT_TIMEOUT_IN_SECS))
 
     def wait_for_thrift_interface(self, **kwargs):
         """
         Waits for the Thrift interface to be listening.
 
-        Emits a warning if not listening after 30 seconds.
+        Emits a warning if not listening after NODE_WAIT_TIMEOUT_IN_SECS seconds.
         """
         if self.cluster.version() >= '4':
             return;
@@ -577,8 +658,9 @@ class Node(object):
         self.watch_log_for("Listening for thrift clients...", **kwargs)
 
         thrift_itf = self.network_interfaces['thrift']
-        if not common.check_socket_listening(thrift_itf, timeout=30):
-            warnings.warn("Thrift interface {}:{} is not listening after 30 seconds, node may have failed to start.".format(thrift_itf[0], thrift_itf[1]))
+        if not common.check_socket_listening(thrift_itf, timeout=NODE_WAIT_TIMEOUT_IN_SECS):
+            warnings.warn(
+                "Thrift interface {}:{} is not listening after {} seconds, node may have failed to start.".format(thrift_itf[0], thrift_itf[1], NODE_WAIT_TIMEOUT_IN_SECS))
 
     def get_launch_bin(self):
         cdir = self.get_install_dir()
@@ -914,7 +996,7 @@ class Node(object):
     def enable_aoss(self, thrift_port=10000, web_ui_port=9077):
         pass
 
-    def run_cqlsh_process(self, cmds=None, cqlsh_options=None):
+    def run_cqlsh_process(self, cmds=None, cqlsh_options=None, terminator=''):
         if cqlsh_options is None:
             cqlsh_options = []
         cqlsh = self.get_tool('cqlsh')
@@ -943,13 +1025,13 @@ class Node(object):
             for cmd in cmds.split(';'):
                 cmd = cmd.strip()
                 if cmd:
-                    p.stdin.write(cmd + ';\n')
+                    p.stdin.write(cmd + terminator)
             p.stdin.write("quit;\n")
 
         return p
 
-    def run_cqlsh(self, cmds=None, cqlsh_options=None):
-        p = self.run_cqlsh_process(cmds, cqlsh_options)
+    def run_cqlsh(self, cmds=None, cqlsh_options=None, terminator=';\n'):
+        p = self.run_cqlsh_process(cmds, cqlsh_options, terminator)
         return handle_external_tool_process(p, ['cqlsh', cmds, cqlsh_options])
 
     def set_log_level(self, new_level, class_name=None):
@@ -1431,6 +1513,7 @@ class Node(object):
         self._update_config()
         self.copy_config_files()
         self._update_yaml()
+        self._update_topology_file()
         # loggers changed > 2.1
         if self.get_base_cassandra_version() < 2.1:
             self._update_log4j()
@@ -1761,6 +1844,19 @@ class Node(object):
                             common.replace_in_file(f, '-Djava.net.preferIPv4Stack=true', '')
                     break
 
+    def update_topology(self, topology):
+        self._topology = topology
+        self._update_topology_file()
+
+    def _update_topology_file(self):
+        content = ""
+        for k, v in self._topology:
+            content = "%s%s=%s:r1\n" % (content, k, v)
+
+        topology_file = os.path.join(self.get_conf_dir(), 'cassandra-topology.properties')
+        with open(topology_file, 'w') as f:
+            f.write(content)
+
     def __update_status(self):
         if self.pid is None:
             if self.status == Status.UP or self.status == Status.DECOMMISSIONED:
@@ -1775,6 +1871,10 @@ class Node(object):
         else:
             try:
                 os.kill(self.pid, 0)
+                proc = psutil.Process(self.pid)
+                if proc.status() == psutil.STATUS_ZOMBIE:
+                    time.sleep(2)
+                    raise OSError(errno.ESRCH, "process was zombie, ignoring")
             except OSError as err:
                 if err.errno == errno.ESRCH:
                     # not running
@@ -1787,6 +1887,9 @@ class Node(object):
                 else:
                     # some other error
                     raise err
+            except psutil.NoSuchProcess as err:
+                if self.status == Status.UP or self.status == Status.DECOMMISSIONED:
+                    self.status = Status.DOWN
             else:
                 if self.status == Status.DOWN or self.status == Status.UNINITIALIZED:
                     self.status = Status.UP
@@ -2125,6 +2228,10 @@ def _grep_log_for_errors(log):
 
 def handle_external_tool_process(process, cmd_args):
     out, err = process.communicate()
+    if (out is not None) and isinstance(out, bytes):
+        out = out.decode()
+    if (err is not None) and isinstance(err, bytes):
+        err = err.decode()
     rc = process.returncode
 
     if rc != 0:
