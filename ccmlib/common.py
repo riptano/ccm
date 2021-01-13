@@ -19,6 +19,7 @@ import sys
 import time
 from distutils.version import LooseVersion  #pylint: disable=import-error, no-name-in-module
 
+import six
 import yaml
 from six import print_
 
@@ -452,12 +453,7 @@ def get_stress_bin(install_dir):
         add_exec_permission(path, short_bin)
     elif not os.access(stress, os.X_OK):
         try:
-            # try to add user execute permissions
-            # os.chmod doesn't work on Windows and isn't necessary unless in cygwin...
-            if sys.platform == "cygwin":
-                add_exec_permission(path, stress)
-            else:
-                os.chmod(stress, os.stat(stress).st_mode | stat.S_IXUSR)
+            os.chmod(stress, os.stat(stress).st_mode | stat.S_IXUSR)
         except:
             raise Exception("stress binary is not executable: %s" % (stress,))
 
@@ -546,7 +542,6 @@ def check_socket_listening(itf, timeout=60):
                 sock.close()
             # Try again in another 200ms
             time.sleep(.2)
-            continue
 
     return False
 
@@ -885,13 +880,12 @@ def merge_configuration(original, changes, delete_empty=True, delete_always=Fals
     return new
 
 
+def is_int_not_bool(obj):
+    return isinstance(obj, six.integer_types) and not isinstance(obj, bool)
+
+
 def is_intlike(obj):
-    try:
-        int(obj)
-        return True
-    except TypeError:
-        return False
-    raise RuntimeError('Reached end of {}; should not be possible'.format(is_intlike.__name__))
+    return isinstance(obj, six.integer_types)
 
 
 def wait_for_any_log(nodes, pattern, timeout, filename='system.log', marks=None):

@@ -8,14 +8,13 @@ import re
 import shutil
 import signal
 import subprocess
-import sys
 import threading
 import time
 from collections import OrderedDict, defaultdict, namedtuple
 from distutils.version import LooseVersion #pylint: disable=import-error, no-name-in-module
 
 import yaml
-from six import iteritems, print_
+from six import print_
 
 from ccmlib import common, extension, repository
 from ccmlib.node import Node, NodeError, TimeoutError
@@ -264,11 +263,7 @@ class Cluster(object):
         dcs = []
 
         if use_vnodes is None:
-            self.use_vnodes = (
-                (tokens is not None and len(tokens) > 1)
-                    or ('num_tokens' in self._config_options
-                        and self._config_options['num_tokens'] is not None
-                        and int(self._config_options['num_tokens']) > 1))
+            self.use_vnodes = len(tokens or []) > 1 or self._more_than_one_token_configured()
         else:
             self.use_vnodes = use_vnodes
 
@@ -374,11 +369,13 @@ class Cluster(object):
         tokens.extend(new_tokens)
         return tokens
 
+    def _more_than_one_token_configured(self):
+        return int(self._config_options.get('num_tokens', '1')) > 1
+
     def can_generate_tokens(self):
         return (self.cassandra_version() >= '4'
                     and (self.partitioner is None or ('Murmur3' in self.partitioner or 'Random' in self.partitioner))
-                    and ('num_tokens' in self._config_options
-                            and self._config_options['num_tokens'] is not None and int(self._config_options['num_tokens']) > 1))
+                    and self._more_than_one_token_configured)
 
     def generated_tokens(self, dcs):
         tokens = []
@@ -398,7 +395,7 @@ class Cluster(object):
     def generate_dc_tokens(self, node_count, tokens):
         if self.cassandra_version() < '4' or (self.partitioner and not ('Murmur3' in self.partitioner or 'Random' in self.partitioner)):
             raise common.ArgumentError("generate-tokens script only for >=4.0 and Murmur3 or Random")
-        if not ('num_tokens' in self._config_options and self._config_options['num_tokens'] is not None and int(self._config_options['num_tokens']) > 1):
+        if not self._more_than_one_token_configured():
             raise common.ArgumentError("Cannot use generate-tokens script without num_tokens > 1")
 
         partitioner = 'RandomPartitioner' if ( self.partitioner and 'Random' in self.partitioner) else 'Murmur3Partitioner'
@@ -518,7 +515,6 @@ class Cluster(object):
 
                 # if the node is going to allocate_strategy_ tokens during start, then wait_for_binary_proto=True
                 node_wait_for_binary_proto = (self.can_generate_tokens() and self.use_vnodes and node.initial_token is None)
-
                 p = node.start(update_pid=False, jvm_args=jvm_args, jvm_version=jvm_version,
                                profile_options=profile_options, verbose=verbose, quiet_start=quiet_start,
                                allow_root=allow_root, wait_for_binary_proto=node_wait_for_binary_proto)
@@ -536,11 +532,15 @@ class Cluster(object):
             time.sleep(2)  # waiting 2 seconds to check for early errors and for the pid to be set
         else:
             for node, p, mark in started:
+                if not node._wait_for_running(p, timeout_s=7):
+                    raise NodeError("Node {} should be running before waiting for <started listening> log message, "
+                                    "but C* process is terminated.".format(node.name))
                 try:
                     timeout=kwargs.get('timeout', DEFAULT_CLUSTER_WAIT_TIMEOUT_IN_SECS)
                     timeout=int(os.environ.get('CCM_CLUSTER_START_TIMEOUT_OVERRIDE', timeout))
                     start_message = "Listening for thrift clients..." if self.cassandra_version() < "2.2" else "Starting listening for CQL clients"
-                    node.watch_log_for(start_message, timeout=timeout, process=p, verbose=verbose, from_mark=mark)
+                    node.watch_log_for(start_message, timeout=timeout, process=p, verbose=verbose, from_mark=mark,
+                                       error_on_pid_terminated=True)
                 except RuntimeError:
                     return None
 
@@ -821,11 +821,11 @@ class Cluster(object):
         Returns the first node where the pattern was found, along with the matching lines.
         Raises a TimeoutError if the pattern is not found within the specified timeout period.
         """
-        end_time = time.time() + timeout_seconds
+        start_time = time.time()
         while True:
-            if time.time() > end_time:
-                raise TimeoutError(time.strftime("%d %b %Y %H:%M:%S", time.gmtime()) +
-                                   " Unable to find: " + versions_to_patterns.patterns + " in any node log within " + str(timeout_seconds) + "s")
+            TimeoutError.raise_if_passed(start=start_time, timeout=timeout_seconds,
+                                         msg="Unable to find: {x} in any node log within {t} s".format(
+                                             x=versions_to_patterns.patterns, t=timeout_seconds))
 
             for node in self.nodelist():
                 pattern = versions_to_patterns(node.get_cassandra_version())

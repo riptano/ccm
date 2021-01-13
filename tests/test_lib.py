@@ -1,10 +1,12 @@
 import sys
+import time
 
 from six import StringIO
 
 import ccmlib
 from ccmlib.cluster import Cluster
 from ccmlib.common import _update_java_version
+from ccmlib.node import NodeError
 from . import TEST_DIR, ccmtest
 from distutils.version import LooseVersion  # pylint: disable=import-error, no-name-in-module
 
@@ -279,6 +281,41 @@ class TestCCMLib(ccmtest.Tester):
             self.cluster.cleanup()
             self.cluster.clear()
             self.cluster.stop()
+
+    def test_fast_error_on_cluster_start_failure(self):
+        self.cluster = Cluster(CLUSTER_PATH, 'clusterfaststop', cassandra_version='git:trunk')
+        self.cluster.populate(1)
+        self.cluster.set_configuration_options({'invalid_option': 0})
+        self.check_log_errors = False
+        node = self.cluster.nodelist()[0]
+        start_time = time.time()
+        try:
+            self.cluster.start(use_vnodes=True)
+            self.assertFalse(node.is_running())
+            self.assertLess(time.time() - start_time, 30)
+        except NodeError:
+            self.assertLess(time.time() - start_time, 30)
+        finally:
+            self.cluster.clear()
+            self.cluster.stop()
+
+    def test_fast_error_on_node_start_failure(self):
+        self.cluster = Cluster(CLUSTER_PATH, 'nodefaststop', cassandra_version='git:trunk')
+        self.cluster.populate(1)
+        self.cluster.set_configuration_options({'invalid_option': 0})
+        self.check_log_errors = False
+        node = self.cluster.nodelist()[0]
+        start_time = time.time()
+        try:
+            node.start(wait_for_binary_proto=45)
+            self.assertFalse(node.is_running())
+            self.assertLess(time.time() - start_time, 30)
+        except NodeError:
+            self.assertLess(time.time() - start_time, 30)
+        finally:
+            self.cluster.clear()
+            self.cluster.stop()
+
 
 class TestRunCqlsh(ccmtest.Tester):
 

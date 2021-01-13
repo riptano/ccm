@@ -50,6 +50,20 @@ class TimeoutError(Exception):
     def __init__(self, data):
         Exception.__init__(self, str(data))
 
+    @staticmethod
+    def raise_if_passed(start, timeout, msg, node=None):
+        if start + timeout < time.time():
+            raise TimeoutError.create(start, timeout, msg, node)
+
+    @staticmethod
+    def create(start, timeout, msg, node=None):
+        tstamp = time.strftime("%d %b %Y %H:%M:%S", time.gmtime())
+        duration = round(time.time() - start, 2)
+        node_s = " [{}]".format(node) if node else ""
+        msg = "{tstamp}{nodes} after {d}/{t} seconds {msg}".format(
+            tstamp=tstamp, nodes=node_s, msg=msg, d=duration, t=timeout)
+        return TimeoutError(msg)
+
 
 class ToolError(Exception):
 
@@ -505,11 +519,15 @@ class Node(object):
             print_("[{} ERROR] {}".format(name, stderr.strip()))
 
     # This will return when exprs are found or it timeouts
-    def watch_log_for(self, exprs, from_mark=None, timeout=600, process=None, verbose=False, filename='system.log'):
+    def watch_log_for(self, exprs, from_mark=None, timeout=600,
+                      process=None, verbose=False, filename='system.log',
+                      error_on_pid_terminated=False):
         """
         Watch the log until one or more (regular) expressions are found or timeouts (a
         TimeoutError is then raised). On successful completion, a list of pair (line matched,
         match object) is returned.
+
+        Will raise NodeError if error_on_pit_terminated is True and C* pid is not running.
         """
         start = time.time()
         tofind = [exprs] if isinstance(exprs, string_types) else exprs
@@ -523,8 +541,9 @@ class Node(object):
         output_read = False
         while not os.path.exists(log_file):
             time.sleep(.5)
-            if start + timeout < time.time():
-                raise TimeoutError(time.strftime("%d %b %Y %H:%M:%S", time.gmtime()) + " [" + self.name + "] Timed out waiting for {} to be created.".format(log_file))
+            TimeoutError.raise_if_passed(start=start, timeout=timeout, node=self.name,
+                                         msg="Timed out waiting for {} to be created.".format(log_file))
+
             if process and not output_read:
                 process.poll()
                 if process.returncode is not None:
@@ -560,19 +579,30 @@ class Node(object):
                             if len(tofind) == 0:
                                 return matchings[0] if isinstance(exprs, string_types) else matchings
                 else:
-                    # yep, it's ugly
+                    # wait for the situation to clarify, either stop or just a pause in log production
                     time.sleep(1)
-                    if start + timeout < time.time():
-                        raise TimeoutError(time.strftime("%d %b %Y %H:%M:%S", time.gmtime()) + " [" + self.name + "] Missing: " + str([e.pattern for e in tofind]) + ":\n" + reads[:50] + ".....\nSee {} for remainder".format(filename))
 
-                if process:
-                    if common.is_win():
-                        if not self.is_running():
-                            return None
-                    else:
-                        process.poll()
-                        if process.returncode == 0:
-                            return None
+                    if error_on_pid_terminated:
+                        self.raise_node_error_if_cassandra_process_is_terminated()
+
+                    TimeoutError.raise_if_passed(start=start, timeout=timeout, node=self.name,
+                                                 msg="Missing: {exprs} not found in {f}:\nTail: {tail}".format(
+                                                     exprs=[e.pattern for e in tofind], f=filename, tail=reads[:50]))
+
+                    # Checking "process" is tricky, as it may be itself terminated e.g. after "verbose"
+                    # or if there is some race condition between log checking and start process finish
+                    # so if the "error_on_pid_terminated" is requested we will give it a chance
+                    # and will not check parent process termination
+                    if process and not error_on_pid_terminated:
+                        if common.is_win():
+                            if not self.is_running():
+                                return None
+                        else:
+                            process.poll()
+                            if process.returncode == 0:
+                                common.debug("{pid} or its child process terminated. watch_for_logs() for {l} will not continue.".format(
+                                    pid=process.pid, l=[e.pattern for e in tofind]))
+                                return None
 
     def watch_log_for_no_errors(self, exprs, from_mark=None, timeout=600, process=None, verbose=False, filename='system.log'):
         """
@@ -590,8 +620,9 @@ class Node(object):
         if from_mark:
             seek_start = from_mark
         while True:
-            if start + timeout < time.time():
-                raise TimeoutError(time.strftime("%d %b %Y %H:%M:%S", time.gmtime()) + " [" + self.name + "] Missing: " + str([e.pattern for e in tofind]) + ":\n.....\nSee {} for remainder".format(filename))
+            TimeoutError.raise_if_passed(start=start, timeout=timeout, node=self.name,
+                                         msg="Missing: {exprs} not found in {f}".format(
+                                             exprs=[e.pattern for e in tofind], f=filename))
             try:
                 # process is bin/cassandra so choosing to ignore this argument to avoid early termination
                 return self.watch_log_for(tofind, from_mark=from_mark, timeout=5, verbose=verbose, filename=filename)
@@ -630,6 +661,12 @@ class Node(object):
         tofind = ["%s.* now UP" % node.address_for_version(self.get_cassandra_version()) for node in tofind]
         self.watch_log_for(tofind, from_mark=from_mark, timeout=timeout, filename=filename)
 
+    def raise_node_error_if_cassandra_process_is_terminated(self):
+        if not self._is_pid_running():
+            msg = "C* process with {pid} is terminated".format(pid=self.pid)
+            common.debug(msg)
+            raise NodeError(msg)
+
     def wait_for_binary_interface(self, **kwargs):
         """
         Waits for the Binary CQL interface to be listening.  If > 1.2 will check
@@ -637,9 +674,14 @@ class Node(object):
         interface to be listening.
 
         Emits a warning if not listening after given timeout (default NODE_WAIT_TIMEOUT_IN_SECS) in seconds.
+        Raises NodeError if C* process terminates during start.
+        Raises TimeoutError if log message for "starting listening" is not found in logs in given timeout.
         """
         timeout = kwargs.get('timeout', NODE_WAIT_TIMEOUT_IN_SECS)
         kwargs['timeout'] = timeout
+
+        if self.pid:
+            kwargs['error_on_pid_terminated'] = True
 
         if self.cluster.version() >= '1.2':
             self.watch_log_for("Starting listening for CQL clients", **kwargs)
@@ -727,6 +769,8 @@ class Node(object):
 
         if wait_other_notice:
             marks = [(node, node.mark_log()) for node in list(self.cluster.nodes.values()) if node.is_live()]
+        else:
+            marks = []
 
         self.mark = self.mark_log()
 
@@ -804,17 +848,16 @@ class Node(object):
         # we risk reading the old cassandra.pid file
         self._delete_old_pid()
 
-        process = None
-        start_time = time.time()
         # Always write the stdout+stderr of the launched process to log files to make finding startup issues easier.
+        start_time = time.time()
         stdout_sink = open(os.path.join(self.log_directory(), 'startup-{}-stdout.log'.format(start_time)), "w+")
-        # write stderr to a temporary file to prevent overwhelming pipe (> 65K data).
         stderr_sink = open(os.path.join(self.log_directory(), 'startup-{}-stderr.log'.format(start_time)), "w+")
 
         if common.is_win():
             # clean up any old dirty_pid files from prior runs
-            if (os.path.isfile(self.get_path() + "/dirty_pid.tmp")):
-                os.remove(self.get_path() + "/dirty_pid.tmp")
+            dirty_pid_path = os.path.join(self.get_path() + "dirty_pid.tmp")
+            if (os.path.isfile(dirty_pid_path)):
+                os.remove(dirty_pid_path)
 
             if quiet_start and self.cluster.version() >= '2.2.4':
                 args.append('-q')
@@ -826,6 +869,7 @@ class Node(object):
         process.stderr_file = stderr_sink
 
         if verbose:
+            common.debug("verbose mode: waiting for the start process out/err (and termination)")
             stdout, stderr = process.communicate()
             print_(str(stdout))
             print_(str(stderr))
@@ -836,29 +880,36 @@ class Node(object):
             self.__clean_win_pid()
             self._update_pid(process)
             print_("Started: {0} with pid: {1}".format(self.name, self.pid), file=sys.stderr, flush=True)
-        elif update_pid:
-            self._update_pid(process)
 
-            if not self.is_running():
-                raise NodeError("Error starting node %s" % self.name, process)
+        if update_pid or wait_for_binary_proto:
+            # at this moment we should have PID and it should be running...
+            if not self._wait_for_running(process, timeout_s=7):
+                raise NodeError("Node {n} is not running".format(n=self.name), process)
 
-        # If wait_other_notice is a bool, we don't want to treat it as a
-        # timeout. Other intlike types, though, we want to use.
-        if common.is_intlike(wait_other_notice) and not isinstance(wait_other_notice, bool):
+        # if requested wait for other nodes to observe this one (via gossip)
+        if common.is_int_not_bool(wait_other_notice):
             for node, mark in marks:
                 node.watch_log_for_alive(self, from_mark=mark, timeout=wait_other_notice)
         elif wait_other_notice:
             for node, mark in marks:
                 node.watch_log_for_alive(self, from_mark=mark)
 
-        # If wait_for_binary_proto is a bool, we don't want to treat it as a
-        # timeout. Other intlike types, though, we want to use.
-        if common.is_intlike(wait_for_binary_proto) and not isinstance(wait_for_binary_proto, bool):
+        # if requested wait for binary protocol to start
+        if common.is_int_not_bool(wait_for_binary_proto):
             self.wait_for_binary_interface(from_mark=self.mark, timeout=wait_for_binary_proto)
         elif wait_for_binary_proto:
             self.wait_for_binary_interface(from_mark=self.mark)
 
         return process
+
+    def _wait_for_running(self, process, timeout_s):
+        deadline = time.time() + timeout_s
+        while time.time() < deadline:
+            if self.is_running():
+                return True
+            time.sleep(0.5)
+            self._update_pid(process)
+        return self.is_running()
 
     def stop(self, wait=True, wait_other_notice=False, signal_event=signal.SIGTERM, **kwargs):
         """
@@ -937,7 +988,9 @@ class Node(object):
             if pattern.search(output):
                 return
             time.sleep(1)
-        raise TimeoutError("{} [{}] Compactions did not finish in {} seconds".format(time.strftime("%d %b %Y %H:%M:%S", time.gmtime()), self.name, timeout))
+        raise TimeoutError.create(start=start, timeout=timeout,
+                                  msg="Compactions did not finish in {} seconds".format(timeout),
+                                  node=self.name)
 
     def nodetool_process(self, cmd):
         env = self.get_env()
@@ -1864,54 +1917,56 @@ class Node(object):
         with open(topology_file, 'w') as f:
             f.write(content)
 
+    def _is_pid_running(self):
+        if self.pid is None:
+            return False
+        if common.is_win():
+            return self._find_pid_on_windows()
+        else:
+            return self._find_pid_on_unix()
+
+    def _find_pid_on_unix(self):
+        try:
+            os.kill(self.pid, 0)
+            proc = psutil.Process(self.pid)
+            if proc.status() == psutil.STATUS_ZOMBIE:
+                time.sleep(2)
+                raise OSError(errno.ESRCH, "process was zombie, ignoring")
+        except OSError as err:
+            if err.errno == errno.ESRCH:
+                # not running
+                return False
+            elif err.errno == errno.EPERM:
+                # no permission to signal this process
+                return False
+            else:
+                # some other error
+                raise
+        except psutil.NoSuchProcess as err:
+            return False
+        else:
+            return True
+
     def __update_status(self):
         if self.pid is None:
-            if self.status == Status.UP or self.status == Status.DECOMMISSIONED:
+            if self.status in [Status.UP, Status.DECOMMISSIONED]:
                 self.status = Status.DOWN
             return
 
         old_status = self.status
 
-        # os.kill on windows doesn't allow us to ping a process
-        if common.is_win():
-            self.__update_status_win()
+        pid_alive = self._is_pid_running()
+        if pid_alive:
+            if self.status in [Status.DOWN, Status.UNINITIALIZED]:
+                self.status = Status.UP
         else:
-            try:
-                os.kill(self.pid, 0)
-                proc = psutil.Process(self.pid)
-                if proc.status() == psutil.STATUS_ZOMBIE:
-                    time.sleep(2)
-                    raise OSError(errno.ESRCH, "process was zombie, ignoring")
-            except OSError as err:
-                if err.errno == errno.ESRCH:
-                    # not running
-                    if self.status == Status.UP or self.status == Status.DECOMMISSIONED:
-                        self.status = Status.DOWN
-                elif err.errno == errno.EPERM:
-                    # no permission to signal this process
-                    if self.status == Status.UP or self.status == Status.DECOMMISSIONED:
-                        self.status = Status.DOWN
-                else:
-                    # some other error
-                    raise err
-            except psutil.NoSuchProcess as err:
-                if self.status == Status.UP or self.status == Status.DECOMMISSIONED:
-                    self.status = Status.DOWN
-            else:
-                if self.status == Status.DOWN or self.status == Status.UNINITIALIZED:
-                    self.status = Status.UP
+            if self.status in [Status.UP, Status.DECOMMISSIONED]:
+                self.status = Status.DOWN
 
         if not old_status == self.status:
             if old_status == Status.UP and self.status == Status.DOWN:
                 self.pid = None
             self._update_config()
-
-    def __update_status_win(self):
-        if self._find_pid_on_windows():
-            if self.status == Status.DOWN or self.status == Status.UNINITIALIZED:
-                self.status = Status.UP
-        else:
-            self.status = Status.DOWN
 
     def _find_pid_on_windows(self):
         found = False
@@ -2006,6 +2061,10 @@ class Node(object):
             os.remove(pidfile)
 
     def _update_pid(self, process):
+        """
+        Reads pid from cassandra.pid file and stores in the self.pid
+        After setting up pid updates status (UP, DOWN, etc) and node.conf
+        """
         pidfile = os.path.join(self.get_path(), 'cassandra.pid')
 
         start = time.time()
@@ -2160,6 +2219,7 @@ class Node(object):
         out, _, _ = handle_external_tool_process(p, ["sstableutil", '--type', 'final', ks, table])
 
         return sorted(filter(lambda s: s.endswith('-Data.db'), out.splitlines()))
+
 
 def _get_load_from_info_output(info):
     load_lines = [s for s in info.split('\n')
