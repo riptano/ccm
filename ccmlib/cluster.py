@@ -4,6 +4,7 @@ from __future__ import absolute_import
 import itertools
 import os
 import random
+import re
 import shutil
 import signal
 import subprocess
@@ -11,6 +12,7 @@ import sys
 import threading
 import time
 from collections import OrderedDict, defaultdict, namedtuple
+from distutils.version import LooseVersion #pylint: disable=import-error, no-name-in-module
 
 import yaml
 from six import iteritems, print_
@@ -18,7 +20,13 @@ from six import iteritems, print_
 from ccmlib import common, extension, repository
 from ccmlib.node import Node, NodeError, TimeoutError
 from six.moves import xrange
+try:
+    from urllib.parse import urlparse
+except ImportError:
+    from urlparse import urlparse
 
+
+DEFAULT_CLUSTER_WAIT_TIMEOUT_IN_SECS = int(os.environ.get('CCM_CLUSTER_START_DEFAULT_TIMEOUT', 120))
 
 class Cluster(object):
 
@@ -103,13 +111,21 @@ class Cluster(object):
             dir, v = repository.setup(version, verbose)
             self.__install_dir = dir
             self.__version = v if v is not None else self.__get_version_from_build()
+            if not isinstance(self.__version, LooseVersion):
+                self.__version = LooseVersion(self.__version)
         self._update_config()
         for node in list(self.nodes.values()):
+            node._cassandra_version = self.__version
             node.import_config_files()
 
         # if any nodes have a data center, let's update the topology
         if any([node.data_center for node in self.nodes.values()]):
             self.__update_topology_files()
+
+        if self.cassandra_version() >= '4':
+            self.set_configuration_options({ 'start_rpc' : None}, delete_empty=True, delete_always=True)
+        else:
+            self.set_configuration_options(common.CCM_40_YAML_OPTIONS, delete_empty=True, delete_always=True)
 
         return self
 
@@ -213,6 +229,9 @@ class Cluster(object):
     def cassandra_version(self):
         return self.version()
 
+    def address_regex(self):
+        return "/([0-9.]+):7000" if self.cassandra_version() >= '4.0' else "/([0-9.]+)"
+
     def add(self, node, is_seed, data_center=None):
         if node.name in self.nodes:
             raise common.ArgumentError('Cannot create existing node %s' % node.name)
@@ -233,11 +252,26 @@ class Cluster(object):
         node._save()
         return self
 
-    def populate(self, nodes, debug=False, tokens=None, use_vnodes=False, ipprefix='127.0.0.', ipformat=None, install_byteman=False):
+    def populate(self, nodes, debug=False, tokens=None, use_vnodes=None, ipprefix='127.0.0.', ipformat=None, install_byteman=False, use_single_interface=False):
+        """Populate a cluster with nodes
+        @use_single_interface : Populate the cluster with nodes that all share a single network interface.
+        """
+
+        if self.cassandra_version() < '4' and use_single_interface:
+            raise common.ArgumentError('use_single_interface is not supported in versions < 4.0')
+
         node_count = nodes
         dcs = []
 
-        self.use_vnodes = use_vnodes
+        if use_vnodes is None:
+            self.use_vnodes = (
+                (tokens is not None and len(tokens) > 1)
+                    or ('num_tokens' in self._config_options
+                        and self._config_options['num_tokens'] is not None
+                        and int(self._config_options['num_tokens']) > 1))
+        else:
+            self.use_vnodes = use_vnodes
+
         if isinstance(nodes, list):
             self.set_configuration_options(values={'endpoint_snitch': 'org.apache.cassandra.locator.PropertyFileSnitch'})
             node_count = 0
@@ -255,11 +289,22 @@ class Cluster(object):
             if 'node%s' % i in list(self.nodes.values()):
                 raise common.ArgumentError('Cannot create existing node node%s' % i)
 
-        if tokens is None and not use_vnodes:
-            if dcs is None or len(dcs) <= 1:
-                tokens = self.balanced_tokens(node_count)
+        if tokens is None:
+            if self.use_vnodes:
+                # from 4.0 tokens can be pre-generated via the `allocate_tokens_for_local_replication_factor: 3` strategy
+                #  this saves time, as allocating tokens during first start is slow and non-concurrent
+                if self.can_generate_tokens() and not 'CASSANDRA_TOKEN_PREGENERATION_DISABLED' in self._environment_variables:
+                    if len(dcs) <= 1:
+                        for x in xrange(0, node_count):
+                            dcs.append('dc1')
+
+                    tokens = self.generated_tokens(dcs)
             else:
-                tokens = self.balanced_tokens_across_dcs(dcs)
+                common.debug("using balanced tokens for non-vnode cluster")
+                if len(dcs) <= 1:
+                    tokens = self.balanced_tokens(node_count)
+                else:
+                    tokens = self.balanced_tokens_across_dcs(dcs)
 
         if not ipformat:
             ipformat = ipprefix + "%d"
@@ -272,14 +317,26 @@ class Cluster(object):
 
             binary = None
             if self.cassandra_version() >= '1.2':
-                binary = (ipformat % i, 9042)
+                if use_single_interface:
+                    #Always leave 9042 and 9043 clear, in case someone defaults to adding
+                    # a node with those ports
+                    binary = (ipformat % 1, 9042 + 2 + (i * 2))
+                else:
+                    binary = (ipformat % i, 9042)
             thrift = None
             if self.cassandra_version() < '4':
                 thrift = (ipformat % i, 9160)
+
+            storage_interface = ((ipformat % i), 7000)
+            if use_single_interface:
+                #Always leave 7000 and 7001 in case someone defaults to adding
+                #with those port numbers
+                storage_interface = (ipformat % 1, 7000 + 2 + (i * 2))
+
             node = self.create_node(name='node%s' % i,
                                     auto_bootstrap=False,
                                     thrift_interface=thrift,
-                                    storage_interface=(ipformat % i, 7000),
+                                    storage_interface=storage_interface,
                                     jmx_port=str(7000 + i * 100),
                                     remote_debug_port=str(2000 + i * 100) if debug else str(0),
                                     byteman_port=str(4000 + i * 100) if install_byteman else str(0),
@@ -316,6 +373,47 @@ class Cluster(object):
         new_tokens = [tk + (dc_count * 100) for tk in self.balanced_tokens(count)]
         tokens.extend(new_tokens)
         return tokens
+
+    def can_generate_tokens(self):
+        return (self.cassandra_version() >= '4'
+                    and (self.partitioner is None or ('Murmur3' in self.partitioner or 'Random' in self.partitioner))
+                    and ('num_tokens' in self._config_options
+                            and self._config_options['num_tokens'] is not None and int(self._config_options['num_tokens']) > 1))
+
+    def generated_tokens(self, dcs):
+        tokens = []
+        # all nodes are in rack1
+        current_dc = dcs[0]
+        node_count = 0
+        for dc in dcs:
+            if dc == current_dc:
+                node_count += 1
+            else:
+                self.generate_dc_tokens(node_count, tokens)
+                current_dc = dc
+                node_count = 1
+        self.generate_dc_tokens(node_count, tokens)
+        return tokens
+
+    def generate_dc_tokens(self, node_count, tokens):
+        if self.cassandra_version() < '4' or (self.partitioner and not ('Murmur3' in self.partitioner or 'Random' in self.partitioner)):
+            raise common.ArgumentError("generate-tokens script only for >=4.0 and Murmur3 or Random")
+        if not ('num_tokens' in self._config_options and self._config_options['num_tokens'] is not None and int(self._config_options['num_tokens']) > 1):
+            raise common.ArgumentError("Cannot use generate-tokens script without num_tokens > 1")
+
+        partitioner = 'RandomPartitioner' if ( self.partitioner and 'Random' in self.partitioner) else 'Murmur3Partitioner'
+        generate_tokens = common.join_bin(self.get_install_dir(), os.path.join('tools', 'bin'), 'generatetokens')
+        cmd_list = [generate_tokens, '-n', str(node_count), '-t', str(self._config_options.get("num_tokens")), '--rf', str(min(3,node_count)), '-p', partitioner]
+        process = subprocess.Popen(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=os.environ.copy())
+        # the first line is "Generating tokens for X nodes with" and can be ignored
+        process.stdout.readline()
+
+        for n in range(1,node_count+1):
+            stdout_output = re.sub(r'^.*?:', '', process.stdout.readline().decode("utf-8"))
+            node_tokens = stdout_output.replace('[','').replace(' ','').replace(']','').replace('\n','')
+            tokens.append(node_tokens)
+
+        common.debug("pregenerated tokens from cmd_list: {} are {}".format(str(cmd_list),tokens))
 
     def remove(self, node=None, gently=False):
         if node is not None:
@@ -356,7 +454,31 @@ class Cluster(object):
         return os.path.join(self.__path, self.name)
 
     def get_seeds(self):
-        return [s.network_interfaces['storage'][0] if isinstance(s, Node) else s for s in self.seeds]
+        if self.cassandra_version() >= '4.0':
+            #They might be overriding the storage port config now
+            storage_port = self._config_options.get("storage_port")
+            storage_interfaces = [s.network_interfaces['storage'] for s in self.seeds if isinstance(s, Node)]
+            seeds = []
+
+            #Convert node storage interfaces to IP strings and maybe replace the port
+            for storage_interface in storage_interfaces:
+                port = storage_port if storage_port is not None else str(storage_interface[1])
+                if ":" in storage_interface[0]:
+                    seeds.append("[" + storage_interface[0] + "]:" + port)
+                else:
+                    seeds.append(storage_interface[0] + ":" + port)
+
+            #For seeds that are strings need to update the port in the string
+            for seed in [string for string in self.seeds if not isinstance(string, Node)]:
+                url = urlparse("http://" + seed)
+                if storage_port is not None:
+                    seeds.append(url.hostname + ":" + str(storage_port))
+                else:
+                    seeds.append(seed)
+
+            return seeds
+        else:
+            return [s.network_interfaces['storage'][0] if isinstance(s, Node) else s for s in self.seeds]
 
     def show(self, verbose):
         msg = "Cluster: '{}'".format(self.name)
@@ -394,9 +516,12 @@ class Cluster(object):
                 if os.path.exists(node.logfilename()):
                     mark = node.mark_log()
 
+                # if the node is going to allocate_strategy_ tokens during start, then wait_for_binary_proto=True
+                node_wait_for_binary_proto = (self.can_generate_tokens() and self.use_vnodes and node.initial_token is None)
+
                 p = node.start(update_pid=False, jvm_args=jvm_args, jvm_version=jvm_version,
                                profile_options=profile_options, verbose=verbose, quiet_start=quiet_start,
-                               allow_root=allow_root)
+                               allow_root=allow_root, wait_for_binary_proto=node_wait_for_binary_proto)
 
                 # Prior to JDK8, starting every node at once could lead to a
                 # nanotime collision where the RNG that generates a node's tokens
@@ -412,7 +537,7 @@ class Cluster(object):
         else:
             for node, p, mark in started:
                 try:
-                    timeout=kwargs.get('timeout', int(os.environ.get('CCM_CLUSTER_START_DEFAULT_TIMEOUT', 60)))
+                    timeout=kwargs.get('timeout', DEFAULT_CLUSTER_WAIT_TIMEOUT_IN_SECS)
                     timeout=int(os.environ.get('CCM_CLUSTER_START_TIMEOUT_OVERRIDE', timeout))
                     start_message = "Listening for thrift clients..." if self.cassandra_version() < "2.2" else "Starting listening for CQL clients"
                     node.watch_log_for(start_message, timeout=timeout, process=p, verbose=verbose, from_mark=mark)
@@ -486,9 +611,18 @@ class Cluster(object):
                 node.nodetool(nodetool_cmd)
         return self
 
+    def allNativePortsMatch(self):
+        current_port = None
+        for node in self.nodes.values():
+            if current_port is None:
+                current_port = node.network_interfaces['binary'][1]
+            elif current_port != node.network_interfaces['binary'][1]:
+                return False
+        return True
+
     def stress(self, stress_options):
         stress = common.get_stress_bin(self.get_install_dir())
-        livenodes = [node.network_interfaces['storage'][0] for node in list(self.nodes.values()) if node.is_live()]
+        livenodes = [node.network_interfaces['binary'] for node in list(self.nodes.values()) if node.is_live()]
         if len(livenodes) == 0:
             print_("No live node")
             return
@@ -497,6 +631,12 @@ class Cluster(object):
             if '-d' not in stress_options:
                 nodes_options = ['-d', ",".join(livenodes)]
             args = [stress] + nodes_options + stress_options
+        elif self.cassandra_version() >= '4.0':
+            if '-node' not in stress_options:
+                args = [stress] + stress_options + ['-node']
+                if not self.allNativePortsMatch():
+                    args += ['allow_server_port_discovery']
+                args += [",".join([node[0] + ":" + str(node[1]) for node in livenodes])]
         else:
             if '-node' not in stress_options:
                 nodes_options = ['-node', ','.join(livenodes)]
@@ -512,9 +652,9 @@ class Cluster(object):
             pass
         return rc
 
-    def set_configuration_options(self, values=None):
+    def set_configuration_options(self, values=None, delete_empty=False, delete_always=False):
         if values is not None:
-            self._config_options = common.merge_configuration(self._config_options, values)
+            self._config_options = common.merge_configuration(self._config_options, values, delete_empty=delete_empty, delete_always=delete_always)
 
         self._persist_config()
         self.__update_topology_files()
@@ -624,15 +764,8 @@ class Cluster(object):
         for node in self.nodelist():
             if node.data_center is not None:
                 dcs.append((node.address(), node.data_center))
-
-        content = ""
-        for k, v in dcs:
-            content = "%s%s=%s:r1\n" % (content, k, v)
-
         for node in self.nodelist():
-            topology_file = os.path.join(node.get_conf_dir(), 'cassandra-topology.properties')
-            with open(topology_file, 'w') as f:
-                f.write(content)
+            node.update_topology(dcs)
 
     def enable_ssl(self, ssl_path, require_client_auth):
         shutil.copyfile(os.path.join(ssl_path, 'keystore.jks'), os.path.join(self.get_path(), 'keystore.jks'))

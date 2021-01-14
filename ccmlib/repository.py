@@ -418,9 +418,10 @@ def compile_version(version, target_dir, verbose=False):
                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             ret_val, stdout, stderr = log_info(process, logger)
             attempt += 1
-        if ret_val is not 0:
+        if ret_val != 0:
             raise CCMError('Error compiling Cassandra. See {logfile} or run '
-                           '"ccm showlastlog" for details'.format(logfile=logfile))
+                           '"ccm showlastlog" for details, stdout=\'{stdout}\' stderr=\'{stderr}\''.format(
+                logfile=logfile, stdout=stdout.decode(), stderr=stderr.decode()))
     except OSError as e:
         raise CCMError("Error compiling Cassandra. Is ant installed? See %s for details" % logfile)
 
@@ -445,7 +446,7 @@ def compile_version(version, target_dir, verbose=False):
                 process = subprocess.Popen([platform_binary('ant'), 'stress-build'], cwd=target_dir, env=env,
                                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 ret_val, _, _ = log_info(process, logger)
-                if ret_val is not 0:
+                if ret_val != 0:
                     raise CCMError("Error compiling Cassandra stress tool.  "
                                    "See %s for details (you will still be able to use ccm "
                                    "but not the stress related commands)" % logfile)
@@ -583,6 +584,6 @@ def get_logger(log_file):
 def log_info(process, logger):
     stdoutdata, stderrdata = process.communicate()
     rc = process.returncode
-    logger.info(stdoutdata)
-    logger.info(stderrdata)
+    logger.info(stdoutdata.decode())
+    logger.info(stderrdata.decode())
     return rc, stdoutdata, stderrdata
