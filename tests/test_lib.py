@@ -265,6 +265,20 @@ class TestCCMLib(ccmtest.Tester):
         self.cluster.clear()
         self.cluster.stop()
 
+    def test_node_start_with_non_default_timeout(self):
+        self.cluster = Cluster(CLUSTER_PATH, "nodestarttimeout", cassandra_version='git:trunk')
+        self.cluster.populate(1)
+        node = self.cluster.nodelist()[0]
+
+        try:
+            node.start(wait_for_binary_proto=0)
+            self.fail("timeout expected with 0s startup timeout")
+        except ccmlib.node.TimeoutError:
+            pass
+        finally:
+            self.cluster.cleanup()
+            self.cluster.clear()
+            self.cluster.stop()
 
 class TestRunCqlsh(ccmtest.Tester):
 

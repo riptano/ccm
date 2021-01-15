@@ -636,31 +636,38 @@ class Node(object):
         log for 'Starting listening for CQL clients' before checking for the
         interface to be listening.
 
-        Emits a warning if not listening after NODE_WAIT_TIMEOUT_IN_SECS seconds.
+        Emits a warning if not listening after given timeout (default NODE_WAIT_TIMEOUT_IN_SECS) in seconds.
         """
+        timeout = kwargs.get('timeout', NODE_WAIT_TIMEOUT_IN_SECS)
+        kwargs['timeout'] = timeout
+
         if self.cluster.version() >= '1.2':
             self.watch_log_for("Starting listening for CQL clients", **kwargs)
 
         binary_itf = self.network_interfaces['binary']
-        if not common.check_socket_listening(binary_itf, timeout=NODE_WAIT_TIMEOUT_IN_SECS):
+        if not common.check_socket_listening(binary_itf, timeout=timeout):
             warnings.warn("Binary interface %s:%s is not listening after %s seconds, node may have failed to start."
-                          % (binary_itf[0], binary_itf[1], NODE_WAIT_TIMEOUT_IN_SECS))
+                          % (binary_itf[0], binary_itf[1], timeout))
 
     def wait_for_thrift_interface(self, **kwargs):
         """
         Waits for the Thrift interface to be listening.
 
-        Emits a warning if not listening after NODE_WAIT_TIMEOUT_IN_SECS seconds.
+        Emits a warning if not listening after given timeout (default NODE_WAIT_TIMEOUT_IN_SECS) in seconds.
         """
         if self.cluster.version() >= '4':
-            return;
+            return
+
+        timeout = kwargs.get('timeout', NODE_WAIT_TIMEOUT_IN_SECS)
+        kwargs['timeout'] = timeout
 
         self.watch_log_for("Listening for thrift clients...", **kwargs)
 
         thrift_itf = self.network_interfaces['thrift']
-        if not common.check_socket_listening(thrift_itf, timeout=NODE_WAIT_TIMEOUT_IN_SECS):
+        if not common.check_socket_listening(thrift_itf, timeout=timeout):
             warnings.warn(
-                "Thrift interface {}:{} is not listening after {} seconds, node may have failed to start.".format(thrift_itf[0], thrift_itf[1], NODE_WAIT_TIMEOUT_IN_SECS))
+                "Thrift interface {}:{} is not listening after {} seconds, node may have failed to start.".format(
+                    thrift_itf[0], thrift_itf[1], timeout))
 
     def get_launch_bin(self):
         cdir = self.get_install_dir()
