@@ -239,6 +239,11 @@ class Cluster(object):
             self.seeds.append(node)
         self._update_config()
         node.data_center = data_center
+        if data_center is None:
+            for existing_node in self.nodelist():
+                if existing_node.data_center is not None:
+                    raise common.ArgumentError('Please specify the DC this node should be added to')
+
         node.set_log_level(self.__log_level)
 
         for debug_class in self._debug:
@@ -248,6 +253,7 @@ class Cluster(object):
 
         if data_center is not None:
             self.__update_topology_files()
+
         node._save()
         return self
 
