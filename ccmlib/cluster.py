@@ -249,6 +249,10 @@ class Cluster(object):
 
         if data_center is not None:
             self.__update_topology_files()
+        else:
+            for existingNode in self.nodelist():
+                if existingNode.data_center is not None:
+                    raise common.ArgumentError('Cannot create node %s without specifying which DC to join' % node.name)
         node._save()
         return self
 
