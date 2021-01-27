@@ -261,6 +261,15 @@ The completion script relies on ccm having two hidden subcommands:
 
 Thus, it will not work with sufficiently old versions of ccm.
 
+Testing
+-----------------------
+
+Create a virtual environment i.e.:
+
+    python3 -m venv ccm
+
+Pip install all dependecies and `mock`. You'll also need `nose` if `nosetests` is not installed in your system already. Now cd into the `tests` folder and run `nosetests`.
+
 Remote debugging
 -----------------------
 

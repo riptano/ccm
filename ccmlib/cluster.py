@@ -247,8 +247,16 @@ class Cluster(object):
         for trace_class in self._trace:
             node.set_log_level("TRACE", trace_class)
 
+        if data_center is None:
+            for existingNode in self.nodelist():
+                if existingNode.data_center is not None:
+                    node.data_center = "dc1"
+                    data_center = "dc1"
+                    break;
+
         if data_center is not None:
             self.__update_topology_files()
+
         node._save()
         return self
 
