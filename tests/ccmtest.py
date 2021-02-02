@@ -14,7 +14,10 @@ class Tester(TestCase):
         if hasattr(self, 'cluster'):
             try:
                 for node in self.cluster.nodelist():
-                    self.assertListEqual(node.grep_log_for_errors(), [])
+                    try:
+                        self.assertListEqual(node.grep_log_for_errors(), [])
+                    except FileNotFoundError:
+                        continue
             finally:
                 test_path = self.cluster.get_path()
                 self.cluster.remove()

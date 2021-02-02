@@ -280,6 +280,28 @@ class TestCCMLib(ccmtest.Tester):
             self.cluster.clear()
             self.cluster.stop()
 
+    def test_dc_mandatory_on_multidc(self):
+        self.cluster = Cluster(CLUSTER_PATH, "mandatorydc", cassandra_version='git:trunk')
+        self.cluster.populate([1, 1])
+
+        node3 = self.cluster.create_node(name='node3',
+                                         auto_bootstrap=True,
+                                         thrift_interface=('127.0.0.3', 9160),
+                                         storage_interface=('127.0.0.3', 7000),
+                                         jmx_port='7300',
+                                         remote_debug_port='0',
+                                         initial_token=None,
+                                         binary_interface=('127.0.0.3', 9042))
+        try:
+            self.cluster.add(node3, is_seed=False)
+            self.fail("Should have requested a mandatory DC when adding the node.")
+        except ccmlib.common.ArgumentError:
+            pass
+        finally:
+            self.cluster.cleanup()
+            self.cluster.clear()
+            self.cluster.stop()
+
 class TestRunCqlsh(ccmtest.Tester):
 
     def setUp(self):
