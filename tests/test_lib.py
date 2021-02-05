@@ -292,15 +292,8 @@ class TestCCMLib(ccmtest.Tester):
                                          remote_debug_port='0',
                                          initial_token=None,
                                          binary_interface=('127.0.0.3', 9042))
-        try:
+        with self.assertRaisesRegexp(ccmlib.common.ArgumentError, 'Please specify the DC this node should be added to'):
             self.cluster.add(node3, is_seed=False)
-            self.fail("Should have requested a mandatory DC when adding the node.")
-        except ccmlib.common.ArgumentError:
-            pass
-        finally:
-            self.cluster.cleanup()
-            self.cluster.clear()
-            self.cluster.stop()
 
 class TestRunCqlsh(ccmtest.Tester):
 
