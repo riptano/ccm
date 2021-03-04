@@ -1,6 +1,10 @@
 import os
 from unittest import TestCase
 
+try:
+    FileNotFoundError
+except NameError:
+    FileNotFoundError = IOError  # Python 2.7 compatibility
 
 class Tester(TestCase):
 
