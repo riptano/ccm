@@ -835,10 +835,8 @@ class Node(object):
                                          info_message=self.name)
         # Need to update the node's environment for nodetool and other tools.
         # (e.g. the host's JAVA_HOME points to Java 11, but the node's software is only for Java 8)
-        self.__environment_variables = {
-            'JAVA_HOME': env['JAVA_HOME'],
-            'PATH': env['PATH']
-        }
+        for k in 'JAVA_HOME', 'PATH':
+            self.__environment_variables[k] = env[k]
 
         common.info("Starting {} with JAVA_HOME={} java_version={} cassandra_version={}, install_dir={}"
                     .format(self.name, env['JAVA_HOME'], common.get_jdk_version_int(),
