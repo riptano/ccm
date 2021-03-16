@@ -63,6 +63,9 @@ class DseCluster(Cluster):
             else:
                 common.warning("{} does not contain a 'dse_credentials' section.".format(dse_credentials_file))
 
+    def get_seeds(self):
+        return [s.network_interfaces['storage'][0] if isinstance(s, DseNode) else s for s in self.seeds]
+
     def hasOpscenter(self):
         return os.path.exists(os.path.join(self.get_path(), 'opscenter'))
 
