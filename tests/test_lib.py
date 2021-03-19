@@ -238,7 +238,7 @@ class TestUpdateJavaVersion(ccmtest.Tester):
 
 class TestCCMLib(ccmtest.Tester):
     def test2(self):
-        self.cluster = Cluster(CLUSTER_PATH, "test2", cassandra_version='git:trunk')
+        self.cluster = Cluster(CLUSTER_PATH, "test2", version='git:trunk')
         self.cluster.populate(2)
         self.cluster.start()
 
@@ -248,20 +248,22 @@ class TestCCMLib(ccmtest.Tester):
             name = "non-existing node"
 
         self.cluster.remove(FakeNode())
-        [node1, node2] = self.cluster.nodelist()
+        node1 = self.cluster.nodelist()[0]
         self.cluster.remove(node1)
         self.cluster.show(True)
         self.cluster.show(False)
 
-        # self.cluster.stress([])
         self.cluster.compact()
         self.cluster.drain()
         self.cluster.stop()
 
     def test3(self):
-        self.cluster = Cluster(CLUSTER_PATH, "test3", cassandra_version='git:trunk')
+        self.cluster = Cluster(CLUSTER_PATH, "test3", version='git:trunk')
         self.cluster.populate(2)
         self.cluster.start()
+        node1 = self.cluster.nodelist()[0]
+        self.cluster.stress(['write', 'n=100', 'no-warmup', '-rate', 'threads=4'])
+        self.cluster.stress(['write', 'n=100', 'no-warmup', '-rate', 'threads=4', '-node', node1.ip_addr])
         self.cluster.cleanup()
 
         self.cluster.clear()
