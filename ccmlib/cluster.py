@@ -630,22 +630,24 @@ class Cluster(object):
         stress = common.get_stress_bin(self.get_install_dir())
         livenodes = [node.network_interfaces['binary'] for node in list(self.nodes.values()) if node.is_live()]
         if len(livenodes) == 0:
-            print_("No live node")
+            print_('No live node')
             return
+
+        def live_node_ips_joined():
+            return ','.join(n[0] for n in livenodes)
+
         nodes_options = []
         if self.cassandra_version() <= '2.1':
             if '-d' not in stress_options:
-                nodes_options = ['-d', ",".join(livenodes)]
+                nodes_options = ['-d', live_node_ips_joined()]
             args = [stress] + nodes_options + stress_options
         elif self.cassandra_version() >= '4.0':
             if '-node' not in stress_options:
-                args = [stress] + stress_options + ['-node']
-                if not self.allNativePortsMatch():
-                    args += ['allow_server_port_discovery']
-                args += [",".join([node[0] + ":" + str(node[1]) for node in livenodes])]
+                nodes_options = ['-node', ','.join([node[0] + ':' + str(node[1]) for node in livenodes])]
+            args = [stress] + stress_options + nodes_options
         else:
             if '-node' not in stress_options:
-                nodes_options = ['-node', ','.join(livenodes)]
+                nodes_options = ['-node', live_node_ips_joined()]
             args = [stress] + stress_options + nodes_options
         rc = None
         try:
