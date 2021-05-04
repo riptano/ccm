@@ -586,8 +586,10 @@ class Node(object):
                         self.raise_node_error_if_cassandra_process_is_terminated()
 
                     TimeoutError.raise_if_passed(start=start, timeout=timeout, node=self.name,
-                                                 msg="Missing: {exprs} not found in {f}:\nTail: {tail}".format(
-                                                     exprs=[e.pattern for e in tofind], f=filename, tail=reads[:50]))
+                                                 msg="Missing: {exprs} not found in {f}:\n Head: {head}\n Tail: {tail}"
+                                                 .format(
+                                                     exprs=[e.pattern for e in tofind], f=filename,
+                                                     head=reads[:50], tail="..."+reads[len(reads)-150:]))
 
                     # Checking "process" is tricky, as it may be itself terminated e.g. after "verbose"
                     # or if there is some race condition between log checking and start process finish
