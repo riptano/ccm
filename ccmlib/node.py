@@ -660,7 +660,7 @@ class Node(object):
         nodes are marked UP. This method works similarly to watch_log_for_death.
         """
         tofind = nodes if isinstance(nodes, list) else [nodes]
-        tofind = ["%s.* now UP" % node.address_for_version(self.get_cassandra_version()) for node in tofind]
+        tofind = ["%s.* is now UP" % node.address_for_version(self.get_cassandra_version()) for node in tofind]
         self.watch_log_for(tofind, from_mark=from_mark, timeout=timeout, filename=filename)
 
     def raise_node_error_if_cassandra_process_is_terminated(self):
