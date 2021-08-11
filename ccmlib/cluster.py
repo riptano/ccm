@@ -762,6 +762,7 @@ class Cluster(object):
         extension.append_to_cluster_config(self, config_map)
         with open(filename, 'w') as f:
             yaml.safe_dump(config_map, f)
+            common.debug("{} was updated.".format(filename))
 
     def __update_pids(self, started):
         for node, p, _ in started:
