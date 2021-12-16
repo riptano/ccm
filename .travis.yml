@@ -1,10 +1,11 @@
-dist: xenial
 language: python
 python:
-  - "2.7.13"
-  - "3.6.10"
-  - "3.7.7"
-  - "3.8.2"
+  - "2.7.18"
+  - "3.6.15"
+  - "3.7.12"
+  - "3.8.12"
+  - "3.9.9"
+  - "3.10.1"
 install:
   - pip install pylint six pyyaml paramiko psutil
 script:
