@@ -144,7 +144,8 @@ CCM_41_YAML_OPTIONS = {'permissions_validity_in_ms': 'permissions_validity',
                        'enable_transient_replication': 'transient_replication_enabled',
                        'enable_sasi_indexes': 'sasi_indexes_enabled',
                        'enable_drop_compact_storage': 'drop_compact_storage_enabled',
-                       'enable_user_defined_functions_threads': 'user_defined_functions_threads_enabled'}
+                       'enable_user_defined_functions_threads': 'user_defined_functions_threads_enabled',
+                       'enable_legacy_ssl_storage_port': 'legacy_ssl_storage_port_enabled'}
 
 
 class InfoFilter(logging.Filter):
