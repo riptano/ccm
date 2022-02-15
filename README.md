@@ -81,7 +81,7 @@ There is also a [Homebrew package][brew] available:
     brew install ccm
 
   [pip]: https://pypi.org/project/ccm/
-  [brew]: https://github.com/Homebrew/homebrew/blob/master/Library/Formula/ccm.rb
+  [brew]: https://github.com/Homebrew/homebrew-core/blob/master/Formula/ccm.rb
 
 Usage
 -----
