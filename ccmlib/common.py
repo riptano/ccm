@@ -129,6 +129,7 @@ CCM_41_YAML_OPTIONS = {'permissions_validity_in_ms': 'permissions_validity',
                        'key_cache_size_in_mb': 'key_cache_size',
                        'row_cache_size_in_mb': 'row_cache_size',
                        'counter_cache_size_in_mb': 'counter_cache_size',
+                       'cache_load_timeout_seconds': 'cache_load_timeout',
                        'networking_cache_size_in_mb': 'networking_cache_size',
                        'file_cache_size_in_mb': 'file_cache_size',
                        'index_summary_capacity_in_mb': 'index_summary_capacity',
@@ -145,7 +146,13 @@ CCM_41_YAML_OPTIONS = {'permissions_validity_in_ms': 'permissions_validity',
                        'enable_sasi_indexes': 'sasi_indexes_enabled',
                        'enable_drop_compact_storage': 'drop_compact_storage_enabled',
                        'enable_user_defined_functions_threads': 'user_defined_functions_threads_enabled',
-                       'enable_legacy_ssl_storage_port': 'legacy_ssl_storage_port_enabled'}
+                       'enable_legacy_ssl_storage_port': 'legacy_ssl_storage_port_enabled',
+                       'native_transport_max_concurrent_requests_in_bytes_per_ip': 'native_transport_max_request_data_in_flight_per_ip',
+                       'native_transport_max_concurrent_requests_in_bytes': 'native_transport_max_request_data_in_flight',
+                       'user_defined_function_warn_timeout': 'user_defined_functions_warn_timeout',
+                       'user_defined_function_fail_timeout': 'user_defined_functions_fail_timeout',
+                       'validation_preview_purge_head_start_in_sec': 'validation_preview_purge_head_start',
+                       'native_transport_receive_queue_capacity_in_bytes': 'native_transport_receive_queue_capacity'}
 
 
 class InfoFilter(logging.Filter):
