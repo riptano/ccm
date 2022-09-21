@@ -16,8 +16,7 @@ Requirements
 - six (https://pypi.org/project/six/ -- `sudo easy_install six`)
 - ant (http://ant.apache.org/, on Mac OS X, `brew install ant`)
 - psutil (https://pypi.org/project/psutil/)
-- Java (which version depends on the version of Cassandra you plan to use. If
-  unsure, use Java 7 as it is known to work with current versions of Cassandra).
+- Java
 - If you want to create multiple node clusters, the simplest way is to use
   multiple loopback aliases. On modern linux distributions you probably don't
   need to do anything, but on Mac OS X, you will need to create the aliases with
@@ -264,11 +263,13 @@ Thus, it will not work with sufficiently old versions of ccm.
 Testing
 -----------------------
 
+Tests are written with the standard library _unittest_ package.
+
 Create a virtual environment i.e.:
 
     python3 -m venv ccm
 
-Pip install all dependecies and `mock`. You'll also need `nose` if `nosetests` is not installed in your system already. Now cd into the `tests` folder and run `nosetests`.
+Pip install all dependecies and `mock`. Now cd into the `tests` folder and run `python -m unittest`.
 
 Remote debugging
 -----------------------
