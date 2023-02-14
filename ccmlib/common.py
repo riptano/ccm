@@ -854,6 +854,20 @@ def _get_jdk_version(version):
     ver_pattern = '\"(\d+).*\"'
     return re.search(ver_pattern, str(version)).groups()[0] + ".0"
 
+def get_supported_jdk_versions(install_dir):
+    """
+    Return the supported java versions from build.xml
+    Only works in > 4.1
+    """
+    build = os.path.join(install_dir, 'build.xml')
+    with open(build) as f:
+        for line in f:
+            match = re.search('name="java\.supported" value="([0-9.,]+)"', line)
+            if match:
+                versions = match.group(1).split(',')
+                versions = ['8' if v == '1.8' else v for v in versions]
+                return versions
+    raise ValueError("did not find java.supported in build.xml!")
 
 def update_java_version(jvm_version=None, install_dir=None, cassandra_version=None, env=None,
                         for_build=False, info_message=None):
@@ -909,7 +923,11 @@ def _update_java_version(current_java_version, current_java_home_version,
         .format(info_message, current_java_version, current_java_home_version, jvm_version, for_build,
                 cassandra_version, install_dir, env))
 
-    if cassandra_version >= '4.0':
+    if cassandra_version >= '4.2':
+        build_versions = get_supported_jdk_versions(install_dir)
+        run_versions = get_supported_jdk_versions(install_dir)
+
+    if '4.0' <= cassandra_version < '4.2':
         if not os_env:
             os_env = os.environ
         if 'CASSANDRA_USE_JDK11' not in os_env:
@@ -962,7 +980,11 @@ def _update_java_version(current_java_version, current_java_home_version,
 
 def assert_jdk_valid_for_cassandra_version(cassandra_version):
     jdk_version = float(get_jdk_version())
-    if cassandra_version >= '4.0':
+    if cassandra_version >= '4.2':
+        if jdk_version < 11 or 11 < jdk_version < 17:
+            error('Cassandra {} requires Java 11 or Java 17, found Java {}'.format(cassandra_version, jdk_version))
+            exit(1)
+    elif '4.0' <= cassandra_version < '4.2':
         if jdk_version < 1.8 or 9 <= jdk_version < 11:
             error('Cassandra {} requires Java 1.8 or Java 11, found Java {}'.format(cassandra_version, jdk_version))
             exit(1)
