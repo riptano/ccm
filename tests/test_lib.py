@@ -264,7 +264,6 @@ class TestCCMLib(ccmtest.Tester):
         node1 = self.cluster.nodelist()[0]
         self.cluster.stress(['write', 'n=100', 'no-warmup', '-rate', 'threads=4'])
         self.cluster.stress(['write', 'n=100', 'no-warmup', '-rate', 'threads=4', '-node', node1.ip_addr])
-        self.cluster.cleanup()
 
         self.cluster.clear()
         self.cluster.stop()
@@ -280,7 +279,6 @@ class TestCCMLib(ccmtest.Tester):
         except ccmlib.node.TimeoutError:
             pass
         finally:
-            self.cluster.cleanup()
             self.cluster.clear()
             self.cluster.stop()
 
