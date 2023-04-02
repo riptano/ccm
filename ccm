@@ -76,7 +76,7 @@ if arg1 == 'show-node-cmds':
     exit(1)
 
 # Attempt a remote execution (only occurs if remote options are valid and ssh_host is set)
-# NOTE: An execption may be thrown if there are errors
+# NOTE: An exception may be thrown if there are errors
 if PARAMIKO_IS_AVAILABLE:
     remote_options, ccm_args = get_remote_options();
     if not remote_options is None and not remote_options.ssh_host is None:
