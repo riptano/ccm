@@ -1163,7 +1163,7 @@ class Node(object):
             if only_data and d != "commitlogs":
                 for dir in os.listdir(full_dir):
                     keyspace_dir = os.path.join(full_dir, dir)
-                    if os.path.isdir(keyspace_dir) and dir != "system":
+                    if os.path.isdir(keyspace_dir) and dir != "system" and dir != "system_cluster_metadata":
                         for f in os.listdir(keyspace_dir):
                             table_dir = os.path.join(keyspace_dir, f)
                             shutil.rmtree(table_dir)
