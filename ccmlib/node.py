@@ -982,7 +982,7 @@ class Node(object):
         """
         Wait for all compactions to finish on this node.
         """
-        pattern = re.compile("pending tasks: 0")
+        pattern = re.compile("pending tasks:? +0")
         start = time.time()
         while time.time() - start < timeout:
             output, err, rc = self.nodetool("compactionstats")
