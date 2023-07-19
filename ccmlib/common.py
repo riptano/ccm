@@ -865,7 +865,7 @@ def get_supported_jdk_versions(install_dir):
             match = re.search('name="java\.supported" value="([0-9.,]+)"', line)
             if match:
                 versions = match.group(1).split(',')
-                versions = ['8' if v == '1.8' else v for v in versions]
+                versions = [8 if v == '1.8' else int(v) for v in versions]
                 return versions
     raise ValueError("did not find java.supported in build.xml!")
 
