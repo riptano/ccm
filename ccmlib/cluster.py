@@ -668,9 +668,9 @@ class Cluster(object):
         self.__update_topology_files()
         return self
 
-    def set_batch_commitlog(self, enabled):
+    def set_batch_commitlog(self, enabled, use_batch_window=True):
         for node in list(self.nodes.values()):
-            node.set_batch_commitlog(enabled=enabled)
+            node.set_batch_commitlog(enabled=enabled, use_batch_window=use_batch_window)
 
     def set_dse_configuration_options(self, values=None):
         raise common.ArgumentError('Cannot set DSE configuration options on a Cassandra cluster')
