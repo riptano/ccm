@@ -923,9 +923,15 @@ def _update_java_version(current_java_version, current_java_home_version,
         .format(info_message, current_java_version, current_java_home_version, jvm_version, for_build,
                 cassandra_version, install_dir, env))
 
+    # this won't work with DSE versions
     if cassandra_version >= '4.2':
-        build_versions = get_supported_jdk_versions(install_dir)
-        run_versions = get_supported_jdk_versions(install_dir)
+        if os.path.exists(os.path.join(install_dir, 'build.xml')):
+            build_versions = get_supported_jdk_versions(install_dir)
+            run_versions = get_supported_jdk_versions(install_dir)
+        else:
+            # binary installs we don't know which jdks are supported any more
+            build_versions = [current_java_version]
+            run_versions = [current_java_version]
 
     if '4.0' <= cassandra_version < '4.2':
         if not os_env:
