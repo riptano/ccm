@@ -372,23 +372,35 @@ class Node(object):
         self.__environment_variables[key] = value
         self.import_config_files()
 
-    def set_batch_commitlog(self, enabled=False):
+    def set_batch_commitlog(self, enabled=False, use_batch_window=True):
         """
         The batch_commitlog option gives an easier way to switch to batch
         commitlog (since it requires setting 2 options and unsetting one).
         """
         if enabled:
-            values = {
-                "commitlog_sync": "batch",
-                "commitlog_sync_batch_window_in_ms": 5,
-                "commitlog_sync_period_in_ms": None
-            }
+            if use_batch_window:
+                values = {
+                    "commitlog_sync": "batch",
+                    "commitlog_sync_batch_window_in_ms": 5,
+                    "commitlog_sync_period_in_ms": None
+                }
+            else:
+               values = {
+                    "commitlog_sync": "batch",
+                    "commitlog_sync_period_in_ms": None
+               }
         else:
-            values = {
-                "commitlog_sync": "periodic",
-                "commitlog_sync_batch_window_in_ms": None,
-                "commitlog_sync_period_in_ms": 10000
-            }
+            if use_batch_window:
+                values = {
+                    "commitlog_sync": "periodic",
+                    "commitlog_sync_batch_window_in_ms": None,
+                    "commitlog_sync_period_in_ms": 10000
+                }
+            else:
+                values = {
+                    "commitlog_sync": "periodic",
+                    "commitlog_sync_period_in_ms": 10000
+                }
 
         self.set_configuration_options(values)
 
@@ -982,7 +994,7 @@ class Node(object):
         """
         Wait for all compactions to finish on this node.
         """
-        pattern = re.compile("pending tasks: 0")
+        pattern = re.compile("pending tasks:? +0")
         start = time.time()
         while time.time() - start < timeout:
             output, err, rc = self.nodetool("compactionstats")

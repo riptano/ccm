@@ -11,3 +11,4 @@ ccm.egg-info/
 .tox/
 .coverage
 dse_creds.txt
+.eggs/
