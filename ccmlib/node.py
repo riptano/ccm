@@ -1860,7 +1860,7 @@ class Node(object):
                         common.replace_in_file(f, remote_debug_port_pattern, remote_debug_options)
 
         if self.byteman_port != '0':
-            byteman_jar = glob.glob(os.path.join(self.get_install_dir(), 'build', 'lib', 'jars', 'byteman-[0-9]*.jar'))[0]
+            byteman_jar = self.resolve_byteman_jar(self.get_install_dir())
             agent_string = "-javaagent:{}=listener:true,boot:{},port:{}".format(byteman_jar, byteman_jar, str(self.byteman_port))
             if self.byteman_startup_script is not None:
                 agent_string = agent_string + ",script:{}".format(self.byteman_startup_script)
@@ -2201,12 +2201,22 @@ class Node(object):
                                         'bin',
                                         'java'))
         byteman_cmd.append('-cp')
-        byteman_cmd.append(glob.glob(os.path.join(cdir, 'build', 'lib', 'jars', 'byteman-submit-[0-9]*.jar'))[0])
+        byteman_cmd.append(self.resolve_byteman_jar(self.get_install_dir(), submit = True))
         byteman_cmd.append('org.jboss.byteman.agent.submit.Submit')
         byteman_cmd.append('-p')
         byteman_cmd.append(self.byteman_port)
         byteman_cmd += opts
+        logger.debug(byteman_cmd)
         return subprocess.Popen(byteman_cmd)
+
+    def resolve_byteman_jar(self, install_dir, submit=False):
+        jar = "byteman-[0-9]*.jar"
+        if submit:
+            jar = "byteman-submit-[0-9]*.jar"
+        byteman_lib_jars = glob.glob(os.path.join(install_dir, 'build', 'lib', 'jars', jar))
+        if not byteman_lib_jars:
+            byteman_lib_jars = glob.glob(os.path.join(install_dir, 'build', 'test', 'lib', 'jars', jar))
+        return byteman_lib_jars[0]
 
     def byteman_submit(self, opts):
         p = self.byteman_submit_process(opts=opts)
