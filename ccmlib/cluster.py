@@ -14,16 +14,10 @@ from collections import OrderedDict, defaultdict, namedtuple
 from distutils.version import LooseVersion #pylint: disable=import-error, no-name-in-module
 
 import yaml
-from six import print_
 
 from ccmlib import common, extension, repository
 from ccmlib.node import Node, NodeError, TimeoutError
-from six.moves import xrange
-try:
-    from urllib.parse import urlparse
-except ImportError:
-    from urlparse import urlparse
-
+from urllib.parse import urlparse
 
 DEFAULT_CLUSTER_WAIT_TIMEOUT_IN_SECS = int(os.environ.get('CCM_CLUSTER_START_DEFAULT_TIMEOUT', 120))
 
@@ -280,13 +274,13 @@ class Cluster(object):
             for c in nodes:
                 i = i + 1
                 node_count = node_count + c
-                for x in xrange(0, c):
+                for x in range(0, c):
                     dcs.append('dc%d' % i)
 
         if node_count < 1:
             raise common.ArgumentError('invalid node count %s' % nodes)
 
-        for i in xrange(1, node_count + 1):
+        for i in range(1, node_count + 1):
             if 'node%s' % i in list(self.nodes.values()):
                 raise common.ArgumentError('Cannot create existing node node%s' % i)
 
@@ -296,7 +290,7 @@ class Cluster(object):
                 #  this saves time, as allocating tokens during first start is slow and non-concurrent
                 if self.can_generate_tokens() and not 'CASSANDRA_TOKEN_PREGENERATION_DISABLED' in self._environment_variables:
                     if len(dcs) <= 1:
-                        for x in xrange(0, node_count):
+                        for x in range(0, node_count):
                             dcs.append('dc1')
 
                     tokens = self.generated_tokens(dcs)
@@ -310,7 +304,7 @@ class Cluster(object):
         if not ipformat:
             ipformat = ipprefix + "%d"
 
-        for i in xrange(1, node_count + 1):
+        for i in range(1, node_count + 1):
             tk = None
             if tokens is not None and i - 1 < len(tokens):
                 tk = tokens[i - 1]
@@ -353,7 +347,7 @@ class Cluster(object):
 
     def balanced_tokens(self, node_count):
         if self.cassandra_version() >= '1.2' and (not self.partitioner or 'Murmur3' in self.partitioner):
-            ptokens = [(i * (2 ** 64 // node_count)) for i in xrange(0, node_count)]
+            ptokens = [(i * (2 ** 64 // node_count)) for i in range(0, node_count)]
             return [int(t - 2 ** 63) for t in ptokens]
         return [int(i * (2 ** 127 // node_count)) for i in range(0, node_count)]
 
@@ -485,15 +479,15 @@ class Cluster(object):
 
     def show(self, verbose):
         msg = "Cluster: '{}'".format(self.name)
-        print_(msg)
-        print_('-' * len(msg))
+        print(msg)
+        print('-' * len(msg))
         if len(list(self.nodes.values())) == 0:
-            print_("No node in this cluster yet")
+            print("No node in this cluster yet")
             return
         for node in list(self.nodes.values()):
             if verbose:
                 node.show(show_cluster=False)
-                print_("")
+                print("")
             else:
                 node.show(only_status=True)
 
@@ -630,7 +624,7 @@ class Cluster(object):
         stress = common.get_stress_bin(self.get_install_dir())
         livenodes = [node.network_interfaces['binary'] for node in list(self.nodes.values()) if node.is_live()]
         if len(livenodes) == 0:
-            print_('No live node')
+            print('No live node')
             return
 
         def live_node_ips_joined():
@@ -858,7 +852,7 @@ class Cluster(object):
             selected_nodes_names = []
 
         if len(self.nodes) == 0:
-            print_("There are no nodes in this cluster yet.")
+            print("There are no nodes in this cluster yet.")
             return
 
         nodes = sorted(list(self.nodes.values()), key=lambda node: node.name)

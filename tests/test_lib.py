@@ -1,7 +1,7 @@
 import sys
 import time
 
-from six import StringIO
+from io import StringIO
 
 import ccmlib
 from ccmlib.cluster import Cluster

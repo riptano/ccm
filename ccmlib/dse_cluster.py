@@ -8,8 +8,6 @@ import signal
 import subprocess
 import sys
 
-from six import iteritems, print_
-
 from ccmlib import common, repository
 from ccmlib.cluster import Cluster
 from ccmlib.dse_node import DseNode
