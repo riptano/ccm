@@ -40,8 +40,8 @@ small Cassandra cluster on a local box. It is meant for testing a Cassandra clus
 New to Python development?
 --------------------------
 Python has moved on since CCM started development. `pip` is the new `easy_install`,
-Use pyenv and virtualenv are recommended for managing multiple Python versions and 
-dependencies for specific Python applications.
+Use pyenv and virtualenv for managing multiple Python versions and dependencies for specific 
+Python applications.
 
 A typical MacOS setup would be to install [Homebrew](https://docs.brew.sh/Installation),
 then `brew install pyenv` to manage Python versions and then use virtualenv to
