@@ -381,7 +381,8 @@ class Cluster(object):
     def can_generate_tokens(self):
         return (self.cassandra_version() >= '4'
                     and (self.partitioner is None or ('Murmur3' in self.partitioner or 'Random' in self.partitioner))
-                    and self._more_than_one_token_configured)
+                    and self._more_than_one_token_configured
+                    and not 'CASSANDRA_TOKEN_PREGENERATION_DISABLED' in self._environment_variables)
 
     def generated_tokens(self, dcs):
         tokens = []
