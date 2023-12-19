@@ -8,7 +8,6 @@ from __future__ import absolute_import
 import argparse
 import logging
 import os
-import re
 import select
 import stat
 import sys
@@ -56,7 +55,7 @@ def execute_ccm_remotely(remote_options, ccm_args):
                       error occured during ssh connection
     """
     if not PARAMIKO_IS_AVAILABLE:
-        logging.warn("Paramiko is not Availble: Skipping remote execution of CCM command")
+        logging.warning("Paramiko is not Available: Skipping remote execution of CCM command")
         return None, None
 
     # Create the SSH client

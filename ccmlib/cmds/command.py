@@ -6,8 +6,6 @@ import sys
 from optparse import BadOptionError, Option, OptionParser
 import re
 
-from six import print_
-
 from ccmlib import common
 from ccmlib.cluster_factory import ClusterFactory
 from ccmlib.remote import PARAMIKO_IS_AVAILABLE, get_remote_usage
@@ -73,16 +71,16 @@ class Cmd(object):
 
         if cluster_name:
             if len(args) == 0:
-                print_('Missing cluster name', file=sys.stderr)
+                print('Missing cluster name', file=sys.stderr)
                 parser.print_help()
                 exit(1)
             if not re.match('^[a-zA-Z0-9_-]+$', args[0]):
-                print_('Cluster name should only contain word characters or hyphen', file=sys.stderr)
+                print('Cluster name should only contain word characters or hyphen', file=sys.stderr)
                 exit(1)
             self.name = args[0]
         if node_name:
             if len(args) == 0:
-                print_('Missing node name', file=sys.stderr)
+                print('Missing node name', file=sys.stderr)
                 parser.print_help()
                 exit(1)
             self.name = args[0]
@@ -93,7 +91,7 @@ class Cmd(object):
                 try:
                     self.node = self.cluster.nodes[self.name]
                 except KeyError:
-                    print_('Unknown node %s in cluster %s' % (self.name, self.cluster.name), file=sys.stderr)
+                    print('Unknown node %s in cluster %s' % (self.name, self.cluster.name), file=sys.stderr)
                     exit(1)
 
     def run(self):
@@ -114,10 +112,10 @@ class Cmd(object):
     def _load_current_cluster(self):
         name = common.current_cluster_name(self.path)
         if name is None:
-            print_('No currently active cluster (use ccm cluster switch)')
+            print('No currently active cluster (use ccm cluster switch)')
             exit(1)
         try:
             return ClusterFactory.load(self.path, name)
         except common.LoadError as e:
-            print_(str(e))
+            print(str(e))
             exit(1)

@@ -19,9 +19,7 @@ import sys
 import time
 from distutils.version import LooseVersion  #pylint: disable=import-error, no-name-in-module
 
-import six
 import yaml
-from six import print_
 
 BIN_DIR = "bin"
 CASSANDRA_CONF_DIR = "conf"
@@ -493,7 +491,7 @@ def is_ps_unrestricted():
             p = subprocess.Popen(['powershell', 'Get-ExecutionPolicy'], stdout=subprocess.PIPE)
         # pylint: disable=E0602
         except WindowsError:
-            print_("ERROR: Could not find powershell. Is it in your path?")
+            print("ERROR: Could not find powershell. Is it in your path?")
         if "Unrestricted" in str(p.communicate()[0]):
             return True
         else:
@@ -737,7 +735,7 @@ def copy_file(src_file, dst_file):
     try:
         shutil.copy2(src_file, dst_file)
     except (IOError, shutil.Error) as e:
-        print_(str(e), file=sys.stderr)
+        print(str(e), file=sys.stderr)
         exit(1)
 
 
@@ -840,7 +838,7 @@ def get_jdk_version(process='java'):
     try:
         version = subprocess.check_output([process, '-version'], stderr=subprocess.STDOUT)
     except OSError:
-        print_("ERROR: Could not find java. Is it in your path?")
+        print("ERROR: Could not find java. Is it in your path?")
         exit(1)
 
     return _get_jdk_version(version)
@@ -1035,11 +1033,11 @@ def merge_configuration(original, changes, delete_empty=True, delete_always=Fals
 
 
 def is_int_not_bool(obj):
-    return isinstance(obj, six.integer_types) and not isinstance(obj, bool)
+    return isinstance(obj, int) and not isinstance(obj, bool)
 
 
 def is_intlike(obj):
-    return isinstance(obj, six.integer_types)
+    return isinstance(obj, int)
 
 
 def wait_for_any_log(nodes, pattern, timeout, filename='system.log', marks=None):

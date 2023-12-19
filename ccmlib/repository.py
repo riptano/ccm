@@ -15,8 +15,6 @@ import tempfile
 import time
 from distutils.version import LooseVersion  # pylint: disable=import-error, no-name-in-module
 
-from six import next, print_
-
 try:
     import ConfigParser
 except ImportError:
@@ -26,7 +24,7 @@ from ccmlib import common
 from ccmlib.common import (ArgumentError, CCMError,
                            update_java_version, get_default_path, get_jdk_version_int,
                            platform_binary, rmdirs, validate_install_dir)
-from six.moves import urllib
+import urllib
 
 DSE_ARCHIVE = "http://downloads.datastax.com/enterprise/dse-%s-bin.tar.gz"
 OPSC_ARCHIVE = "http://downloads.datastax.com/enterprise/opscenter-%s.tar.gz"
@@ -139,7 +137,7 @@ def validate(path):
 
 
 def clone_development(git_repo, version, verbose=False, alias=False):
-    print_(git_repo, version)
+    print(git_repo, version)
     target_dir = directory_name(version)
     assert target_dir
     if 'github' in version:
@@ -261,7 +259,7 @@ def clone_development(git_repo, version, verbose=False, alias=False):
             rmdirs(target_dir)
             common.error("Deleted {} due to error".format(target_dir))
         except:
-            print_('Building C* version {version} failed. Attempted to delete {target_dir} '
+            print('Building C* version {version} failed. Attempted to delete {target_dir} '
                    'but failed. This will need to be manually deleted'.format(
                        version=version,
                        target_dir=target_dir
@@ -558,7 +556,7 @@ def __download(url, target, username=None, password=None, show_progress=False):
         if show_progress:
             status = r"%10d  [%3.2f%%]" % (file_size_dl, file_size_dl * 100. / file_size)
             status = chr(8) * (len(status) + 1) + status
-            print_(status, end='')
+            print(status, end='')
 
     f.close()
     u.close()
