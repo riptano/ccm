@@ -85,6 +85,7 @@ class ClusterCreateCmd(Cmd):
         (['-D', "--debug-log"], {'action': "store_true", 'dest': "debug_log", 'help': "With -n, sets debug logging on the new nodes", 'default': False}),
         (['-T', "--trace-log"], {'action': "store_true", 'dest': "trace_log", 'help': "With -n, sets trace logging on the new nodes", 'default': False}),
         (["--vnodes"], {'action': "store_true", 'dest': "vnodes", 'help': "Use vnodes (256 tokens). Must be paired with -n.", 'default': False}),
+        (['--configuration-yaml'], {'type': "string", 'action': "store", 'dest': "configuration_yaml", 'help': "Name of the configuration file to use, e.g. cassandra_latest.yaml", 'default': None}),
         (['--jvm_arg'], {'action': "append", 'dest': "jvm_args", 'help': "Specify a JVM argument", 'default': []}),
         (['--profile'], {'action': "store_true", 'dest': "profile", 'help': "Start the nodes with yourkit agent (only valid with -s)", 'default': False}),
         (['--profile-opts'], {'type': "string", 'action': "store", 'dest': "profile_options", 'help': "Yourkit options when profiling", 'default': None}),
@@ -132,9 +133,9 @@ class ClusterCreateCmd(Cmd):
     def run(self):
         try:
             if self.options.dse or (not self.options.version and common.isDse(self.options.install_dir)):
-                cluster = DseCluster(self.path, self.name, install_dir=self.options.install_dir, version=self.options.version, dse_username=self.options.dse_username, dse_password=self.options.dse_password, dse_credentials_file=self.options.dse_credentials_file, opscenter=self.options.opscenter, verbose=self.options.verbose)
+                cluster = DseCluster(self.path, self.name, install_dir=self.options.install_dir, version=self.options.version, dse_username=self.options.dse_username, dse_password=self.options.dse_password, dse_credentials_file=self.options.dse_credentials_file, opscenter=self.options.opscenter, verbose=self.options.verbose, configuration_yaml=self.options.configuration_yaml)
             else:
-                cluster = Cluster(self.path, self.name, install_dir=self.options.install_dir, version=self.options.version, verbose=self.options.verbose)
+                cluster = Cluster(self.path, self.name, install_dir=self.options.install_dir, version=self.options.version, verbose=self.options.verbose, configuration_yaml=self.options.configuration_yaml)
         except OSError as e:
             import traceback
             print_('Cannot create cluster: %s\n%s' % (str(e), traceback.format_exc()), file=sys.stderr)

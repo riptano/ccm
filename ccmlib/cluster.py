@@ -29,7 +29,7 @@ DEFAULT_CLUSTER_WAIT_TIMEOUT_IN_SECS = int(os.environ.get('CCM_CLUSTER_START_DEF
 
 class Cluster(object):
 
-    def __init__(self, path, name, partitioner=None, install_dir=None, create_directory=True, version=None, verbose=False, derived_cassandra_version=None, **kwargs):
+    def __init__(self, path, name, partitioner=None, install_dir=None, create_directory=True, version=None, verbose=False, derived_cassandra_version=None, configuration_yaml=None, **kwargs):
         self.name = name
         self.nodes = {}
         self.seeds = []
@@ -42,6 +42,7 @@ class Cluster(object):
         self.__path = path
         self.__version = None
         self.use_vnodes = False
+        self.configuration_yaml = configuration_yaml
         # Classes that are to follow the respective logging level
         self._debug = []
         self._trace = []
@@ -381,7 +382,8 @@ class Cluster(object):
     def can_generate_tokens(self):
         return (self.cassandra_version() >= '4'
                     and (self.partitioner is None or ('Murmur3' in self.partitioner or 'Random' in self.partitioner))
-                    and self._more_than_one_token_configured)
+                    and self._more_than_one_token_configured
+                    and not 'CASSANDRA_TOKEN_PREGENERATION_DISABLED' in self._environment_variables)
 
     def generated_tokens(self, dcs):
         tokens = []
@@ -668,6 +670,12 @@ class Cluster(object):
         self.__update_topology_files()
         return self
 
+    def set_configuration_yaml(self, configuration_yaml):
+        self.configuration_yaml = configuration_yaml
+        self._persist_config()
+        self.__update_topology_files()
+        return self
+
     def set_batch_commitlog(self, enabled, use_batch_window=True):
         for node in list(self.nodes.values()):
             node.set_batch_commitlog(enabled=enabled, use_batch_window=use_batch_window)
@@ -755,6 +763,7 @@ class Cluster(object):
             'misc_config_options' : self._misc_config_options,
             'log_level': self.__log_level,
             'use_vnodes': self.use_vnodes,
+            'configuration_yaml': self.configuration_yaml,
             'datadirs': self.data_dir_count,
             'environment_variables': self._environment_variables,
             'cassandra_version': str(self.cassandra_version())

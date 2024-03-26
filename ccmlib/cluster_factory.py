@@ -51,6 +51,8 @@ class ClusterFactory():
                 cluster.__log_level = data['log_level']
             if 'use_vnodes' in data:
                 cluster.use_vnodes = data['use_vnodes']
+            if 'configuration_yaml' in data:
+                cluster.configuration_yaml = data['configuration_yaml']
             if 'datadirs' in data:
                 cluster.data_dir_count = int(data['datadirs'])
             extension.load_from_cluster_config(cluster, data)

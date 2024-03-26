@@ -22,7 +22,7 @@ except ImportError:
 
 class DseCluster(Cluster):
 
-    def __init__(self, path, name, partitioner=None, install_dir=None, create_directory=True, version=None, dse_username=None, dse_password=None, dse_credentials_file=None, opscenter=None, verbose=False, derived_cassandra_version=None):
+    def __init__(self, path, name, partitioner=None, install_dir=None, create_directory=True, version=None, dse_username=None, dse_password=None, dse_credentials_file=None, opscenter=None, verbose=False, derived_cassandra_version=None, configuration_yaml=None):
         self.dse_username = None
         self.dse_password = None
         self.load_credentials_from_file(dse_credentials_file)
@@ -36,7 +36,7 @@ class DseCluster(Cluster):
         if derived_cassandra_version:
             self._cassandra_version = derived_cassandra_version
 
-        super(DseCluster, self).__init__(path, name, partitioner, install_dir, create_directory, version, verbose)
+        super(DseCluster, self).__init__(path, name, partitioner, install_dir, create_directory, version, verbose, configuration_yaml=configuration_yaml)
 
     def load_from_repository(self, version, verbose):
         if self.opscenter is not None:

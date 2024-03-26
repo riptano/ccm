@@ -257,6 +257,13 @@ class Node(object):
         """
         return os.path.join(self.get_path(), 'conf')
 
+    def get_conf_file(self):
+        """
+        Returns the path to the configuration yaml file
+        """
+        conf_name = self.cluster.configuration_yaml
+        return os.path.join(self.get_conf_dir(), conf_name if conf_name is not None else common.CASSANDRA_CONF)
+
     def address_for_current_version_slashy(self):
         """
         Returns the address formatted for the current version (InetAddress/InetAddressAndPort.toString)
@@ -1164,7 +1171,7 @@ class Node(object):
             if only_data and d != "commitlogs":
                 for dir in os.listdir(full_dir):
                     keyspace_dir = os.path.join(full_dir, dir)
-                    if os.path.isdir(keyspace_dir) and dir != "system":
+                    if os.path.isdir(keyspace_dir) and dir != "system" and dir != "system_cluster_metadata":
                         for f in os.listdir(keyspace_dir):
                             table_dir = os.path.join(keyspace_dir, f)
                             shutil.rmtree(table_dir)
@@ -1707,7 +1714,7 @@ class Node(object):
             yaml.safe_dump(values, f)
 
     def _update_yaml(self):
-        conf_file = os.path.join(self.get_conf_dir(), common.CASSANDRA_CONF)
+        conf_file = self.get_conf_file()
         with open(conf_file, 'r') as f:
             data = yaml.safe_load(f)
 
@@ -1755,8 +1762,9 @@ class Node(object):
         # Merge options with original yaml data.
         data = common.merge_configuration(data, full_options)
 
-        with open(conf_file, 'w') as f:
-            yaml.safe_dump(data, f, default_flow_style=False)
+        conf_dest = os.path.join(self.get_conf_dir(), common.CASSANDRA_CONF)
+        with open(conf_dest, 'w') as f:
+            yaml.safe_dump(data, f, default_flow_style=False, sort_keys=False)
 
     def _update_log4j(self):
         append_pattern = 'log4j.appender.R.File='
@@ -2151,7 +2159,7 @@ class Node(object):
                 ' + \' -Dcassandra.config=file:"\' + "///$env:CASSANDRA_CONF" + \'/cassandra.yaml"\'')  # -Dcassandra.config=file:"///$env:CASSANDRA_CONF/cassandra.yaml"
 
     def get_conf_option(self, option):
-        conf_file = os.path.join(self.get_conf_dir(), common.CASSANDRA_CONF)
+        conf_file = self.get_conf_file()
         with open(conf_file, 'r') as f:
             data = yaml.safe_load(f)
 
