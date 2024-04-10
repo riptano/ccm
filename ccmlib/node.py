@@ -148,7 +148,7 @@ class Node(object):
         self.__install_dir = None
         self.__global_log_level = None
         self.__classes_log_level = {}
-        self.__environment_variables = environment_variables or {}
+        self.__environment_variables = environment_variables.copy() or {}
         self.__original_java_home = None
         self.__conf_updated = False
 
