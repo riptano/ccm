@@ -149,6 +149,7 @@ class Node(object):
         self.__global_log_level = None
         self.__classes_log_level = {}
         self.__environment_variables = environment_variables or {}
+        self.__environment_variables = self.__environment_variables.copy()
         self.__original_java_home = None
         self.__conf_updated = False
 
