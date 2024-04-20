@@ -10,7 +10,6 @@ import subprocess
 import time
 
 import yaml
-from six import iteritems, print_
 
 from ccmlib import common, extension, repository
 from ccmlib.node import (Node, NodeError, ToolError,

@@ -6,8 +6,6 @@ import signal
 import subprocess
 import sys
 
-from six import print_
-
 from ccmlib import common, repository
 from ccmlib.cluster import Cluster
 from ccmlib.cluster_factory import ClusterFactory
@@ -106,18 +104,18 @@ class ClusterCreateCmd(Cmd):
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, cluster_name=True)
         if options.ipprefix and options.ipformat:
-            parser.print_help()
+            parser.printhelp()
             parser.error("%s and %s may not be used together" % (parser.get_option('-i'), parser.get_option('-I')))
         self.nodes = parse_populate_count(options.nodes)
         if self.options.vnodes and self.nodes is None:
-            print_("Can't set --vnodes if not populating cluster in this command.")
-            parser.print_help()
+            print("Can't set --vnodes if not populating cluster in this command.")
+            parser.printhelp()
             exit(1)
         if not options.version:
             try:
                 common.validate_install_dir(options.install_dir)
             except ArgumentError:
-                parser.print_help()
+                parser.printhelp()
                 parser.error("%s is not a valid cassandra directory. You must define a cassandra dir or version." % options.install_dir)
 
             if common.get_dse_version(options.install_dir) is not None:
@@ -126,7 +124,7 @@ class ClusterCreateCmd(Cmd):
                 common.assert_jdk_valid_for_cassandra_version(common.get_version_from_build(options.install_dir))
 
         if common.is_win() and os.path.exists('c:\windows\system32\java.exe'):
-            print_("""WARN: c:\windows\system32\java.exe exists.
+            print("""WARN: c:\windows\system32\java.exe exists.
                 This may cause registry issues, and jre7 to be used, despite jdk8 being installed.
                 """)
 
@@ -138,7 +136,7 @@ class ClusterCreateCmd(Cmd):
                 cluster = Cluster(self.path, self.name, install_dir=self.options.install_dir, version=self.options.version, verbose=self.options.verbose, configuration_yaml=self.options.configuration_yaml)
         except OSError as e:
             import traceback
-            print_('Cannot create cluster: %s\n%s' % (str(e), traceback.format_exc()), file=sys.stderr)
+            print('Cannot create cluster: %s\n%s' % (str(e), traceback.format_exc()), file=sys.stderr)
             exit(1)
 
         if self.options.partitioner:
@@ -157,7 +155,7 @@ class ClusterCreateCmd(Cmd):
 
         if not self.options.no_switch:
             common.switch_cluster(self.path, self.name)
-            print_('Current cluster is now: %s' % self.name)
+            print('Current cluster is now: %s' % self.name)
 
         if not (self.options.ipprefix or self.options.ipformat):
             self.options.ipformat = '127.0.0.%d'
@@ -191,9 +189,9 @@ class ClusterCreateCmd(Cmd):
                         details = ""
                         if not self.options.debug_log:
                             details = " (you can use --debug for more information)"
-                        print_("Error starting nodes, see above for details%s" % details, file=sys.stderr)
+                        print("Error starting nodes, see above for details%s" % details, file=sys.stderr)
             except common.ArgumentError as e:
-                print_(str(e), file=sys.stderr)
+                print(str(e), file=sys.stderr)
                 exit(1)
 
 
@@ -219,19 +217,19 @@ class ClusterAddCmd(Cmd):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True, load_node=False)
 
         if options.itfs is None and (options.thrift_itf is None or options.storage_itf is None or options.binary_itf is None):
-            print_('Missing thrift and/or storage and/or binary protocol interfaces or jmx port', file=sys.stderr)
-            parser.print_help()
+            print('Missing thrift and/or storage and/or binary protocol interfaces or jmx port', file=sys.stderr)
+            parser.printhelp()
             exit(1)
 
         if self.name in self.cluster.nodes:
-            print_("This name is already in use. Choose another.", file=sys.stderr)
-            parser.print_help()
+            print("This name is already in use. Choose another.", file=sys.stderr)
+            parser.printhelp()
             exit(1)
 
         used_jmx_ports = [node.jmx_port for node in self.cluster.nodelist()]
         if options.jmx_port in used_jmx_ports:
-            print_("This JMX port is already in use. Choose another.", file=sys.stderr)
-            parser.print_help()
+            print("This JMX port is already in use. Choose another.", file=sys.stderr)
+            parser.printhelp()
             exit(1)
 
         if options.thrift_itf is None:
@@ -246,7 +244,7 @@ class ClusterAddCmd(Cmd):
         self.binary = common.parse_interface(options.binary_itf, 9042)
 
         if self.binary[0] != self.thrift[0]:
-            print_('Cannot set a binary address different from the thrift one', file=sys.stderr)
+            print('Cannot set a binary address different from the thrift one', file=sys.stderr)
             exit(1)
 
         self.jmx_port = options.jmx_port
@@ -261,7 +259,7 @@ class ClusterAddCmd(Cmd):
                 node = Node(self.name, self.cluster, self.options.bootstrap, self.thrift, self.storage, self.jmx_port, self.remote_debug_port, self.initial_token, binary_interface=self.binary)
             self.cluster.add(node, self.options.is_seed, self.options.data_center)
         except common.ArgumentError as e:
-            print_(str(e), file=sys.stderr)
+            print(str(e), file=sys.stderr)
             exit(1)
 
 
@@ -281,12 +279,12 @@ class ClusterPopulateCmd(Cmd):
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, load_cluster=True)
         if options.ipprefix and options.ipformat:
-            parser.print_help()
+            parser.printhelp()
             parser.error("%s and %s may not be used together" % (parser.get_option('-i'), parser.get_option('-I')))
 
         self.nodes = parse_populate_count(options.nodes)
         if self.nodes is None:
-            parser.print_help()
+            parser.printhelp()
             parser.error("Not a valid number of nodes. Did you use -n?")
             exit(1)
 
@@ -303,7 +301,7 @@ class ClusterPopulateCmd(Cmd):
 
             self.cluster.populate(self.nodes, self.options.debug, use_vnodes=self.options.vnodes, ipprefix=self.options.ipprefix, ipformat=self.options.ipformat, install_byteman=self.options.install_byteman)
         except common.ArgumentError as e:
-            print_(str(e), file=sys.stderr)
+            print(str(e), file=sys.stderr)
             exit(1)
 
 
@@ -323,7 +321,7 @@ class ClusterListCmd(Cmd):
 
         for dir in os.listdir(self.path):
             if os.path.exists(os.path.join(self.path, dir, 'cluster.conf')):
-                print_(" %s%s" % ('*' if current == dir else ' ', dir))
+                print(" %s%s" % ('*' if current == dir else ' ', dir))
 
 
 class ClusterSwitchCmd(Cmd):
@@ -334,7 +332,7 @@ class ClusterSwitchCmd(Cmd):
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, cluster_name=True)
         if not os.path.exists(os.path.join(self.path, self.name, 'cluster.conf')):
-            print_("%s does not appear to be a valid cluster (use ccm list to view valid clusters)" % self.name, file=sys.stderr)
+            print("%s does not appear to be a valid cluster (use ccm list to view valid clusters)" % self.name, file=sys.stderr)
             exit(1)
 
     def run(self):
@@ -385,7 +383,7 @@ class ClusterRemoveCmd(Cmd):
             self.other_cluster = args[0]
             if not os.path.exists(os.path.join(
                     self.path, self.other_cluster, 'cluster.conf')):
-                print_("%s does not appear to be a valid cluster"
+                print("%s does not appear to be a valid cluster"
                        " (use ccm list to view valid clusters)"
                        % self.other_cluster, file=sys.stderr)
                 exit(1)
@@ -429,7 +427,7 @@ class ClusterLivesetCmd(Cmd):
 
     def run(self):
         l = [node.network_interfaces['storage'][0] for node in list(self.cluster.nodes.values()) if node.is_live()]
-        print_(",".join(l))
+        print(",".join(l))
 
 
 class ClusterSetdirCmd(Cmd):
@@ -451,11 +449,11 @@ class ClusterSetdirCmd(Cmd):
             if self.options.node:
                 target = self.cluster.nodes.get(self.options.node)
                 if not target:
-                    print_("Node not found: %s" % self.options.node)
+                    print("Node not found: %s" % self.options.node)
                     return
             target.set_install_dir(install_dir=self.options.install_dir, version=self.options.version, verbose=True)
         except common.ArgumentError as e:
-            print_(str(e), file=sys.stderr)
+            print(str(e), file=sys.stderr)
             exit(1)
 
 
@@ -492,9 +490,9 @@ class ClusterStartCmd(Cmd):
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, load_cluster=True)
         if self.options.deprecate:
-            print_("WARN: --wait-other-notice is deprecated. Please see the help text.")
+            print("WARN: --wait-other-notice is deprecated. Please see the help text.")
         if self.options.no_wait and (self.options.wait_for_binary_proto or self.options.deprecate):
-            print_("ERROR: --no-wait was specified alongside one or more wait options. This is invalid.")
+            print("ERROR: --no-wait was specified alongside one or more wait options. This is invalid.")
             exit(1)
 
     def run(self):
@@ -506,7 +504,7 @@ class ClusterStartCmd(Cmd):
                     profile_options['options'] = self.options.profile_options
 
             if len(self.cluster.nodes) == 0:
-                print_("No node in this cluster yet. Use the populate command before starting.")
+                print("No node in this cluster yet. Use the populate command before starting.")
                 exit(1)
 
             if self.cluster.start(no_wait=self.options.no_wait,
@@ -520,13 +518,13 @@ class ClusterStartCmd(Cmd):
                 details = ""
                 if not self.options.verbose:
                     details = " (you can use --verbose for more information)"
-                print_("Error starting nodes, see above for details%s" % details, file=sys.stderr)
+                print("Error starting nodes, see above for details%s" % details, file=sys.stderr)
                 exit(1)
         except NodeError as e:
-            print_(str(e), file=sys.stderr)
-            print_("Standard error output is:", file=sys.stderr)
+            print(str(e), file=sys.stderr)
+            print("Standard error output is:", file=sys.stderr)
             for line in e.process.stderr_file.readlines():
-                print_(line.rstrip('\n'), file=sys.stderr)
+                print(line.rstrip('\n'), file=sys.stderr)
             exit(1)
 
 
@@ -552,9 +550,9 @@ class ClusterStopCmd(Cmd):
                 sys.stdout.write("The following nodes were not running: ")
                 for node in not_running:
                     sys.stdout.write(node.name + " ")
-                print_("")
+                print("")
         except NodeError as e:
-            print_(str(e), file=sys.stderr)
+            print(str(e), file=sys.stderr)
             exit(1)
 
 
@@ -603,7 +601,7 @@ class ClusterStressCmd(Cmd):
             rc = self.cluster.stress(self.stress_options)
             exit(rc)
         except Exception as e:
-            print_(e, file=sys.stderr)
+            print(e, file=sys.stderr)
             exit(1)
 
 
@@ -624,11 +622,11 @@ class ClusterUpdateconfCmd(Cmd):
         try:
             self.setting = common.parse_settings(args, literal_yaml=self.options.literal_yaml)
             if self.options.cl_batch and self.options.cl_periodic:
-                print_("Can't set commitlog to be both batch and periodic.{}".format(os.linesep))
-                parser.print_help()
+                print("Can't set commitlog to be both batch and periodic.{}".format(os.linesep))
+                parser.printhelp()
                 exit(1)
         except common.ArgumentError as e:
-            print_(str(e), file=sys.stderr)
+            print(str(e), file=sys.stderr)
             exit(1)
 
     def run(self):
@@ -663,7 +661,7 @@ class ClusterUpdatedseconfCmd(Cmd):
         try:
             self.setting = common.parse_settings(args, literal_yaml=self.options.literal_yaml)
         except common.ArgumentError as e:
-            print_(str(e), file=sys.stderr)
+            print(str(e), file=sys.stderr)
             exit(1)
 
     def run(self):
@@ -692,17 +690,17 @@ class ClusterUpdatelog4jCmd(Cmd):
             if self.log4jpath is None:
                 raise KeyError("[Errno] -p or --path <path of new log4j congiguration file> is not provided")
         except common.ArgumentError as e:
-            print_(str(e), file=sys.stderr)
+            print(str(e), file=sys.stderr)
             exit(1)
         except KeyError as e:
-            print_(str(e), file=sys.stderr)
+            print(str(e), file=sys.stderr)
             exit(1)
 
     def run(self):
         try:
             self.cluster.update_log4j(self.log4jpath)
         except common.ArgumentError as e:
-            print_(str(e), file=sys.stderr)
+            print(str(e), file=sys.stderr)
             exit(1)
 
 
@@ -759,8 +757,8 @@ class ClusterSetlogCmd(Cmd):
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, load_cluster=True)
         if len(args) == 0:
-            print_('Missing log level', file=sys.stderr)
-            parser.print_help()
+            print('Missing log level', file=sys.stderr)
+            parser.printhelp()
             exit(1)
         self.level = args[0]
 
@@ -768,7 +766,7 @@ class ClusterSetlogCmd(Cmd):
         try:
             self.cluster.set_log_level(self.level, self.options.class_name)
         except common.ArgumentError as e:
-            print_(str(e), file=sys.stderr)
+            print(str(e), file=sys.stderr)
             exit(1)
 
 
@@ -784,8 +782,8 @@ class ClusterInvalidatecacheCmd(Cmd):
         try:
             common.invalidate_cache()
         except Exception as e:
-            print_(str(e), file=sys.stderr)
-            print_("Error while deleting cache. Please attempt manually.")
+            print(str(e), file=sys.stderr)
+            print("Error while deleting cache. Please attempt manually.")
             exit(1)
 
 
@@ -802,7 +800,7 @@ class ClusterChecklogerrorCmd(Cmd):
             errors = node.grep_log_for_errors()
             for mylist in errors:
                 for line in mylist:
-                    print_(line)
+                    print(line)
 
 
 class ClusterShowlastlogCmd(Cmd):
@@ -832,7 +830,7 @@ class ClusterJconsoleCmd(Cmd):
         try:
             subprocess.call(cmds, stderr=sys.stderr)
         except OSError:
-            print_("Could not start jconsole. Please make sure jconsole can be found in your $PATH.")
+            print("Could not start jconsole. Please make sure jconsole can be found in your $PATH.")
             exit(1)
 
 
@@ -847,18 +845,18 @@ class ClusterSetworkloadCmd(Cmd):
         valid_workloads = ['cassandra', 'solr', 'hadoop', 'spark', 'dsefs', 'cfs', 'graph']
         for workload in self.workloads:
             if workload not in valid_workloads:
-                print_(workload, ' is not a valid workload')
+                print(workload, ' is not a valid workload')
                 exit(1)
 
     def run(self):
         try:
             if len(self.cluster.nodes) == 0:
-                print_("No node in this cluster yet. Use the populate command before starting.")
+                print("No node in this cluster yet. Use the populate command before starting.")
                 exit(1)
             for node in list(self.cluster.nodes.values()):
                 node.set_workloads(workloads=self.workloads)
         except common.ArgumentError as e:
-            print_(str(e), file=sys.stderr)
+            print(str(e), file=sys.stderr)
             exit(1)
 
 class ClusterEnableaossCmd(Cmd):
@@ -873,6 +871,6 @@ class ClusterEnableaossCmd(Cmd):
         try:
             self.cluster.enable_aoss()
         except Exception as e:
-            print_(str(e), file=sys.stderr)
+            print(str(e), file=sys.stderr)
             exit(1)
 

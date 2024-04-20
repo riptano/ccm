@@ -6,8 +6,6 @@ import signal
 import subprocess
 import sys
 
-from six import print_
-
 from ccmlib import common
 from ccmlib.cmds.command import Cmd
 from ccmlib.node import NodeError
@@ -112,14 +110,14 @@ class NodeSetlogCmd(Cmd):
     def validate(self, parser, options, args):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
         if len(args) == 1:
-            print_('Missing log level', file=sys.stderr)
-            parser.print_help()
+            print('Missing log level', file=sys.stderr)
+            parser.printhelp()
         self.level = args[1]
 
         try:
             self.class_name = options.class_name
         except common.ArgumentError as e:
-            print_(str(e), file=sys.stderr)
+            print(str(e), file=sys.stderr)
             exit(1)
 
     def run(self):
@@ -127,7 +125,7 @@ class NodeSetlogCmd(Cmd):
             self.node.set_log_level(self.level, self.class_name)
 
         except common.ArgumentError as e:
-            print_(str(e), file=sys.stderr)
+            print(str(e), file=sys.stderr)
             exit(1)
 
 
@@ -179,11 +177,11 @@ class NodeStartCmd(Cmd):
                             quiet_start=self.options.quiet_start,
                             allow_root=self.options.allow_root)
         except NodeError as e:
-            print_(str(e), file=sys.stderr)
-            print_("Standard error output is:", file=sys.stderr)
+            print(str(e), file=sys.stderr)
+            print("Standard error output is:", file=sys.stderr)
             e.process.stderr_file.seek(0)
             for line in e.process.stderr_file.readlines():
-                print_(line.rstrip('\n'), file=sys.stderr)
+                print(line.rstrip('\n'), file=sys.stderr)
             exit(1)
 
 
@@ -204,10 +202,10 @@ class NodeStopCmd(Cmd):
     def run(self):
         try:
             if not self.node.stop(wait=not self.options.no_wait, signal_event=self.options.signal_event):
-                print_("%s is not running" % self.name, file=sys.stderr)
+                print("%s is not running" % self.name, file=sys.stderr)
                 exit(1)
         except NodeError as e:
-            print_(str(e), file=sys.stderr)
+            print(str(e), file=sys.stderr)
             exit(1)
 
 
@@ -221,8 +219,8 @@ class _NodeToolCmd(Cmd):
 
     def run(self):
         stdout, stderr, rc = self.node.nodetool(self.nodetool_cmd + " " + " ".join((self.args[1:])))
-        print_(stderr)
-        print_(stdout)
+        print(stderr)
+        print(stdout)
 
 
 class NodeNodetoolCmd(_NodeToolCmd):
@@ -231,8 +229,8 @@ class NodeNodetoolCmd(_NodeToolCmd):
 
     def run(self):
         stdout, stderr, rc = self.node.nodetool(" ".join(self.args[1:]))
-        print_(stderr)
-        print_(stdout)
+        print(stderr)
+        print(stdout)
 
 
 class NodeRingCmd(_NodeToolCmd):
@@ -305,8 +303,8 @@ class _DseToolCmd(Cmd):
 
     def run(self):
         stdout, stderr, rc = self.node.dsetool(self.dsetool_cmd + " " + " ".join((self.args[1:])))
-        print_(stderr)
-        print_(stdout)
+        print(stderr)
+        print(stdout)
 
 
 class NodeDsetoolCmd(_DseToolCmd):
@@ -315,8 +313,8 @@ class NodeDsetoolCmd(_DseToolCmd):
 
     def run(self):
         stdout, stderr, rc = self.node.dsetool(" ".join(self.args[1:]))
-        print_(stderr)
-        print_(stdout)
+        print(stderr)
+        print(stdout)
 
 
 class NodeCqlshCmd(Cmd):
@@ -394,8 +392,8 @@ class NodeJsonCmd(Cmd):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
         self.keyspace = options.keyspace
         if self.keyspace is None:
-            print_("You must specify a keyspace.")
-            parser.print_help()
+            print("You must specify a keyspace.")
+            parser.printhelp()
             exit(1)
         self.outfile = args[-1] if len(args) >= 2 else None
         self.column_families = options.cfs.split(',') if options.cfs else None
@@ -418,7 +416,7 @@ class NodeJsonCmd(Cmd):
                                           enumerate_keys=self.options.enumerate_keys,
                                           command=True)
         except common.ArgumentError as e:
-            print_(e, file=sys.stderr)
+            print(e, file=sys.stderr)
 
 
 class NodeSstablesplitCmd(Cmd):
@@ -441,13 +439,13 @@ class NodeSstablesplitCmd(Cmd):
         self.datafiles = None
         if options.cfs is not None:
             if self.keyspace is None:
-                print_("You need a keyspace (option -k) if you specify column families", file=sys.stderr)
+                print("You need a keyspace (option -k) if you specify column families", file=sys.stderr)
                 exit(1)
             self.column_families = options.cfs.split(',')
 
         if len(args) > 1:
             if self.column_families is None:
-                print_("You need a column family (option -c) if you specify datafiles", file=sys.stderr)
+                print("You need a column family (option -c) if you specify datafiles", file=sys.stderr)
                 exit(1)
             self.datafiles = args[1:]
 
@@ -473,20 +471,20 @@ class NodeGetsstablesCmd(Cmd):
         self.datafiles = None
         if options.tables is not None:
             if self.keyspace is None:
-                print_("You need a keyspace (option -k) if you specify tables", file=sys.stderr)
+                print("You need a keyspace (option -k) if you specify tables", file=sys.stderr)
                 exit(1)
             self.tables = options.tables.split(',')
 
         if len(args) > 1:
             if self.tables is None:
-                print_("You need a tables (option -t) if you specify datafiles", file=sys.stderr)
+                print("You need a tables (option -t) if you specify datafiles", file=sys.stderr)
                 exit(1)
             self.datafiles = args[1:]
 
     def run(self):
         sstablefiles = self.node.get_sstablespath(datafiles=self.datafiles, keyspace=self.keyspace,
                                                   tables=self.tables)
-        print_('\n'.join(sstablefiles))
+        print('\n'.join(sstablefiles))
 
 
 class NodeUpdateconfCmd(Cmd):
@@ -507,11 +505,11 @@ class NodeUpdateconfCmd(Cmd):
         try:
             self.setting = common.parse_settings(args, literal_yaml=self.options.literal_yaml)
             if self.options.cl_batch and self.options.cl_periodic:
-                print_("Can't set commitlog to be both batch and periodic.{}".format(os.linesep))
-                parser.print_help()
+                print("Can't set commitlog to be both batch and periodic.{}".format(os.linesep))
+                parser.printhelp()
                 exit(1)
         except common.ArgumentError as e:
-            print_(str(e), file=sys.stderr)
+            print(str(e), file=sys.stderr)
             exit(1)
 
     def run(self):
@@ -546,7 +544,7 @@ class NodeUpdatedseconfCmd(Cmd):
         try:
             self.setting = common.parse_settings(args, literal_yaml=self.options.literal_yaml)
         except common.ArgumentError as e:
-            print_(str(e), file=sys.stderr)
+            print(str(e), file=sys.stderr)
             exit(1)
 
     def run(self):
@@ -574,17 +572,17 @@ class NodeUpdatelog4jCmd(Cmd):
             if self.log4jpath is None:
                 raise KeyError("[Errno] -p or --path <path of new log4j configuration file> is not provided")
         except common.ArgumentError as e:
-            print_(str(e), file=sys.stderr)
+            print(str(e), file=sys.stderr)
             exit(1)
         except KeyError as e:
-            print_(str(e), file=sys.stderr)
+            print(str(e), file=sys.stderr)
             exit(1)
 
     def run(self):
         try:
             self.node.update_log4j(self.log4jpath)
         except common.ArgumentError as e:
-            print_(str(e), file=sys.stderr)
+            print(str(e), file=sys.stderr)
             exit(1)
 
 
@@ -602,7 +600,7 @@ class NodeStressCmd(Cmd):
         try:
             self.node.stress(self.stress_options)
         except OSError:
-            print_("Could not find stress binary (you may need to build it)", file=sys.stderr)
+            print("Could not find stress binary (you may need to build it)", file=sys.stderr)
 
 
 class NodeShuffleCmd(Cmd):
@@ -635,7 +633,7 @@ class NodeSetdirCmd(Cmd):
         try:
             self.node.set_install_dir(install_dir=self.options.install_dir, version=self.options.version, verbose=True)
         except common.ArgumentError as e:
-            print_(str(e), file=sys.stderr)
+            print(str(e), file=sys.stderr)
             exit(1)
 
 
@@ -650,14 +648,14 @@ class NodeSetworkloadCmd(Cmd):
         valid_workloads = ['cassandra', 'solr', 'hadoop', 'spark', 'dsefs', 'cfs', 'graph']
         for workload in self.workloads:
             if workload not in valid_workloads:
-                print_(workload, ' is not a valid workload')
+                print(workload, ' is not a valid workload')
                 exit(1)
 
     def run(self):
         try:
             self.node.set_workloads(workloads=self.workloads)
         except common.ArgumentError as e:
-            print_(str(e), file=sys.stderr)
+            print(str(e), file=sys.stderr)
             exit(1)
 
 
@@ -782,7 +780,7 @@ class NodeJconsoleCmd(Cmd):
         try:
             subprocess.call(cmds)
         except OSError:
-            print_("Could not start jconsole. Please make sure jconsole can be found in your $PATH.")
+            print("Could not start jconsole. Please make sure jconsole can be found in your $PATH.")
             exit(1)
 
 
@@ -795,7 +793,7 @@ class NodeVersionfrombuildCmd(Cmd):
         Cmd.validate(self, parser, options, args, node_name=True, load_cluster=True)
 
     def run(self):
-        print_(common.get_version_from_build(self.node.get_install_dir()))
+        print(common.get_version_from_build(self.node.get_install_dir()))
 
 
 class NodeBytemanCmd(Cmd):

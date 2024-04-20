@@ -21,11 +21,10 @@ from datetime import datetime
 from distutils.version import LooseVersion  #pylint: disable=import-error, no-name-in-module
 
 import yaml
-from six import print_, string_types
+#from six import string_types
 
 from ccmlib import common, extension
 from ccmlib.repository import setup
-from six.moves import xrange
 
 logger = logging.getLogger(__name__)
 
@@ -420,23 +419,23 @@ class Node(object):
         Print infos on this node configuration.
         """
         self.__update_status()
-        indent = ''.join([" " for i in xrange(0, len(self.name) + 2)])
-        print_("{}: {}".format(self.name, self.__get_status_string()))
+        indent = ''.join([" " for i in range(0, len(self.name) + 2)])
+        print("{}: {}".format(self.name, self.__get_status_string()))
         if not only_status:
             if show_cluster:
-                print_("{}{}={}".format(indent, 'cluster', self.cluster.name))
-            print_("{}{}={}".format(indent, 'auto_bootstrap', self.auto_bootstrap))
+                print("{}{}={}".format(indent, 'cluster', self.cluster.name))
+            print("{}{}={}".format(indent, 'auto_bootstrap', self.auto_bootstrap))
             if self.network_interfaces['thrift'] is not None:
-                print_("{}{}={}".format(indent, 'thrift', self.network_interfaces['thrift']))
+                print("{}{}={}".format(indent, 'thrift', self.network_interfaces['thrift']))
             if self.network_interfaces['binary'] is not None:
-                print_("{}{}={}".format(indent, 'binary', self.network_interfaces['binary']))
-            print_("{}{}={}".format(indent, 'storage', self.network_interfaces['storage']))
-            print_("{}{}={}".format(indent, 'jmx_port', self.jmx_port))
-            print_("{}{}={}".format(indent, 'remote_debug_port', self.remote_debug_port))
-            print_("{}{}={}".format(indent, 'byteman_port', self.byteman_port))
-            print_("{}{}={}".format(indent, 'initial_token', self.initial_token))
+                print("{}{}={}".format(indent, 'binary', self.network_interfaces['binary']))
+            print("{}{}={}".format(indent, 'storage', self.network_interfaces['storage']))
+            print("{}{}={}".format(indent, 'jmx_port', self.jmx_port))
+            print("{}{}={}".format(indent, 'remote_debug_port', self.remote_debug_port))
+            print("{}{}={}".format(indent, 'byteman_port', self.byteman_port))
+            print("{}{}={}".format(indent, 'initial_token', self.initial_token))
             if self.pid:
-                print_("{}{}={}".format(indent, 'pid', self.pid))
+                print("{}{}={}".format(indent, 'pid', self.pid))
 
     def is_running(self):
         """
@@ -537,7 +536,7 @@ class Node(object):
                 stderr = ''
 
         if len(stderr) > 1:
-            print_("[{} ERROR] {}".format(name, stderr.strip()))
+            print("[{} ERROR] {}".format(name, stderr.strip()))
 
     # This will return when exprs are found or it timeouts
     def watch_log_for(self, exprs, from_mark=None, timeout=600,
@@ -551,7 +550,7 @@ class Node(object):
         Will raise NodeError if error_on_pit_terminated is True and C* pid is not running.
         """
         start = time.time()
-        tofind = [exprs] if isinstance(exprs, string_types) else exprs
+        tofind = [exprs] if isinstance(exprs, str) else exprs
         tofind = [re.compile(e) for e in tofind]
         matchings = []
         reads = ""
@@ -598,7 +597,7 @@ class Node(object):
                             matchings.append((line, m))
                             tofind.remove(e)
                             if len(tofind) == 0:
-                                return matchings[0] if isinstance(exprs, string_types) else matchings
+                                return matchings[0] if isinstance(exprs, str) else matchings
                 else:
                     # wait for the situation to clarify, either stop or just a pause in log production
                     time.sleep(1)
@@ -637,7 +636,7 @@ class Node(object):
         log contain an error; this assertion will contain the errors found in the log.
         """
         start = time.time()
-        tofind = [exprs] if isinstance(exprs, string_types) else exprs
+        tofind = [exprs] if isinstance(exprs, str) else exprs
         tofind = [re.compile(e) for e in tofind]
         seek_start=0
         if from_mark:
@@ -810,7 +809,7 @@ class Node(object):
             cmd = '-agentpath:{}'.format(config['yourkit_agent'])
             if 'options' in profile_options:
                 cmd = cmd + '=' + profile_options['options']
-            print_(cmd)
+            print(cmd)
             # Yes, it's fragile as shit
             pattern = r'cassandra_parms="-Dlog4j.configuration=log4j-server.properties -Dlog4j.defaultInitOverride=true'
             common.replace_in_file(launch_bin, pattern, '    ' + pattern + ' ' + cmd + '"')
@@ -892,15 +891,15 @@ class Node(object):
         if verbose:
             common.debug("verbose mode: waiting for the start process out/err (and termination)")
             stdout, stderr = process.communicate()
-            print_(str(stdout))
-            print_(str(stderr))
+            print(str(stdout))
+            print(str(stderr))
 
         # Our modified batch file writes a dirty output with more than just the pid - clean it to get in parity
         # with *nix operation here.
         if common.is_win():
             self.__clean_win_pid()
             self._update_pid(process)
-            print_("Started: {0} with pid: {1}".format(self.name, self.pid), file=sys.stderr, flush=True)
+            print("Started: {0} with pid: {1}".format(self.name, self.pid), file=sys.stderr, flush=True)
 
         if update_pid or wait_for_binary_proto:
             # at this moment we should have PID and it should be running...
@@ -985,7 +984,7 @@ class Node(object):
             still_running = self.is_running()
             if still_running and wait:
                 wait_time_sec = 1
-                for i in xrange(0, 7):
+                for i in range(0, 7):
                     # we'll double the wait time each try and cassandra should
                     # not take more than 1 minute to shutdown
                     time.sleep(wait_time_sec)
@@ -1162,7 +1161,7 @@ class Node(object):
         self.import_config_files()
 
     def clear(self, clear_all=False, only_data=False):
-        data_dirs = ['data{0}'.format(x) for x in xrange(0, self.cluster.data_dir_count)]
+        data_dirs = ['data{0}'.format(x) for x in range(0, self.cluster.data_dir_count)]
         data_dirs.append("commitlogs")
         if clear_all:
             data_dirs.extend(['saved_caches', 'logs'])
@@ -1192,9 +1191,9 @@ class Node(object):
         sstable2json = self._find_cmd('sstable2json')
         env = self.get_env()
         sstablefiles = self.__gather_sstables(datafiles, keyspace, column_families)
-        print_(sstablefiles)
+        print(sstablefiles)
         for sstablefile in sstablefiles:
-            print_("-- {0} -----".format(os.path.basename(sstablefile)))
+            print("-- {0} -----".format(os.path.basename(sstablefile)))
             args = [sstable2json, sstablefile]
             if enumerate_keys:
                 args = args + ["-e"]
@@ -1202,7 +1201,7 @@ class Node(object):
                 for key in keys:
                     args = args + ["-k", key]
             subprocess.call(args, env=env, stdout=out_file)
-            print_("")
+            print("")
 
     def run_json2sstable(self, in_file, ks, cf, keyspace=None, datafiles=None, column_families=None, enumerate_keys=False):
         json2sstable = self._find_cmd('json2sstable')
@@ -1223,7 +1222,7 @@ class Node(object):
         processes = []
 
         def do_split(f):
-            print_("-- {0}-----".format(os.path.basename(f)))
+            print("-- {0}-----".format(os.path.basename(f)))
             cmd = [sstablesplit]
             if size is not None:
                 cmd += ['-s', str(size)]
@@ -1275,7 +1274,7 @@ class Node(object):
 
         def do_dump(sstable):
             if command:
-                print_("-- {0} -----".format(os.path.basename(sstable)))
+                print("-- {0} -----".format(os.path.basename(sstable)))
             cmd = [sstabledump, sstable]
             if enumerate_keys:
                 cmd.append('-e')
@@ -1285,8 +1284,8 @@ class Node(object):
             p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=env)
             if command:
                 out, err, rc = handle_external_tool_process(p, "sstabledump")
-                print_(out)
-                print_('\n')
+                print(out)
+                print('\n')
             else:
                 processes.append(p)
 
@@ -1434,7 +1433,7 @@ class Node(object):
         return keyspaces
 
     def get_sstables_per_data_directory(self, keyspace, column_family):
-        keyspace_dirs = [os.path.join(self.get_path(), "data{0}".format(x), keyspace) for x in xrange(0, self.cluster.data_dir_count)]
+        keyspace_dirs = [os.path.join(self.get_path(), "data{0}".format(x), keyspace) for x in range(0, self.cluster.data_dir_count)]
         cf_glob = '*'
         if column_family:
             # account for changes in data dir layout from CASSANDRA-5202
@@ -1738,7 +1737,7 @@ class Node(object):
         if self.network_interfaces['binary'] is not None and self.get_base_cassandra_version() >= 1.2:
             data['rpc_address'], data['native_transport_port'] = self.network_interfaces['binary']
 
-        data['data_file_directories'] = [os.path.join(self.get_path(), 'data{0}'.format(x)) for x in xrange(0, self.cluster.data_dir_count)]
+        data['data_file_directories'] = [os.path.join(self.get_path(), 'data{0}'.format(x)) for x in range(0, self.cluster.data_dir_count)]
         data['commitlog_directory'] = os.path.join(self.get_path(), 'commitlogs')
         data['saved_caches_directory'] = os.path.join(self.get_path(), 'saved_caches')
 
@@ -2009,7 +2008,7 @@ class Node(object):
         dirs = []
         for i in ['commitlogs', 'saved_caches', 'logs', 'conf', 'bin', 'hints']:
             dirs.append(os.path.join(self.get_path(), i))
-        for x in xrange(0, self.cluster.data_dir_count):
+        for x in range(0, self.cluster.data_dir_count):
             dirs.append(os.path.join(self.get_path(), 'data{0}'.format(x)))
         return dirs
 
@@ -2122,7 +2121,7 @@ class Node(object):
             if not columnfamilies or len(columnfamilies) > 1:
                 raise common.ArgumentError("Exactly one column family must be specified with datafiles")
 
-            for x in xrange(0, self.cluster.data_dir_count):
+            for x in range(0, self.cluster.data_dir_count):
                 cf_dir = os.path.join(os.path.realpath(self.get_path()), 'data{0}'.format(x), keyspace, columnfamilies[0])
 
                 sstables = set()
@@ -2222,7 +2221,7 @@ class Node(object):
         return handle_external_tool_process(p, ['byteman_submit'] + opts)
 
     def data_directories(self):
-        return [os.path.join(self.get_path(), 'data{0}'.format(x)) for x in xrange(0, self.cluster.data_dir_count)]
+        return [os.path.join(self.get_path(), 'data{0}'.format(x)) for x in range(0, self.cluster.data_dir_count)]
 
     def get_sstable_data_files_process(self, ks, table):
         env = self.get_env()
