@@ -840,7 +840,7 @@ def get_jdk_version(process='java'):
     try:
         version = subprocess.check_output([process, '-version'], stderr=subprocess.STDOUT)
     except OSError:
-        print_("ERROR: Could not find java. Is it in your path?")
+        print_("ERROR: Could not find {}. Is it in your path?".format(process))
         exit(1)
 
     return _get_jdk_version(version)
@@ -931,15 +931,21 @@ def _update_java_version(current_java_version, current_java_home_version,
 
     # Determine "versions" - supported Java versions for select Cassandra distribution
     # First - attempt to get the supported Java versions from the Cassandra distribution
-    build_versions = get_supported_jdk_versions(install_dir)
+    build_versions = None
+    if install_dir:
+        build_versions = get_supported_jdk_versions(install_dir)
     run_versions = build_versions
 
     # If the supported Java versions are not available from the distribution, use the known defaults
+
+    if cassandra_version and not isinstance(cassandra_version, LooseVersion):
+        cassandra_version = LooseVersion(cassandra_version)
+
     if build_versions is None:
-        if cassandra_version >= '5.0':
+        if cassandra_version and cassandra_version >= LooseVersion('5.0'):
             build_versions = [11, 17]
             run_versions = [11, 17]
-        elif cassandra_version >= '4.0':
+        elif cassandra_version and cassandra_version >= LooseVersion('4.0'):
             if not os_env:
                 os_env = os.environ
             if 'CASSANDRA_USE_JDK11' not in os_env:
