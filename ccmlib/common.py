@@ -840,7 +840,7 @@ def get_jdk_version(process='java'):
     try:
         version = subprocess.check_output([process, '-version'], stderr=subprocess.STDOUT)
     except OSError:
-        print_("ERROR: Could not find java. Is it in your path?")
+        print_("ERROR: Could not find {}. Is it in your path?".format(process))
         exit(1)
 
     return _get_jdk_version(version)
@@ -854,38 +854,53 @@ def _get_jdk_version(version):
     ver_pattern = '\"(\d+).*\"'
     return re.search(ver_pattern, str(version)).groups()[0] + ".0"
 
+
+def get_supported_jdk_versions_internal(path, pattern):
+    if os.path.exists(path):
+        with open(path) as f:
+            for line in f:
+                match = re.search(pattern, line)
+                if match:
+                    versions = match.group(1).split(',')
+                    versions = [8 if v == '1.8' else int(v) for v in versions]
+                    return versions
+    return None
+
+
 def get_supported_jdk_versions(install_dir):
     """
-    Return the supported java versions from build.xml
-    Only works in > 4.1
+    Return the supported Java versions from build.xml (source distributions)
+    or from cassandra.in.sh (binary distributions) if such information is present (5.0+ for source, 5.1+ for binary).
     """
-    build = os.path.join(install_dir, 'build.xml')
-    with open(build) as f:
-        for line in f:
-            match = re.search('name="java\.supported" value="([0-9.,]+)"', line)
-            if match:
-                versions = match.group(1).split(',')
-                versions = [8 if v == '1.8' else int(v) for v in versions]
-                return versions
-    raise ValueError("did not find java.supported in build.xml!")
+
+    # source distributions have supported Java versions specified in build.xml since 5.0
+    versions = get_supported_jdk_versions_internal(os.path.join(install_dir, 'build.xml'),
+                                                   'name="java\\.supported" value="([0-9.,]+)"')
+    if versions is None:
+        # binary distributions have supported Java versions specified in bin/cassandra.in.sh since 5.1
+        versions = get_supported_jdk_versions_internal(os.path.join(install_dir, 'bin', 'cassandra.in.sh'),
+                                                       'java_versions_supported=([0-9.,]+)')
+
+    info("Supported Java versions for Cassandra distribution in '{}': {}".format(install_dir, versions))
+
+    return versions
+
 
 def update_java_version(jvm_version=None, install_dir=None, cassandra_version=None, env=None,
                         for_build=False, info_message=None):
     """
-    Updates or fixes the Java version (JAVA_HOME environment).
-    If 'jvm_version' is explicitly set, that one will be used.
-    Otherwise, the Java version will be guessed from the provided 'cassandra_version' parameter.
-    If the version-parameters are not specified, those will be inquired from the 'install_dir'.
-    See CASSANDRA-15835
-    :param jvm_version: The Java version to use - must be the major Java version number like 8 or 11.
+    Selects Java distribution and returns the updated env (updates JAVA_HOME and PATH variables if needed).
+    If 'jvm_version' is explicitly set, that one will be used if a Java distribution of that version can be found.
+    Otherwise, the Java version will be guessed from the distribution provided by 'install_dir' parameter or from
+    the provided 'cassandra_version' parameter.
+    :param jvm_version: The explicit Java version to use - must be the major Java version number like 8 or 11 (int).
     :param install_dir: Software installation directory.
     :param cassandra_version: The Cassandra version to consider for choosing the correct Java version.
-    :param env: Current OS environment variables.
+    :param env: environment variables to update; if None, 'os.environ' is used.
     :param for_build: whether the code should check for a valid version to build or run bdp. Currently only
     applies to source tree that have a 'build-env.yaml' file.
     :param info_message: String logged with info/error messages
-    :return: the maybe updated OS environment variables. If 'env' was 'None' and JAVA_HOME needs to be set,
-    the result will also contain the current OS environment variables from 'os.environ'.
+    :return: the provided 'env' with updated JAVA_HOME and PATH variables if needed.
     """
 
     env = env if env else os.environ
@@ -905,6 +920,7 @@ def update_java_version(jvm_version=None, install_dir=None, cassandra_version=No
 def _update_java_version(current_java_version, current_java_home_version,
                          jvm_version=None, install_dir=None, cassandra_version=None, env=None,
                          for_build=False, info_message=None, os_env=None):
+
     # Internal variant accessible for tests
 
     if env is None:
@@ -913,74 +929,94 @@ def _update_java_version(current_java_version, current_java_home_version,
     if cassandra_version is None and install_dir:
         cassandra_version = get_version_from_build(install_dir)
 
-    # conservative Java version defaults
-    # Cassandra versions 3.x and 2.x use the defaults
-    build_versions = [8]
-    run_versions = [8]
+    # Determine "versions" - supported Java versions for select Cassandra distribution
+    # First - attempt to get the supported Java versions from the Cassandra distribution
+    build_versions = None
+    if install_dir:
+        build_versions = get_supported_jdk_versions(install_dir)
+    run_versions = build_versions
 
-    info(
-        '{}: current_java_version={}, current_java_home_version={}, jvm_version={}, for_build={}, cassandra_version={}, install_dir={}, env={}'
-        .format(info_message, current_java_version, current_java_home_version, jvm_version, for_build,
-                cassandra_version, install_dir, env))
+    # If the supported Java versions are not available from the distribution, use the known defaults
 
-    # this won't work with DSE versions
-    if cassandra_version >= '4.2':
-        if os.path.exists(os.path.join(install_dir, 'build.xml')):
-            build_versions = get_supported_jdk_versions(install_dir)
-            run_versions = get_supported_jdk_versions(install_dir)
+    if cassandra_version and not isinstance(cassandra_version, LooseVersion):
+        cassandra_version = LooseVersion(cassandra_version)
+
+    if build_versions is None:
+        if cassandra_version and cassandra_version >= LooseVersion('5.0'):
+            build_versions = [11, 17]
+            run_versions = [11, 17]
+        elif cassandra_version and cassandra_version >= LooseVersion('4.0'):
+            if not os_env:
+                os_env = os.environ
+            if 'CASSANDRA_USE_JDK11' not in os_env:
+                build_versions = [8, 11]
+                run_versions = [8, 11]
+            else:
+                build_versions = [11]
+                run_versions = [11]
         else:
-            # binary installs we don't know which jdks are supported any more
-            build_versions = [current_java_version]
-            run_versions = [current_java_version]
+            # Cassandra versions 3.x and 2.x
+            build_versions = [8]
+            run_versions = [8]
 
-    if '4.0' <= cassandra_version < '4.2':
-        if not os_env:
-            os_env = os.environ
-        if 'CASSANDRA_USE_JDK11' not in os_env:
-            build_versions = [8, 11]
-            run_versions = [8, 11, 12, 13, 14, 15, 16, 17]
-        else:
-            build_versions = [11]
-            run_versions = [11]
+    # Java versions supported by the Cassandra distribution
+    supported_versions = build_versions if for_build else run_versions
 
-    versions = build_versions if for_build else run_versions
+    # Java versions available in the current environment (JAVA_HOME, JAVAn_HOME)
+    available_versions = {get_jdk_version_int(os.path.join(env_value, 'bin', 'java')): env_key
+                          for env_key, env_value in env.items() if re.search("JAVA([0-9]+)?_HOME", env_key)}
 
+    # Intersection of supported and available Java versions
+    supported_available_versions = {v for v in supported_versions if v in available_versions}
+
+    info('{}: current_java_version={}, current_java_home_version={}, (explicit) jvm_version={}, for_build={}, '
+         'supported java versions={}, available java versions={}, cassandra_version={}, install_dir={}, env={}'
+         .format(info_message, current_java_version, current_java_home_version, jvm_version, for_build,
+                 supported_versions, available_versions, cassandra_version, install_dir,
+                 {k: v for k, v in env.items() if k.startswith('JAVA') or k == 'PATH'}))
+
+    # Determine "jvm_version" - exact Java version to use if it was not explicitly provided
     if not jvm_version:
-        if current_java_version in versions:
+        # First attempt to use the current Java from the PATH if it is supported
+        if current_java_version in supported_available_versions:
             jvm_version = current_java_version
-        else:
-            for version in versions:
-                if 'JAVA{}_HOME'.format(version) in env:
-                    jvm_version = version
-                    break
 
-        if jvm_version:
-            info('{}: using Java {} for the current invocation'
-                 .format(info_message, jvm_version))
+        # If the current Java from the PATH is not supported or available, select the lowest supported and available one
+        elif len(supported_available_versions) > 0:
+            jvm_version = sorted(supported_available_versions, reverse=False)[0]
+            info("{}: Selected Java version {} based on the available {} env variable because the current Java "
+                 "version {} is not supported by Cassandra {} (supported versions: {})."
+                 .format(info_message, jvm_version, available_versions[jvm_version],
+                         current_java_version, cassandra_version, supported_versions))
+
+        # If there is no supported Java versions available in the current env, forcibly select the current Java version
+        # from the PATH if it is available, and show an appropriate warning message
+        elif current_java_version in available_versions:
+            jvm_version = current_java_version
+            warning('{}: cannot find a suitable Java version for the current invocation. '
+                    'Forcibly using current_java_version={}'
+                    .format(info_message, current_java_version))
+
+        # If neither any supported version nor the current Java version is available in the current env, fail
+        else:
+            raise RuntimeError('{}: cannot find any Java distribution for the current invocation.'.format(info_message))
+
     else:
-        # Called proved an explicit Java version
         info('{}: Using explicitly requested Java version {} for the current invocation of Cassandra {}'
              .format(info_message, jvm_version, cassandra_version))
+        if jvm_version not in available_versions:
+            raise RuntimeError('{}: The explicitly requested Java version {} is not available in the current env.'
+                               .format(info_message, jvm_version))
+        if jvm_version not in supported_versions:
+            warning('{}: The explicitly requested Java version {} is not supported by Cassandra {}.'
+                    .format(info_message, jvm_version, cassandra_version))
 
-    # If the 'java' binary accessible via PATH points to a different Java version than the current JAVA_HOME,
-    # update it to point to the Java version of the 'java' binary accessible via PATH.
-    # Need to do this, because ccmlib.common.compile_version() uses the 'java' binary accessible via PATH via 'ant'.
-    if not jvm_version:
-        if current_java_home_version != current_java_version:
-            jvm_version = current_java_version
-            info('{}: Using Java {} for Cassandra {}, because the Java versions of java binary in PATH ({}) and '
-                 'JAVA_HOME ({}) did not match'.format(info_message, current_java_version, cassandra_version,
-                                                       current_java_version, current_java_home_version))
-        else:
-            jvm_version = current_java_version
-
-    if current_java_version != jvm_version or current_java_home_version != jvm_version:
-        new_java_home = 'JAVA{}_HOME'.format(jvm_version)
-        if new_java_home not in env:
-            raise RuntimeError("{}: You need to set JAVA{}_HOME to run Cassandra {}"
-                               .format(info_message, jvm_version, cassandra_version))
-        env['JAVA_HOME'] = env[new_java_home]
-        env['PATH'] = '{}/bin:{}'.format(env[new_java_home], env['PATH'] if 'PATH' in env else '')
+    env['JAVA_HOME'] = env[available_versions[jvm_version]]
+    path = env['PATH'] if 'PATH' in env else ''
+    path_entry = '{}/bin:'.format(env[available_versions[jvm_version]])
+    if not path.startswith(path_entry):
+        path = path_entry + path
+    env['PATH'] = path
     return env
 
 
