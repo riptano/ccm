@@ -825,7 +825,10 @@ def invalidate_cache():
 
 
 def get_jdk_version_int(process='java'):
-    jdk_version = float(get_jdk_version(process))
+    jdk_version_str = get_jdk_version(process)
+    if jdk_version_str is None:
+        return None
+    jdk_version = float(jdk_version_str)
     # Make it Java 8 instead of 1.8 (or 7 instead of 1.7)
     jdk_version = int(jdk_version if jdk_version >= 2 else 10 * (jdk_version - 1))
     return jdk_version
@@ -840,8 +843,8 @@ def get_jdk_version(process='java'):
     try:
         version = subprocess.check_output([process, '-version'], stderr=subprocess.STDOUT)
     except OSError:
-        print_("ERROR: Could not find {}. Is it in your path?".format(process))
-        exit(1)
+        info("Could not find {}.".format(process))
+        return None
 
     return _get_jdk_version(version)
 
