@@ -111,7 +111,7 @@ class TestUpdateJavaVersion(ccmtest.Tester):
             result_env = _update_java_version(current_java_version=cur_java_version, current_java_home_version=None,
                                               jvm_version=java_version, install_dir=None, cassandra_version=LooseVersion(cassandra_version),
                                               env=self._make_env(), for_build=True,
-                                              info_message='test_default_selection_{}'.format(cassandra_version), os_env={})
+                                              info_message='test_default_selection_{}'.format(cassandra_version), os_env={'key':'value'})
             self._check_env(result_env, expected_java_version)
 
     def test_update_java_version(self):
