@@ -485,7 +485,6 @@ class ClusterStartCmd(Cmd):
         (['--profile-opts'], {'type': "string", 'action': "store", 'dest': "profile_options", 'help': "Yourkit options when profiling", 'default': None}),
         (['--quiet-windows'], {'action': "store_true", 'dest': "quiet_start", 'help': "Pass -q on Windows 2.2.4+ and 3.0+ startup. Ignored on linux.", 'default': False}),
         (['--root'], {'action': "store_true", 'dest': "allow_root", 'help': "Allow CCM to start cassandra as root", 'default': False}),
-        (['--jvm-version'], {'type': "int", 'dest': "jvm_version", 'help': "Specify the JVM version to use (e.g. 8 for Java 8)", 'default': None}),
     ]
     descr_text = "Start all the non started nodes of the current cluster"
     usage = "usage: ccm cluster start [options]"
@@ -517,8 +516,7 @@ class ClusterStartCmd(Cmd):
                                   jvm_args=self.options.jvm_args,
                                   profile_options=profile_options,
                                   quiet_start=self.options.quiet_start,
-                                  allow_root=self.options.allow_root,
-                                  jvm_version=self.options.jvm_version) is None:
+                                  allow_root=self.options.allow_root) is None:
                 details = ""
                 if not self.options.verbose:
                     details = " (you can use --verbose for more information)"

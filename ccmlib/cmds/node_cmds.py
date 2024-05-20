@@ -160,7 +160,6 @@ class NodeStartCmd(Cmd):
         (['--jvm_arg'], {'action': "append", 'dest': "jvm_args", 'help': "Specify a JVM argument", 'default': []}),
         (['--quiet-windows'], {'action': "store_true", 'dest': "quiet_start", 'help': "Pass -q on Windows 2.2.4+ and 3.0+ startup. Ignored on linux.", 'default': False}),
         (['--root'], {'action': "store_true", 'dest': "allow_root", 'help': "Allow CCM to start cassandra as root", 'default': False}),
-        (['--jvm-version'], {'type': "int", 'dest': "jvm_version", 'help': "Specify the JVM version to use (e.g. 8 for Java 8)", 'default': None}),
     ]
     descr_text = "Start a node"
     usage = "usage: ccm node start [options] name"
@@ -178,8 +177,7 @@ class NodeStartCmd(Cmd):
                             replace_address=self.options.replace_address,
                             jvm_args=self.options.jvm_args,
                             quiet_start=self.options.quiet_start,
-                            allow_root=self.options.allow_root,
-                            jvm_version=self.options.jvm_version)
+                            allow_root=self.options.allow_root)
         except NodeError as e:
             print_(str(e), file=sys.stderr)
             print_("Standard error output is:", file=sys.stderr)

@@ -62,7 +62,7 @@ CCM you are running points to the code you are actively working on. There is no 
 are editing the Python files being run every time you invoke CCM.
 
 Almost there. Now you just need to add the test dependencies that are not in `requirements.txt`.
-`pip install mock pytest requests` to finish setting up your dev environment!
+`pip install mock pytest` to finish setting up your dev environment!
 
 Another caveat that has recently appeared Cassandra versions 4.0 and below ship with a version of JNA that isn't
 compatible with Apple Silicon and there are no plans to update JNA on those versions. One work around if you are
