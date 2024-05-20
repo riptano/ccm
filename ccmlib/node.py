@@ -239,7 +239,7 @@ class Node(object):
         env = common.make_cassandra_env(self.get_install_dir(), self.get_path(), update_conf)
         env = common.update_java_version(jvm_version=None,
                                          install_dir=self.get_install_dir(),
-                                         cassandra_version=self.cluster.cassandra_version(),
+                                         cassandra_version=self.get_cassandra_version(),
                                          env=env,
                                          info_message=self.name)
         for (key, value) in self.__environment_variables.items():
