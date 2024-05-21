@@ -884,7 +884,10 @@ def get_supported_jdk_versions_from_dist(install_dir):
         versions = get_supported_jdk_versions_internal(os.path.join(install_dir, 'bin', 'cassandra.in.sh'),
                                                        'java_versions_supported=([0-9.,]+)')
 
-    info("Supported Java versions for Cassandra distribution in '{}': {}".format(install_dir, versions))
+    if versions and len(versions) > 0:
+        info("Supported Java versions for Cassandra distribution in '{}': {}".format(install_dir, versions))
+    else:
+        info("Supported Java versions could not be retrieved from Cassandra distribution in '{}'".format(install_dir))
 
     return versions
 
@@ -903,17 +906,21 @@ def get_supported_jdk_versions(cassandra_version, install_dir, for_build, env):
         if cassandra_version and cassandra_version >= LooseVersion('5.0'):
             build_versions = [11, 17]
             run_versions = [11, 17]
+            info("Cassandra 5.0+ detected, using Java 11 and 17")
         elif cassandra_version and cassandra_version >= LooseVersion('4.0'):
-            if 'CASSANDRA_USE_JDK11' not in env:
+            if 'CASSANDRA_USE_JDK11' not in env or env['CASSANDRA_USE_JDK11'] != 'true':
                 build_versions = [8, 11]
                 run_versions = [8, 11]
+                info("Cassandra 4.0+ detected, using Java 8 and 11")
             else:
                 build_versions = [11]
                 run_versions = [11]
+                info("Cassandra 4.0+ detected, using Java 11")
         else:
             # Cassandra versions 3.x and 2.x
             build_versions = [8]
             run_versions = [8]
+            info("Cassandra 3.x or 2.x detected, using Java 8")
 
     # Java versions supported by the Cassandra distribution
     return build_versions if for_build else run_versions
@@ -971,6 +978,14 @@ def update_path_in_env(env, path_entry):
     return env
 
 
+def _maybe_set_use_jdk11_env(env, jvm_version, cassandra_version):
+    if jvm_version >= 11 and cassandra_version and '4.0' <= cassandra_version < '5.0':
+        env['CASSANDRA_USE_JDK11'] = 'true'
+    elif 'CASSANDRA_USE_JDK11' in env:
+        del env['CASSANDRA_USE_JDK11']
+    return env
+
+
 def _update_java_version(current_java_version, current_java_home_version,
                          jvm_version=None, install_dir=None, cassandra_version=None, env=None,
                          for_build=False, info_message=None, os_env=None):
@@ -1004,13 +1019,13 @@ def _update_java_version(current_java_version, current_java_home_version,
             info('{}: Using the current Java {} available on PATH for the current invocation of Cassandra {}.'
                  .format(info_message, current_java_version, cassandra_version))
             # nothing to change in this case
-            return env
+            return _maybe_set_use_jdk11_env(env, current_java_version, cassandra_version)
 
         elif current_java_home_version and current_java_home_version in supported_versions:
             info('{}: Using the current Java {} available from JAVA_HOME for the current invocation of Cassandra {}.'
                  .format(info_message, current_java_version, cassandra_version))
             # just need to add JAVA_HOME/bin to the PATH
-            return update_path_in_env(env, env['JAVA_HOME'] + '/bin')
+            return _maybe_set_use_jdk11_env(update_path_in_env(env, env['JAVA_HOME'] + '/bin'), current_java_home_version, cassandra_version)
 
         elif current_java_home_version and current_java_home_version not in supported_versions:
             warning('{}: The current Java {} is not supported by Cassandra {} (supported versions: {}).'
@@ -1042,7 +1057,7 @@ def _update_java_version(current_java_version, current_java_home_version,
                     .format(info_message, jvm_version, cassandra_version))
 
     env['JAVA_HOME'] = env[available_versions[jvm_version]]
-    return update_path_in_env(env, env['JAVA_HOME'] + '/bin')
+    return _maybe_set_use_jdk11_env(update_path_in_env(env, env['JAVA_HOME'] + '/bin'), jvm_version, cassandra_version)
 
 
 def assert_jdk_valid_for_cassandra_version(cassandra_version):
