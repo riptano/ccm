@@ -824,8 +824,8 @@ def invalidate_cache():
     rmdirs(os.path.join(get_default_path(), 'repository'))
 
 
-def get_jdk_version_int(process='java'):
-    jdk_version_str = get_jdk_version(process)
+def get_jdk_version_int(process='java', env=None):
+    jdk_version_str = get_jdk_version(process, env)
     if jdk_version_str is None:
         return None
     jdk_version = float(jdk_version_str)
@@ -834,14 +834,14 @@ def get_jdk_version_int(process='java'):
     return jdk_version
 
 
-def get_jdk_version(process='java'):
+def get_jdk_version(process='java', env=None):
     """
     Retrieve the Java version as reported in the quoted string returned
     by invoking 'java -version'.
     Works for Java 1.8, Java 9 and newer.
     """
     try:
-        version = subprocess.check_output([process, '-version'], stderr=subprocess.STDOUT)
+        version = subprocess.check_output([process, '-version'], stderr=subprocess.STDOUT, env=env)
     except OSError:
         info("Could not find {}.".format(process))
         return None
@@ -951,7 +951,7 @@ def update_java_version(jvm_version=None, install_dir=None, cassandra_version=No
 
     env = env if env else os.environ
 
-    current_java_version = get_jdk_version_int()
+    current_java_version = get_jdk_version_int(env=env)
     current_java_home_version = get_jdk_version_int(
         '{}/bin/java'.format(env['JAVA_HOME'])) if 'JAVA_HOME' in env else current_java_version
     # Code to ensure that we start C* using the correct Java version.
@@ -1045,8 +1045,8 @@ def _update_java_version(current_java_version, current_java_home_version,
     return update_path_in_env(env, env['JAVA_HOME'] + '/bin')
 
 
-def assert_jdk_valid_for_cassandra_version(cassandra_version):
-    jdk_version = float(get_jdk_version())
+def assert_jdk_valid_for_cassandra_version(cassandra_version, env=None):
+    jdk_version = float(get_jdk_version(env=env))
     if cassandra_version >= '4.2':
         if jdk_version < 11 or 11 < jdk_version < 17 or 17 < jdk_version:
             error('Cassandra {} requires Java 11 or Java 17, found Java {}'.format(cassandra_version, jdk_version))
