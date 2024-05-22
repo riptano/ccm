@@ -117,9 +117,9 @@ class TestUpdateJavaVersion(ccmtest.Tester):
             self.assertIn(8, get_supported_jdk_versions(cassandra_version, None, False, {'key': 'value', 'CASSANDRA_USE_JDK11': 'false'}))
             self.assertIn(8, get_supported_jdk_versions(cassandra_version, None, True, {'key': 'value', 'CASSANDRA_USE_JDK11': 'false'}))
 
-        for cassandra_version in ['4.0', '4.1', '5.0', '5.1']:
-            self.assertNotIn(8, get_supported_jdk_versions(cassandra_version, None, False, {'CASSANDRA_USE_JDK11': 'true'}))
-            self.assertNotIn(8, get_supported_jdk_versions(cassandra_version, None, True, {'CASSANDRA_USE_JDK11': 'true'}))
+        for cassandra_version in [None, '2.2', '3.0', '3.1', '4.0', '4.1']:
+            self.assertIn(8, get_supported_jdk_versions(cassandra_version, None, False, {'key': 'value', 'CASSANDRA_USE_JDK11': 'true'}))
+            self.assertIn(8, get_supported_jdk_versions(cassandra_version, None, True, {'key': 'value', 'CASSANDRA_USE_JDK11': 'true'}))
 
         for cassandra_version in ['4.0', '4.1', '5.0', '5.1']:
             self.assertIn(11, get_supported_jdk_versions(cassandra_version, None, False, {'key': 'value'}))
