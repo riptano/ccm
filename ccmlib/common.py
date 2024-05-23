@@ -902,15 +902,21 @@ def get_supported_jdk_versions(cassandra_version, install_dir, for_build, env):
     if cassandra_version and not isinstance(cassandra_version, LooseVersion):
         cassandra_version = LooseVersion(cassandra_version)
 
+    isCassandraUseJDK11Set = "CASSANDRA_USE_JDK11" in env and (env["CASSANDRA_USE_JDK11"].lower() in ['true', 'yes', 'on'])
     if build_versions is None:
         if cassandra_version and cassandra_version >= LooseVersion('5.0'):
             build_versions = [11, 17]
             run_versions = [11, 17]
             info("Cassandra 5.0+ detected, using Java 11 and 17")
         elif cassandra_version and cassandra_version >= LooseVersion('4.0'):
-            build_versions = [8, 11]
-            run_versions = [8, 11]
-            info("Cassandra 4.0+ detected, using Java 8 and 11")
+            if isCassandraUseJDK11Set:
+                build_versions = [11]
+                run_versions = [11]
+                info("Cassandra 4.0+ detected, using Java 11 (Java 8 is excluded because CASSANDRA_USE_JDK11 is set)")
+            else:
+                build_versions = [8, 11]
+                run_versions = [8, 11]
+                info("Cassandra 4.0+ detected, using Java 8 and 11")
         else:
             # Cassandra versions 3.x and 2.x
             build_versions = [8]
