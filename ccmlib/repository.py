@@ -409,7 +409,7 @@ def compile_version(version, target_dir, verbose=False):
         else:
             # No gradle, use ant
             cmd = [platform_binary('ant'), 'jar']
-            if get_jdk_version_int() >= 11:
+            if get_jdk_version_int(env=env) >= 11:
                 cmd.append('-Duse.jdk11=true')
         while attempt < 3 and ret_val != 0:
             if attempt > 0:
