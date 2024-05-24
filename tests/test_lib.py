@@ -113,9 +113,14 @@ class TestUpdateJavaVersion(ccmtest.Tester):
             self.assertIn(8, get_supported_jdk_versions(cassandra_version, None, False, {'key': 'value'}))
             self.assertIn(8, get_supported_jdk_versions(cassandra_version, None, True, {'key': 'value'}))
 
+        for cassandra_version in [None, '2.2', '3.0', '3.1', '4.0', '4.1']:
+            self.assertIn(8, get_supported_jdk_versions(cassandra_version, None, False, {'key': 'value', 'CASSANDRA_USE_JDK11': 'false'}))
+            self.assertIn(8, get_supported_jdk_versions(cassandra_version, None, True, {'key': 'value', 'CASSANDRA_USE_JDK11': 'false'}))
+
         for cassandra_version in ['4.0', '4.1', '5.0', '5.1']:
-            self.assertNotIn(8, get_supported_jdk_versions(cassandra_version, None, False, {'CASSANDRA_USE_JDK11': 'true'}))
-            self.assertNotIn(8, get_supported_jdk_versions(cassandra_version, None, True, {'CASSANDRA_USE_JDK11': 'true'}))
+            for usd_jdk_11 in ['true', 'TRUE', 'True', 'on', 'ON', 'On', 'yes', 'YES', 'Yes']:
+                self.assertNotIn(8, get_supported_jdk_versions(cassandra_version, None, False, {'CASSANDRA_USE_JDK11': usd_jdk_11}))
+                self.assertNotIn(8, get_supported_jdk_versions(cassandra_version, None, True, {'CASSANDRA_USE_JDK11': usd_jdk_11}))
 
         for cassandra_version in ['4.0', '4.1', '5.0', '5.1']:
             self.assertIn(11, get_supported_jdk_versions(cassandra_version, None, False, {'key': 'value'}))
@@ -144,6 +149,10 @@ class TestUpdateJavaVersion(ccmtest.Tester):
                                               env=self._make_env(java_home_version=home_version, java_path_version=path_version, include_homes=available_homes),
                                               for_build=True, info_message='test_java_selection_{}'.format(cassandra_version), os_env={'key': 'value'})
             self._check_env(result_env, expected_version)
+            if expected_version >= 11 and '4.0' <= cassandra_version < '5.0':
+                self.assertEqual(result_env['CASSANDRA_USE_JDK11'], 'true')
+            else:
+                self.assertNotIn('CASSANDRA_USE_JDK11', result_env)
 
     def _test_java_selection_fail(self, expected_failure_regexp, path_version, home_version, explicit_version, cassandra_versions, available_homes=None):
         for cassandra_version in cassandra_versions:
