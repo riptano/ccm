@@ -912,7 +912,7 @@ def get_supported_jdk_versions(cassandra_version, install_dir, for_build, env):
             if isCassandraUseJDK11Set:
                 build_versions = [11]
                 run_versions = [11]
-                info("Cassandra 4.0+ detected, using Java 11 (Java 8 is excluded because CASSANDRA_USE_JDK11 is set)")
+                info("Cassandra 4.0+ detected, using Java 11 (Java 8 is excluded because the deprecated CASSANDRA_USE_JDK11 is set)")
             else:
                 build_versions = [8, 11]
                 run_versions = [8, 11]
