@@ -5,6 +5,7 @@ import time
 from distutils.version import LooseVersion  # pylint: disable=import-error, no-name-in-module
 from pathlib import Path
 
+import pytest
 import requests
 from six import StringIO
 
@@ -206,7 +207,7 @@ class TestUpdateJavaVersion(ccmtest.Tester):
         self._test_java_selection_fail("The version of java available on PATH 8 does not match the Java version of the distribution provided via JAVA_HOME 11", path_version=8, home_version=11, explicit_version=None, cassandra_versions=self.all_versions)
         self._test_java_selection_fail("JAVA_HOME must be defined if java command is available on the PATH", path_version=8, home_version=None, explicit_version=None, cassandra_versions=self.all_versions)
 
-
+@pytest.mark.skip(reason="this test is starting nodes - it needs to be refactored to use mocks instead")
 class TestCCMLib(ccmtest.Tester):
     def test2(self):
         self.cluster = Cluster(CLUSTER_PATH, "test2", version='git:trunk')
@@ -302,7 +303,7 @@ class TestCCMLib(ccmtest.Tester):
         with self.assertRaisesRegexp(ccmlib.common.ArgumentError, 'Please specify the DC this node should be added to'):
             self.cluster.add(node3, is_seed=False)
 
-
+# TODO remove this unused class
 class TestRunCqlsh(ccmtest.Tester):
 
     def setUp(self):
