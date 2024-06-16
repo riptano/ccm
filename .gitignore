@@ -12,3 +12,4 @@ ccm.egg-info/
 .coverage
 dse_creds.txt
 .eggs/
+junit.xml
