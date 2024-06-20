@@ -287,8 +287,10 @@ def get_user_home():
 def get_config():
     config_path = os.path.join(get_default_path(), CONFIG_FILE)
     if not os.path.exists(config_path):
+        common.debug("Config file does not exist at {}.".format(config_path))
         return {}
 
+    common.debug("Loading config file from {} ...".format(config_path))
     with open(config_path, 'r') as f:
         return yaml.safe_load(f)
 
