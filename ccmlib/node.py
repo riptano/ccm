@@ -149,7 +149,9 @@ class Node(object):
         self.__global_log_level = None
         self.__classes_log_level = {}
         self.__environment_variables = environment_variables or {}
+        self.__environment_variables = self.__environment_variables.copy()
         self.__original_java_home = None
+        self.__original_path = None
         self.__conf_updated = False
 
         if derived_cassandra_version:
@@ -238,7 +240,7 @@ class Node(object):
         env = common.make_cassandra_env(self.get_install_dir(), self.get_path(), update_conf)
         env = common.update_java_version(jvm_version=None,
                                          install_dir=self.get_install_dir(),
-                                         cassandra_version=self.cluster.cassandra_version(),
+                                         cassandra_version=self.get_cassandra_version(),
                                          env=env,
                                          info_message=self.name)
         for (key, value) in self.__environment_variables.items():
@@ -847,9 +849,14 @@ class Node(object):
         if not self.__original_java_home:
             # Save the "original" JAVA_HOME + PATH to restore it.
             self.__original_java_home = os.environ['JAVA_HOME']
+            self.__original_path = os.environ['PATH']
+            logger.info("Saving original JAVA_HOME={} PATH={}".format(self.__original_java_home, self.__original_path))
         else:
             # Restore the "original" JAVA_HOME + PATH to restore it.
             env['JAVA_HOME'] = self.__original_java_home
+            env['PATH'] = self.__original_path
+            logger.info("Restoring original JAVA_HOME={} PATH={}".format(self.__original_java_home, self.__original_path))
+
         env = common.update_java_version(jvm_version=jvm_version,
                                          install_dir=self.get_install_dir(),
                                          cassandra_version=self.get_cassandra_version(),
@@ -861,7 +868,7 @@ class Node(object):
             self.__environment_variables[k] = env[k]
 
         common.info("Starting {} with JAVA_HOME={} java_version={} cassandra_version={}, install_dir={}"
-                    .format(self.name, env['JAVA_HOME'], common.get_jdk_version_int(),
+                    .format(self.name, env['JAVA_HOME'], common.get_jdk_version_int(env=env),
                             self.get_cassandra_version(), self.get_install_dir()))
 
         # In case we are restarting a node

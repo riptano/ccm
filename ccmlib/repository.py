@@ -31,8 +31,8 @@ from six.moves import urllib
 DSE_ARCHIVE = "http://downloads.datastax.com/enterprise/dse-%s-bin.tar.gz"
 OPSC_ARCHIVE = "http://downloads.datastax.com/enterprise/opscenter-%s.tar.gz"
 ARCHIVE = "http://archive.apache.org/dist/cassandra"
-GIT_REPO = "https://gitbox.apache.org/repos/asf/cassandra.git"
-GITHUB_REPO = "https://github.com/apache/cassandra.git"
+GIT_REPO = "https://github.com/apache/cassandra.git"
+GITHUB_REPO = "https://github.com/apache/cassandra"
 GITHUB_TAGS = "https://api.github.com/repos/apache/cassandra/git/refs/tags"
 CCM_CONFIG = ConfigParser.RawConfigParser()
 CCM_CONFIG.read(os.path.join(os.path.expanduser("~"), ".ccm", "config"))
@@ -409,7 +409,7 @@ def compile_version(version, target_dir, verbose=False):
         else:
             # No gradle, use ant
             cmd = [platform_binary('ant'), 'jar']
-            if get_jdk_version_int() >= 11:
+            if get_jdk_version_int(env=env) >= 11:
                 cmd.append('-Duse.jdk11=true')
         while attempt < 3 and ret_val != 0:
             if attempt > 0:
