@@ -164,15 +164,19 @@ def clone_development(git_repo, version, verbose=False, alias=False):
         if not os.path.exists(local_git_cache):
             common.info("Cloning Cassandra...")
             process = subprocess.Popen(
-                ['git', 'clone', '--mirror', git_repo, local_git_cache],
+                ['git', 'clone', '--mirror',
+                 '-c remote.origin.fetch=+refs/heads/*:refs/heads/*',
+                 '-c remote.origin.fetch=+refs/tags/*:refs/tags/*',
+                 git_repo, local_git_cache],
                 cwd=__get_dir(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             out, _, _ = log_info(process, logger)
             assert out == 0, "Could not do a git clone"
         else:
             common.info("Fetching Cassandra updates...")
             process = subprocess.Popen(
-                ['git', 'fetch', '-fup', 'origin', '+refs/*:refs/*'],
-                cwd=local_git_cache, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                ['git', 'fetch', '-fup', 'origin',
+                 '+refs/heads/*:refs/heads/*', '+refs/tags/*:refs/tags/*'],
+                 cwd=local_git_cache, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             out, _, _ = log_info(process, logger)
             assert out == 0, "Could not update git"
 
