@@ -164,9 +164,7 @@ def clone_development(git_repo, version, verbose=False, alias=False):
         if not os.path.exists(local_git_cache):
             common.info("Cloning Cassandra...")
             process = subprocess.Popen(
-                ['git', 'clone', '--mirror',
-                 '-c remote.origin.fetch=+refs/heads/*:refs/heads/*',
-                 '-c remote.origin.fetch=+refs/tags/*:refs/tags/*',
+                ['git', 'clone', '--bare',
                  git_repo, local_git_cache],
                 cwd=__get_dir(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             out, _, _ = log_info(process, logger)
