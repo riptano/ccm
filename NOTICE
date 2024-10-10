@@ -1,0 +1,61 @@
+Apache Cassandra Cluster Manager
+Copyright 2024 The Apache Software Foundation
+
+This product includes software developed at
+The Apache Software Foundation (http://www.apache.org/).
+
+
+This product originates, before git sha
+cc8cb98b29f68d12c8b5fa093a33dc3b346873b3, from software from DataStax
+and other individual contributors.
+
+Non-DataStax contributors are listed below. Those marked with
+asterisk have agreed to donate (copyright assign) their contributions to the
+Apache Software Foundation, signing CLAs when appropriate.
+
+Kishan Karunaratne <kishan@karu.io>
+Lucas Meneghel @lmr
+Joaquin Casares @joaquincasares
+Andrew Hust @nutbunnies
+Jaume Marhuenda <jaumemarhuenda@gmail.com>
+Daniel Compton <desk+github@danielcompton.net> *
+??? @steveandwang
+Byron Clark <byron@theclarkfamily.name> *
+Thibault Charbonnier @thibaultcha
+Greg Bestland @GregBestland
+??? @c-kodman
+Sandeep Tamhankar @stamhankar999
+Tomek Bujok @tombujok
+Pekka Enberg <penberg@iki.fi>
+Brian Weck @bweck
+Dimitri Krassovski <labria@startika.com> *
+??? @nattochaduke-yahoo
+??? @pydeveloper94
+Geet Kumar @gkumar7
+??? @scharron
+Eric Stevens @MightyE *
+Rui Chen <rui@hexpunks.org>
+??? @ezacks-barracuda
+Tetsuya Morimoto @t2y
+Casey Marshall @csmlyve
+??? @jillichrome
+??? @ekooiker *
+Chris Bargren <cbargren@gmail.com>
+Xian Yi Teng <xytxytxyt@gmail.com>
+Stefano Ortolani @ostefano *
+Cormoran <cormoran707@gmail.com>
+??? @hatokani2
+??? @jeremycnf
+Samuel Roberts @sproberts92
+Alexei Maridashvili <alexei.maridashvili@gmail.com> *
+Michael Hamm <mikejameshamm@gmail.com> *
+Lerh Low @juiceblender
+Peter Palaga <ppalaga@redhat.com> *
+Hannu Kröger @hkroger *
+Jacob Fenwick <jacob.fenwick@gmail.com>
+Ulises Cervino Beresi <ulises.cervino@gmail.com> *
+Jack Kingsman @jkingsman *
+Yasuharu Goto <matope.ono@gmail.com>
+David Sauer <david@nur-mal-so-am-ran.de>
+Nick Bailey <nickmbailey@gmail.com> *
+Alex Popescu @al3xandru
