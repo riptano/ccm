@@ -1,3 +1,20 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 import os
 import sys
 import tempfile
@@ -100,11 +117,11 @@ class TestUpdateJavaVersion(ccmtest.Tester):
         self.assertIsNotNone(get_supported_jdk_versions_from_dist(self._make_cassandra_install_dir('trunk', True)))
 
         # some commit of Cassandra 5.1
-        self.assertEquals(get_supported_jdk_versions_from_dist(self._make_cassandra_install_dir('6bae4f76fb043b4c3a3886178b5650b280e9a50b', False)), [11, 17])
-        self.assertEquals(get_supported_jdk_versions_from_dist(self._make_cassandra_install_dir('6bae4f76fb043b4c3a3886178b5650b280e9a50b', True)), [11, 17])
+        self.assertEqual(get_supported_jdk_versions_from_dist(self._make_cassandra_install_dir('6bae4f76fb043b4c3a3886178b5650b280e9a50b', False)), [11, 17])
+        self.assertEqual(get_supported_jdk_versions_from_dist(self._make_cassandra_install_dir('6bae4f76fb043b4c3a3886178b5650b280e9a50b', True)), [11, 17])
 
         self.assertIsNone(get_supported_jdk_versions_from_dist(self._make_cassandra_install_dir('cassandra-5.0', False)))
-        self.assertEquals(get_supported_jdk_versions_from_dist(self._make_cassandra_install_dir('cassandra-5.0', True)), [11, 17])
+        self.assertEqual(get_supported_jdk_versions_from_dist(self._make_cassandra_install_dir('cassandra-5.0', True)), [11, 17])
 
         self.assertIsNone(get_supported_jdk_versions_from_dist(self._make_cassandra_install_dir('cassandra-4.1', False)))
         self.assertIsNone(get_supported_jdk_versions_from_dist(self._make_cassandra_install_dir('cassandra-4.1', True)))
