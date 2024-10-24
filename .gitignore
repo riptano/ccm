@@ -13,3 +13,4 @@ ccm.egg-info/
 dse_creds.txt
 .eggs/
 junit.xml
+/nbproject/
