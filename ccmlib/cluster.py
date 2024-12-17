@@ -275,7 +275,12 @@ class Cluster(object):
             self.use_vnodes = use_vnodes
 
         if isinstance(nodes, list):
+            # We set both the legacy and modern config options here, although they are mutually exclusive. When we
+            # actually finalise the config for nodes in the cluster we select which one to keep based on the supplied
+            # yaml file. One of the two keys must be present in the yaml, so we retain whichever that is.
             self.set_configuration_options(values={'endpoint_snitch': 'org.apache.cassandra.locator.PropertyFileSnitch'})
+            self.set_configuration_options(values={'initial_location_provider': 'org.apache.cassandra.locator.TopologyFileLocationProvider'})
+
             node_count = 0
             i = 0
             for c in nodes:

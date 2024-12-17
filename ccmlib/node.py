@@ -1760,11 +1760,20 @@ class Node(object):
         if self.cluster.partitioner:
             data['partitioner'] = self.cluster.partitioner
 
+
         # Get a map of combined cluster and node configuration with the node
         # configuration taking precedence.
         full_options = common.merge_configuration(
             self.cluster._config_options,
             self.__config_options, delete_empty=False)
+
+        if 'initial_location_provider' in data:
+            common.debug("yaml contained initial_location_provider, removing endpoint_snitch from merged config")
+            full_options.pop('endpoint_snitch', None)
+        elif 'endpoint_snitch' in data:
+            common.debug("yaml contained endpoint_snitch, removing initial_location_provider from merged config")
+            full_options.pop('initial_location_provider', None)
+            full_options.pop('node_proximity', None)
 
         # Merge options with original yaml data.
         data = common.merge_configuration(data, full_options)
