@@ -275,7 +275,11 @@ class Cluster(object):
             self.use_vnodes = use_vnodes
 
         if isinstance(nodes, list):
+            # We set PFS here as a "marker" that we need to read cassandra-topology.properties for this cluster
+            # This is then checked in node.py::_update_yaml where we check if initial_location_provider is set in
+            # the yaml (indicating that modern config is supported) and we set TopologyFileLocationProvider if so
             self.set_configuration_options(values={'endpoint_snitch': 'org.apache.cassandra.locator.PropertyFileSnitch'})
+
             node_count = 0
             i = 0
             for c in nodes:
