@@ -1760,20 +1760,25 @@ class Node(object):
         if self.cluster.partitioner:
             data['partitioner'] = self.cluster.partitioner
 
-
         # Get a map of combined cluster and node configuration with the node
         # configuration taking precedence.
         full_options = common.merge_configuration(
             self.cluster._config_options,
             self.__config_options, delete_empty=False)
 
-        if 'initial_location_provider' in data:
-            common.debug("yaml contained initial_location_provider, removing endpoint_snitch from merged config")
-            full_options.pop('endpoint_snitch', None)
-        elif 'endpoint_snitch' in data:
-            common.debug("yaml contained endpoint_snitch, removing initial_location_provider from merged config")
-            full_options.pop('initial_location_provider', None)
-            full_options.pop('node_proximity', None)
+        if 'endpoint_snitch' in full_options and full_options['endpoint_snitch'] == 'org.apache.cassandra.locator.PropertyFileSnitch':
+            # multi dc cluster, needs to read cassandra-topology.properties - if cassandra.yaml is modern, we use TFLP and unset the endpoint_snitch
+            if 'initial_location_provider' in data:
+                data['initial_location_provider'] = 'org.apache.cassandra.locator.TopologyFileLocationProvider'
+                full_options.pop('endpoint_snitch', None)
+        else:
+            # test might set endpoint_snitch: GPFS for example, in this case we need to keep that and unset ILP (or other way round)
+            if 'initial_location_provider' in full_options:
+                data.pop('endpoint_snitch', None)
+            elif 'endpoint_snitch' in full_options:
+                data.pop('initial_location_provider', None)
+                data.pop('node_proximity', None)
+
 
         # Merge options with original yaml data.
         data = common.merge_configuration(data, full_options)
