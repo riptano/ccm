@@ -18,6 +18,7 @@ class ClusterFactory():
     def load(path, name):
         cluster_path = os.path.join(path, name)
         filename = os.path.join(cluster_path, 'cluster.conf')
+        common.debug("Loading {} ...".format(filename))
         with open(filename, 'r') as f:
             data = yaml.safe_load(f)
         try:

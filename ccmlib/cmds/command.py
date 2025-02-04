@@ -71,6 +71,8 @@ class Cmd(object):
         else:
             self.path = options.config_dir
 
+        common.debug("Using ccm data and config path {} ...".format(self.path))
+
         if cluster_name:
             if len(args) == 0:
                 print_('Missing cluster name', file=sys.stderr)

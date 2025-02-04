@@ -35,8 +35,12 @@ GIT_REPO = "https://github.com/apache/cassandra.git"
 GITHUB_REPO = "https://github.com/apache/cassandra"
 GITHUB_TAGS = "https://api.github.com/repos/apache/cassandra/git/refs/tags"
 CCM_CONFIG = ConfigParser.RawConfigParser()
-CCM_CONFIG.read(os.path.join(os.path.expanduser("~"), ".ccm", "config"))
-
+config_path = os.path.join(os.path.expanduser("~"), ".ccm", "config")
+read_ok = CCM_CONFIG.read(config_path)
+if len(read_ok) == 0:
+    common.debug("Config file {} was not found or could not be read.".format(config_path))
+else:
+    common.debug("Config file {} was successfully read.".format(config_path))
 
 def setup(version, verbose=False):
     binary = True
@@ -112,6 +116,8 @@ def setup(version, verbose=False):
                 return (version_directory(version), None)
             else:
                 raise e
+    else:
+        common.debug("Cassandra version was found in {}, no need to download.".format(cdir))
     return (cdir, version)
 
 
@@ -291,6 +297,7 @@ def download_dse_version(version, username, password, verbose=False):
         tar.extractall(path=__get_dir())
         tar.close()
         target_dir = os.path.join(__get_dir(), version)
+        common.debug("Moving extracted files to {} ...".format(target_dir))
         if os.path.exists(target_dir):
             rmdirs(target_dir)
         shutil.move(os.path.join(__get_dir(), dir), target_dir)
@@ -321,6 +328,7 @@ def download_opscenter_version(version, username, password, target_version, verb
         tar.extractall(path=__get_dir())
         tar.close()
         target_dir = os.path.join(__get_dir(), target_version)
+        common.debug("Moving extracted files to {} ...".format(target_dir))
         if os.path.exists(target_dir):
             rmdirs(target_dir)
         shutil.move(os.path.join(__get_dir(), dir), target_dir)
@@ -355,6 +363,7 @@ def download_version(version, url=None, verbose=False, binary=False):
         tar.extractall(path=__get_dir())
         tar.close()
         target_dir = os.path.join(__get_dir(), version)
+        common.debug("Moving extracted files to {} ...".format(target_dir))
         if os.path.exists(target_dir):
             rmdirs(target_dir)
         shutil.move(os.path.join(__get_dir(), dir), target_dir)
@@ -478,10 +487,12 @@ def version_directory(version):
         try:
             validate_install_dir(dir)
             return dir
-        except ArgumentError:
+        except ArgumentError as e:
+            common.warning(e)
             rmdirs(dir)
             return None
     else:
+        common.debug("Directory {} for Cassandra version {} was not found.".format(dir, version))
         return None
 
 
