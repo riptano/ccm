@@ -117,11 +117,11 @@ class TestUpdateJavaVersion(ccmtest.Tester):
         self.assertIsNotNone(get_supported_jdk_versions_from_dist(self._make_cassandra_install_dir('trunk', True)))
 
         # some commit of Cassandra 5.1
-        self.assertEquals(get_supported_jdk_versions_from_dist(self._make_cassandra_install_dir('6bae4f76fb043b4c3a3886178b5650b280e9a50b', False)), [11, 17])
-        self.assertEquals(get_supported_jdk_versions_from_dist(self._make_cassandra_install_dir('6bae4f76fb043b4c3a3886178b5650b280e9a50b', True)), [11, 17])
+        self.assertEqual(get_supported_jdk_versions_from_dist(self._make_cassandra_install_dir('6bae4f76fb043b4c3a3886178b5650b280e9a50b', False)), [11, 17])
+        self.assertEqual(get_supported_jdk_versions_from_dist(self._make_cassandra_install_dir('6bae4f76fb043b4c3a3886178b5650b280e9a50b', True)), [11, 17])
 
         self.assertIsNone(get_supported_jdk_versions_from_dist(self._make_cassandra_install_dir('cassandra-5.0', False)))
-        self.assertEquals(get_supported_jdk_versions_from_dist(self._make_cassandra_install_dir('cassandra-5.0', True)), [11, 17])
+        self.assertEqual(get_supported_jdk_versions_from_dist(self._make_cassandra_install_dir('cassandra-5.0', True)), [11, 17])
 
         self.assertIsNone(get_supported_jdk_versions_from_dist(self._make_cassandra_install_dir('cassandra-4.1', False)))
         self.assertIsNone(get_supported_jdk_versions_from_dist(self._make_cassandra_install_dir('cassandra-4.1', True)))
