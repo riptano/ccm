@@ -1,3 +1,7 @@
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/ccm)
+[![PyPI version](https://badge.fury.io/py/ccm.svg)](https://badge.fury.io/py/ccm)
+
 CCM (Cassandra Cluster Manager)
 ====================================================
 
